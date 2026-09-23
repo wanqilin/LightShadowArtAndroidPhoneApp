@@ -1,0 +1,7 @@
+// 手机端（发送端）App 的顶层构建文件。
+// 与设备端工程（LightShadowArt）完全隔离：这里用标准 Android SDK + AndroidX，
+// 不使用设备端的 MTK framework_intermediates 与平台签名。
+plugins {
+    id 'com.android.application' version '8.2.0' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+}

@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.warke.lightshadowart.mobile.app-mergeDebugResources-36:/values-h550dp-port-v13/values-h550dp-port-v13.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\ddswa\\.gradle\\caches\\transforms-3\\38d56184ec25501de898e01b67607ff5\\transformed\\material-1.11.0\\res\\values-h550dp-port-v13\\values-h550dp-port-v13.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "64",
+                        "endOffsets": "115"
+                    }
+                }
+            ]
+        }
+    ]
+}
