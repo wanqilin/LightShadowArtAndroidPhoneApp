@@ -16,6 +16,8 @@
     <string name="action_pick">选择图片 / 视频</string>
     <string name="action_wifi">连接 Wi-Fi</string>
     <string name="action_refresh">刷新连接</string>
+    <string name="action_refresh_connecting">连接中…</string>
+    <string name="action_refresh_connected">已连接</string>
     <string name="action_disconnect">断开连接</string>
 
     <string name="upload_summary_empty">选择文件后自动上传到设备</string>

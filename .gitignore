@@ -1,0 +1,75 @@
+# =========================================================
+# 只保留源码与工程文件，忽略所有编译中间文件 / 构建输出
+# =========================================================
+
+# ---------- Gradle / Android 构建输出 ----------
+.gradle/
+.cxx/
+.externalNativeBuild/
+.navigation/
+captures/
+
+# 忽略各级 build 目录内容，但保留生成的 APK / AAR 产物（需纳入版本管控）
+**/build/*
+!**/build/outputs/
+**/build/outputs/*
+!**/build/outputs/apk/
+**/build/outputs/apk/*
+!**/build/outputs/apk/**
+!**/build/outputs/aar/
+**/build/outputs/aar/*
+!**/build/outputs/aar/**
+
+# 生成目录
+bin/
+gen/
+out/
+
+# ---------- 构建产物 ----------
+# 注意：*.apk 不忽略，生成的 APK 需要保留
+*.ap_
+*.dex
+*.class
+*.hprof
+
+# ---------- Kotlin 会话目录 ----------
+.kotlin/
+
+# ---------- IDE / 编辑器 ----------
+.idea/
+*.iml
+.fleet/
+
+# ---------- 本地配置（含 SDK 路径等，不应提交）----------
+local.properties
+
+# ---------- 日志与临时文件 ----------
+*.log
+*.orig
+*.rej
+*.tmp
+*.bak
+
+# ---------- 操作系统生成文件 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Eclipse / Proguard 生成目录 ----------
+proguard/
+
+# ---------- Google Services (e.g. APIs or Firebase) ----------
+google-services.json
+
+# ---------- Freeline ----------
+freeline.py
+freeline/
+freeline_project_description.json
+
+# =========================================================
+# 以下内容为工程编译所必需，请勿忽略：
+#   gradle/wrapper/**                         Gradle Wrapper
+#   **/libs/**  **/jniLibs/**                预编译依赖库（jar / so / aar）
+#   **/src/**   **/res/**  **/assets/**      源码与资源
+#   **/build/outputs/apk/**                  生成的 APK 产物（需纳入版本管控）
+# =========================================================

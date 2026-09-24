@@ -44,8 +44,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.net.Inet4Address
 import kotlin.coroutines.resume
 
@@ -73,14 +71,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nsdDiscoverer: NsdDiscoverer
     private var uploadJob: Job? = null
 
-    /** 局域网内是否已发现设备——「刷新连接」点得通的前提 */
-    private var deviceOnLan = false
-
-    /** 用户点了「刷新连接」，扫描期间按钮保持置灰 */
-    private var refreshing = false
-
-    /** 后台探测与手动刷新各自都要独占一次发现，串行避免后发起的一次把前一次的结论吞掉 */
-    private val lanProbeMutex = Mutex()
+    /** 用户点了「刷新连接」：正在扫描局域网并连接，按钮显示「连接中…」且保持置灰 */
+    private var connecting = false
 
     /** 等待热点权限授予后再连接的设备（权限回调里使用） */
     private var pendingEndpoint: DeviceEndpoint? = null
@@ -155,7 +147,6 @@ class MainActivity : AppCompatActivity() {
         updateUploadSummary()
         renderSession()
         startHeartbeat()
-        watchDeviceOnLan()
     }
 
     override fun onResume() {
@@ -257,9 +248,9 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val sessionId = client.auth(endpoint).getOrElse { error ->
                 Log.e(TAG, "auth failed: ${endpoint.baseUrl}", error)
-                tvDevice.text = getString(R.string.state_disconnected)
+                connecting = false
                 tvSession.text = getString(R.string.state_no_session)
-                // 刷新失败也要把按钮态交回统一规则，否则扫描期间置灰的「刷新连接」永远点不亮
+                // 连接失败也要把按钮态交回统一规则，否则「连接中…」永远亮不回来
                 renderSession()
                 showConnectError(getString(R.string.toast_connect_failed, error.message.orEmpty()), endpoint)
                 return@launch
@@ -268,6 +259,7 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "auth ok: ${endpoint.baseUrl}, session=$sessionId")
             val ttl = client.heartbeat(endpoint, sessionId).getOrDefault(DEFAULT_SESSION_TTL_MS)
             SessionStore.save(endpoint, sessionId, ttl)
+            connecting = false
             renderSession()
         }
     }
@@ -283,15 +275,17 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * 刷新：设备接入手机下发的 Wi-Fi 后会注册 NSD 服务，此时手机与设备同处一个局域网，
-     * 在局域网内重新发现设备并重建会话即可，不需要设备再弹二维码。
+     * 用户点「刷新连接」即在局域网内重新发现设备并重建会话，不需要设备再弹二维码。
+     *
+     * 不在后台预先扫描：按钮只在「上一次连接的不是设备热点」时可点，由用户点击驱动这一次发现。
      *
      * 会话不再由「结束会话」按钮结束：手机端退到后台后停止心跳，设备端空闲 5 分钟自动结束。
      *
      * 只有这里能确认「设备真的接入了手机所在的 Wi‑Fi」，因此「设备已接入的网络」也在这里记录。
      */
     private fun refresh() {
-        if (refreshing) return
-        refreshing = true
+        if (connecting) return
+        connecting = true
         tvDevice.text = getString(R.string.state_refreshing)
         renderSession()
 
@@ -300,14 +294,13 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val devices = probeLan(DISCOVER_TIMEOUT_MS)
-            refreshing = false
 
             // 同一局域网可能有多台设备：优先选上次连接过的那台
             val device = devices.firstOrNull { it.deviceToken == SessionStore.lastDeviceToken }
                 ?: devices.firstOrNull()
             if (device == null) {
-                // 这次没找到就先把按钮置灰，别让用户连点；后台探测再发现设备时会重新点亮
-                updateDeviceOnLan(false)
+                connecting = false
+                // renderSession() 会把「未连接设备」写回去，并把按钮交回「刷新连接」态
                 renderSession()
                 val ssid = SessionStore.lastWifiSsid
                 toast(
@@ -321,7 +314,7 @@ class MainActivity : AppCompatActivity() {
             }
             // 设备能被局域网发现，才说明它真的接入了手机现在所在的这个 Wi‑Fi，此时才记录
             currentSsid().takeIf { it.isNotEmpty() }?.let { SessionStore.rememberWifiSsid(it) }
-            updateDeviceOnLan(true)
+            // 找到设备就直接开始连接，按钮保持「连接中…」，成功后由 renderSession() 变为「已连接」
             authenticate(device.toEndpoint())
         }
     }
@@ -407,8 +400,7 @@ class MainActivity : AppCompatActivity() {
         )
         btnWifi.isEnabled = active
         btnPick.isEnabled = active && uploadJob?.isActive != true
-        // 「刷新连接」靠局域网发现设备：只有后台探测真的找到了设备才可点，点了就不会落空
-        btnRefresh.isEnabled = deviceOnLan && !refreshing
+        renderRefreshButton(active)
         // 「断开连接」要随时能把本地状态收拾干净：会话已失效、手机还原地挂在设备热点上都算
         btnDisconnect.isEnabled = active || hotspotConnector.isConnected ||
             SessionStore.lastDeviceToken.isNotEmpty()
@@ -418,6 +410,34 @@ class MainActivity : AppCompatActivity() {
         tvWifiHint.isVisible = ssid.isNotEmpty()
         if (ssid.isNotEmpty()) {
             tvWifiHint.text = getString(R.string.state_wifi_hint, ssid)
+        }
+    }
+
+    /**
+     * 「刷新连接」按钮三态：
+     * - 已连接：显示「已连接」，不可点；
+     * - 点击后正在局域网内查找并连接：显示「连接中…」，不可点；
+     * - 空闲：显示「刷新连接」，只有「上一次连接的不是设备热点」时才可点——
+     *   还挂在设备热点上说明设备处于 AP 模式，局域网里找不到它，点了只会落空。
+     *
+     * 会话再次断开（超时或用户点「断开连接」）即回到「刷新连接」态。
+     */
+    private fun renderRefreshButton(active: Boolean) {
+        when {
+            active -> {
+                btnRefresh.setText(R.string.action_refresh_connected)
+                btnRefresh.isEnabled = false
+            }
+
+            connecting -> {
+                btnRefresh.setText(R.string.action_refresh_connecting)
+                btnRefresh.isEnabled = false
+            }
+
+            else -> {
+                btnRefresh.setText(R.string.action_refresh)
+                btnRefresh.isEnabled = !onDeviceHotspot()
+            }
         }
     }
 
@@ -436,79 +456,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 有没有可能在局域网里找到设备：手机连着 Wi‑Fi，且不是挂在设备自己的热点上。
-     *
-     * 挂在设备热点上说明设备还在 AP 模式，局域网里不可能有它，探测没有意义。
-     */
-    private fun lanProbeWorthwhile(): Boolean = currentSsid().isNotEmpty() && !onDeviceHotspot()
-
-    /**
-     * 后台探测：手机挂着 Wi‑Fi 时周期性在局域网里找一遍设备，只有真的找到才点亮「刷新连接」。
-     *
-     * 「刷新连接」是重建会话的入口，设备不在局域网时点了只会弹一句「未发现设备」让人困惑；
-     * 这里先替用户探好——探到按钮才可点，点下去必然能连上；探不到按钮就置灰，
-     * 由「断开连接」把本地状态收拾干净（设备端回到出码态，可重新扫码）。
-     */
-    private fun watchDeviceOnLan() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                while (true) {
-                    if (!refreshing) {
-                        val devices = if (lanProbeWorthwhile()) {
-                            probeLan(LAN_PROBE_TIMEOUT_MS)
-                        } else {
-                            emptyList()
-                        }
-                        updateDeviceOnLan(devices.isNotEmpty())
-                        adoptLanAddress(devices)
-                    }
-                    delay(LAN_PROBE_INTERVAL_MS)
-                }
-            }
-        }
-    }
-
-    /**
-     * 设备接入手机下发的 Wi‑Fi 后，地址会从热点网段换到路由器网段；[SessionStore] 里记的还是旧热点地址，
-     * 「已连接」那一行就会一直显示一个已经不通的地址。
-     *
-     * 会话本身存在设备端、换网不受影响，因此发现地址变了就把本地地址换过去，不必等用户点「刷新连接」；
-     * 换过去的地址若是假的（例如设备又关机了），下一次心跳就会报会话失效，界面随之回到未连接。
-     */
-    private fun adoptLanAddress(devices: List<DiscoveredDevice>) {
-        val endpoint = SessionStore.endpoint ?: return
-        if (!SessionStore.isActive) return
-
-        val device = devices.firstOrNull { it.deviceToken == SessionStore.lastDeviceToken }
-            ?: devices.firstOrNull() ?: return
-        if (device.host == endpoint.host && device.port == endpoint.port) return
-
-        Log.i(TAG, "device address changed: ${endpoint.baseUrl} -> ${device.host}:${device.port}")
-        currentSsid().takeIf { it.isNotEmpty() }?.let { SessionStore.rememberWifiSsid(it) }
-        SessionStore.updateEndpoint(device.toEndpoint())
-        renderSession()
-    }
-
-    /** 探测结论有变化时才重绘，避免每轮心跳之外再反复扰动界面 */
-    private fun updateDeviceOnLan(found: Boolean) {
-        if (deviceOnLan == found) return
-        deviceOnLan = found
-        renderSession()
-    }
-
-    /**
-     * 跑一次局域网发现（最多等 [timeoutMs]）。
-     *
-     * 发现过程独占 NSD，后发起的一次会让前一次收不到回调，因此与手动刷新串行。
+     * 跑一次局域网发现（最多等 [timeoutMs]），由用户点「刷新连接」触发，不在后台周期扫描。
      */
     private suspend fun probeLan(timeoutMs: Long): List<DiscoveredDevice> =
-        lanProbeMutex.withLock {
-            suspendCancellableCoroutine { continuation ->
-                nsdDiscoverer.discover(timeoutMs) { devices ->
-                    if (continuation.isActive) continuation.resume(devices)
-                }
-                continuation.invokeOnCancellation { nsdDiscoverer.cancel() }
+        suspendCancellableCoroutine { continuation ->
+            nsdDiscoverer.discover(timeoutMs) { devices ->
+                if (continuation.isActive) continuation.resume(devices)
             }
+            continuation.invokeOnCancellation { nsdDiscoverer.cancel() }
         }
 
     // -----------------------------------------------------------------------
@@ -744,12 +699,6 @@ class MainActivity : AppCompatActivity() {
 
         /** 手动「刷新连接」的发现窗口，与 NsdDiscoverer 默认值一致 */
         const val DISCOVER_TIMEOUT_MS = 5_000L
-
-        /** 后台探测窗口：只为判断设备在不在，探到即可，不必等满 */
-        const val LAN_PROBE_TIMEOUT_MS = 2_500L
-
-        /** 后台探测周期：设备接入 Wi‑Fi 后最多这么久「刷新连接」就会点亮 */
-        const val LAN_PROBE_INTERVAL_MS = 10_000L
 
         /** 没有权限读取 Wi-Fi 名时系统返回的占位值 */
         const val UNKNOWN_SSID = "<unknown ssid>"

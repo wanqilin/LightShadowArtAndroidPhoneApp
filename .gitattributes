@@ -1,5 +1,5 @@
-# 默认：检出时用系统换行，提交时统一 LF
-* text=auto
+# 全仓库统一使用 LF：提交与检出均为 LF
+* text=auto eol=lf
 
 # 明确文本文件
 *.java   text
