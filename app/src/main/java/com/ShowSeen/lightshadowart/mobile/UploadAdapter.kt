@@ -1,4 +1,4 @@
-package com.warke.lightshadowart.mobile
+package com.ShowSeen.lightshadowart.mobile
 
 import android.view.LayoutInflater
 import android.view.View
@@ -8,7 +8,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import com.warke.lightshadowart.mobile.net.UploadSource
+import com.ShowSeen.lightshadowart.mobile.net.UploadSource
 
 enum class UploadStatus { WAITING, UPLOADING, DONE, FAILED }
 

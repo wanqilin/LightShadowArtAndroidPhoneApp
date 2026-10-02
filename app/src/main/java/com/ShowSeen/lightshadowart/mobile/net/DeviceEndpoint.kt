@@ -1,10 +1,10 @@
-package com.warke.lightshadowart.mobile.net
+package com.ShowSeen.lightshadowart.mobile.net
 
 /**
- * 设备端二维码解析结果：设备地址 + 鉴权 Token + 交互模式 + 设备热点。
+ * 设备端二维码解析结果：设备地址 + 鉴权 Token + 交互模式 + 授权文件夹 + 角色 + 设备热点。
  *
  * 与设备端 `ServerConfig` / `QrPayload` 一一对应：
- * `http://<Device_IP>:<Port>/api/v1/auth?token=<DEVICE_TOKEN>&mode=<1|2>`
+ * `http://<Device_IP>:<Port>/api/v1/auth?token=<DEVICE_TOKEN>&mode=<1|2>&role=<admin|viewer>&folder=<授权文件夹>`
  * 设备开热点时再带 `&ap_ssid=<SSID>&ap_pwd=<PASSWORD>`。
  */
 data class DeviceEndpoint(
@@ -15,7 +15,11 @@ data class DeviceEndpoint(
     /** 设备热点 SSID；为空表示二维码里没带热点信息（需手动连接） */
     val apSsid: String = "",
     /** 设备热点密码 */
-    val apPassword: String = ""
+    val apPassword: String = "",
+    /** 二维码声明的角色：admin / viewer；为空表示由设备端判定（首次绑定者为管理员） */
+    val role: String = "",
+    /** 授权文件夹：个人模式为 ALL，门店模式为摄影师指定文件夹 */
+    val folder: String = ""
 ) {
 
     /** 二维码里带了设备热点，可直接自动接入 */
@@ -34,9 +38,16 @@ data class DeviceEndpoint(
     val modeName: String
         get() = if (mode == MODE_PERSONAL) "个人模式" else "门店选片模式"
 
+    /** 二维码是否声明了管理员角色（选片用户不可配置参数） */
+    val isAdmin: Boolean get() = role.equals(ROLE_ADMIN, ignoreCase = true)
+
     companion object {
         const val MODE_PERSONAL = 1
         const val MODE_STUDIO = 2
         const val DEFAULT_PORT = 8080
+
+        /** 与设备端 ServerConfig.ROLE_ADMIN / ROLE_VIEWER 保持一致 */
+        const val ROLE_ADMIN = "admin"
+        const val ROLE_VIEWER = "viewer"
     }
 }

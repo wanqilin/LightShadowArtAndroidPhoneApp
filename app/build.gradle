@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.warke.lightshadowart.mobile'
+    namespace 'com.ShowSeen.lightshadowart.mobile'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.warke.lightshadowart.mobile'
+        applicationId 'com.ShowSeen.lightshadowart.mobile'
         minSdk 24
         targetSdk 34
         versionCode 1

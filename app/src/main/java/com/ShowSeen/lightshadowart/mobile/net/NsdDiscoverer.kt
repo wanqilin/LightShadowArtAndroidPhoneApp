@@ -1,4 +1,4 @@
-package com.warke.lightshadowart.mobile.net
+package com.ShowSeen.lightshadowart.mobile.net
 
 import android.content.Context
 import android.net.nsd.NsdManager

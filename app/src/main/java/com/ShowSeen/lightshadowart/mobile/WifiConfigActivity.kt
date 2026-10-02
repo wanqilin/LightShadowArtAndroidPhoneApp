@@ -1,4 +1,4 @@
-package com.warke.lightshadowart.mobile
+package com.ShowSeen.lightshadowart.mobile
 
 import android.Manifest
 import android.content.Context
@@ -22,12 +22,12 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import com.warke.lightshadowart.mobile.net.DeviceClient
-import com.warke.lightshadowart.mobile.net.DeviceEndpoint
-import com.warke.lightshadowart.mobile.net.DiscoveredDevice
-import com.warke.lightshadowart.mobile.net.HotspotConnector
-import com.warke.lightshadowart.mobile.net.NsdDiscoverer
-import com.warke.lightshadowart.mobile.net.SessionExpiredException
+import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
+import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
+import com.ShowSeen.lightshadowart.mobile.net.DiscoveredDevice
+import com.ShowSeen.lightshadowart.mobile.net.HotspotConnector
+import com.ShowSeen.lightshadowart.mobile.net.NsdDiscoverer
+import com.ShowSeen.lightshadowart.mobile.net.SessionExpiredException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -97,7 +97,7 @@ class WifiConfigActivity : AppCompatActivity() {
         tvResult = findViewById(R.id.tv_result)
 
         client = DeviceClient(contentResolver)
-        hotspotConnector = HotspotConnector(this)
+        hotspotConnector = HotspotConnector.get(this)
         nsdDiscoverer = NsdDiscoverer(this)
         SessionStore.init(this)
 
@@ -137,10 +137,32 @@ class WifiConfigActivity : AppCompatActivity() {
         if (etSsid.text.isNullOrBlank()) {
             // 读不到当前网络（未连 Wi-Fi / 无权限）时退回上次连接过的那个，通常是同一台路由器
             val fallback = SessionStore.lastWifiSsid.takeIf { it.isNotEmpty() }
-            (current ?: fallback)?.let { etSsid.setText(it) }
+            (current ?: fallback)?.let { ssid ->
+                etSsid.setText(ssid)
+                applySavedPassword(ssid, fromPicker = false)
+            }
         }
         layoutSsid.helperText = current?.let { getString(R.string.wifi_current_hint, it) }
             ?: getString(R.string.wifi_current_unknown)
+    }
+
+    /**
+     * 选到本 App 曾下发过的 Wi-Fi 时，自动带入记下的密码。
+     *
+     * 安卓不允许 App 读取系统已保存的 Wi-Fi 密码（getConfiguredNetworks 的敏感字段被系统抹除），
+     * 因此只能用本 App 自己成功下发过的那份缓存；从未下发过的网络没有记录，
+     * 这时保持密码框原样，不把用户已经输入的内容清掉。
+     *
+     * @param fromPicker true=用户刚在列表里选了 SSID（有记录就用该网络的密码覆盖）；
+     *                   false=页面初始化带入（仅在密码框为空时补上）
+     */
+    private fun applySavedPassword(ssid: String, fromPicker: Boolean) {
+        val saved = SessionStore.wifiPasswordFor(ssid)
+        if (saved.isEmpty()) return
+        if (fromPicker || etPassword.text.isNullOrEmpty()) {
+            etPassword.setText(saved)
+            etPassword.setSelection(saved.length)
+        }
     }
 
     /** 列出当前 Wi-Fi 与扫描到的 Wi-Fi，选中即填入输入框 */
@@ -169,7 +191,12 @@ class WifiConfigActivity : AppCompatActivity() {
         }
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.wifi_pick_title)
-            .setItems(labels.toTypedArray()) { _, which -> etSsid.setText(ssids[which]) }
+            .setItems(labels.toTypedArray()) { _, which ->
+                val ssid = ssids[which]
+                etSsid.setText(ssid)
+                // 选中的是本 App 下发过的网络时，密码一并带上，省去再次手输
+                applySavedPassword(ssid, fromPicker = true)
+            }
             .setNegativeButton(R.string.manual_dialog_cancel, null)
             .show()
     }
@@ -260,6 +287,8 @@ class WifiConfigActivity : AppCompatActivity() {
             result.onSuccess {
                 // 这里只表示「设备收到了配置」，不代表它已经接入该网络，
                 // 因此不在此记录「设备接入的网络」——等手机在局域网里真的发现设备了再记（见 waitForLanAndReturn）
+                // 密码存进本 App 自己的缓存，下次选到同一 SSID 自动带入（安卓读不到系统保存的密码）
+                SessionStore.rememberWifiPassword(ssid, password)
                 tvResult.setTextColor(ContextCompat.getColor(this@WifiConfigActivity, R.color.success))
                 tvResult.text = getString(R.string.wifi_success, ssid)
                 waitForLanAndReturn(ssid)
