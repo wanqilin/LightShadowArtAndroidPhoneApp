@@ -55,9 +55,9 @@
         android:contentDescription="@string/space_favourite"
         android:src="@drawable/ic_favourite"
         android:visibility="gone"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:tint="@color/error" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/favourite" />
 
     <ImageView
         android:id="@+id/iv_check"
@@ -67,8 +67,8 @@
         android:contentDescription="@string/space_select"
         android:src="@drawable/ic_check"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:tint="#FFFFFF" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

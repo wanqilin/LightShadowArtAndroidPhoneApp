@@ -78,6 +78,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSpaceSelect: MaterialButton
     private lateinit var btnSpaceDelete: MaterialButton
     private lateinit var tvMediaEmpty: TextView
+    private lateinit var recyclerMedia: RecyclerView
 
     // 主页
     private lateinit var tvDevice: TextView
@@ -245,6 +246,7 @@ class MainActivity : AppCompatActivity() {
         btnSpaceSelect = findViewById(R.id.btn_space_select)
         btnSpaceDelete = findViewById(R.id.btn_space_delete)
         tvMediaEmpty = findViewById(R.id.tv_media_empty)
+        recyclerMedia = findViewById(R.id.recycler_media)
 
         tvDevice = findViewById(R.id.tv_device)
         tvSession = findViewById(R.id.tv_session)
@@ -288,15 +290,17 @@ class MainActivity : AppCompatActivity() {
         mediaAdapter.onSelectionChanged = { count ->
             btnSpaceDelete.isEnabled = mediaAdapter.selectionMode && count > 0
         }
-        findViewById<RecyclerView>(R.id.recycler_media).apply {
-            layoutManager = GridLayoutManager(this@MainActivity, MEDIA_SPAN_COUNT)
-            adapter = mediaAdapter
-        }
+        recyclerMedia.adapter = mediaAdapter
+        applyMediaLayout(groupBrowseMode.checkedRadioButtonId)
         updateSelectButton()
     }
 
     private fun setupSpace() {
-        groupBrowseMode.setOnCheckedChangeListener { _, _ -> reloadMedia() }
+        groupBrowseMode.setOnCheckedChangeListener { _, checkedId ->
+            applyMediaLayout(checkedId)
+            reloadMedia()
+            sendBrowseMode(checkedId)
+        }
         btnSpaceRefresh.setOnClickListener {
             if (SessionStore.isActive) reloadMedia() else requireSession()
         }
@@ -315,6 +319,23 @@ class MainActivity : AppCompatActivity() {
             R.id.btn_ctrl_exit to CTRL_EXIT
         ).forEach { (id, action) ->
             findViewById<MaterialButton>(id).setOnClickListener { sendControl(action) }
+        }
+    }
+
+    /**
+     * 按浏览模式切换移动端媒体排列（需求 3.1.2.1 / 6.1）：
+     * 日期视图为单列列表并按日期分组（每组前显示日期标题，由近到远），
+     * 沉浸 / 喜爱视图为每行 [MEDIA_SPAN_COUNT] 个的网格，
+     * 与设备端「日期为列表、其余为网格」保持一致。
+     */
+    private fun applyMediaLayout(checkedId: Int) {
+        val dateMode = checkedId == R.id.radio_date
+        // 日期视图在每组前插入日期标题，列表呈现由近到远
+        mediaAdapter.setGroupByDate(dateMode)
+        recyclerMedia.layoutManager = if (dateMode) {
+            LinearLayoutManager(this)
+        } else {
+            GridLayoutManager(this, MEDIA_SPAN_COUNT)
         }
     }
 
@@ -832,6 +853,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 浏览模式切换：把三视图单选结果下发设备端同步切换浏览视图（需求 3.1.2.1 / 6.1）。
+     * 移动端本地列表随之刷新：沉浸 / 日期视图拉全量，喜爱视图只拉已标记喜爱的媒体。
+     */
+    private fun sendBrowseMode(checkedId: Int) {
+        if (!SessionStore.isActive) return
+        val mode = when (checkedId) {
+            R.id.radio_immersive -> BROWSER_MODE_IMMERSIVE
+            R.id.radio_favourite -> BROWSER_MODE_FAVOURITE
+            else -> BROWSER_MODE_DATE
+        }
+        sendControl(CTRL_SWITCH_VIEW, JSONObject().put("mode", mode))
+    }
+
     private fun updateMediaEmpty() {
         tvMediaEmpty.isVisible = mediaAdapter.itemCount == 0
     }
@@ -1339,11 +1374,17 @@ class MainActivity : AppCompatActivity() {
         // 设备端 /control 动作名，与 MtkPlayerBridge 常量保持一致
         const val CTRL_PLAY = "PLAY"
         const val CTRL_ROTATE = "ROTATE"
+        const val CTRL_SWITCH_VIEW = "SWITCH_VIEW"
         const val CTRL_UP = "UP"
         const val CTRL_DOWN = "DOWN"
         const val CTRL_LEFT = "LEFT"
         const val CTRL_RIGHT = "RIGHT"
         const val CTRL_CONFIRM = "CONFIRM"
         const val CTRL_EXIT = "EXIT"
+
+        /** 浏览视图取值，与设备端 PlayStateStore.BROWSER_MODE_* 一致 */
+        const val BROWSER_MODE_DATE = 0
+        const val BROWSER_MODE_IMMERSIVE = 1
+        const val BROWSER_MODE_FAVOURITE = 2
     }
 }

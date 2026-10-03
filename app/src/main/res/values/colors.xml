@@ -8,4 +8,6 @@
     <color name="text_secondary">#6B7280</color>
     <color name="success">#1B8A5A</color>
     <color name="error">#C0392B</color>
+    <!-- 喜爱心形标记（与上传的实心红心一致）；Android 框架无自带心形 drawable，故用 App 内向量图 -->
+    <color name="favourite">#E53935</color>
 </resources>

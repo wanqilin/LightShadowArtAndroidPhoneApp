@@ -20,13 +20,20 @@ interface ThumbnailProvider {
  * 空间媒体网格：每行若干列，展示缩略图并可多选删除、标记喜爱（需求 6.1）。
  */
 class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
-    RecyclerView.Adapter<MediaGridAdapter.MediaViewHolder>() {
+    RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items = mutableListOf<MediaItem>()
     private val selected = mutableSetOf<String>()
 
+    /** 展开后的展示行：启用 [groupByDate] 时会在每个日期前插入一条日期标题 */
+    private val rows = mutableListOf<Row>()
+
     /** 多选模式：开启后点击为勾选，关闭后点击为切播放 */
     var selectionMode: Boolean = false
+        private set
+
+    /** 是否按日期分组展示（日期视图），标题显示分组键 yyyy-MM-dd */
+    var groupByDate: Boolean = false
         private set
 
     var onItemClick: ((MediaItem) -> Unit)? = null
@@ -39,8 +46,30 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         items.clear()
         items.addAll(newItems)
         selected.retainAll(items.map { it.path }.toSet())
+        rebuildRows()
         notifyDataSetChanged()
         onSelectionChanged?.invoke(selected.size)
+    }
+
+    /** 切换是否按日期分组（日期视图插入日期标题，其余视图不插入） */
+    fun setGroupByDate(enabled: Boolean) {
+        if (groupByDate == enabled) return
+        groupByDate = enabled
+        rebuildRows()
+        notifyDataSetChanged()
+    }
+
+    /** 依据 [groupByDate] 展开展示行；同一日期仅在首条前插入一次标题 */
+    private fun rebuildRows() {
+        rows.clear()
+        var lastDate: String? = null
+        items.forEach { item ->
+            if (groupByDate && item.date.isNotEmpty() && item.date != lastDate) {
+                rows.add(Row.Header(item.date))
+                lastDate = item.date
+            }
+            rows.add(Row.Media(item))
+        }
     }
 
     fun setSelectionMode(enabled: Boolean) {
@@ -55,29 +84,55 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
 
     private fun toggleSelection(item: MediaItem) {
         if (!selected.add(item.path)) selected.remove(item.path)
-        val index = items.indexOfFirst { it.path == item.path }
+        val index = rows.indexOfFirst { it is Row.Media && it.item.path == item.path }
         if (index >= 0) notifyItemChanged(index)
         onSelectionChanged?.invoke(selected.size)
     }
 
-    override fun getItemCount(): Int = items.size
+    override fun getItemCount(): Int = rows.size
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder =
-        MediaViewHolder(
-            LayoutInflater.from(parent.context).inflate(R.layout.item_media, parent, false),
-            thumbnails
-        )
+    override fun getItemViewType(position: Int): Int =
+        if (rows[position] is Row.Header) TYPE_HEADER else TYPE_MEDIA
 
-    override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
-        val item = items[position]
-        holder.bind(item, selected.contains(item.path))
-        holder.itemView.setOnClickListener {
-            if (selectionMode) toggleSelection(item) else onItemClick?.invoke(item)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return if (viewType == TYPE_HEADER) {
+            HeaderViewHolder(inflater.inflate(R.layout.item_date_header, parent, false))
+        } else {
+            MediaViewHolder(inflater.inflate(R.layout.item_media, parent, false), thumbnails)
         }
-        holder.itemView.setOnLongClickListener {
-            if (!selectionMode) setSelectionMode(true)
-            toggleSelection(item)
-            true
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val row = rows[position]) {
+            is Row.Header -> (holder as HeaderViewHolder).bind(row.date)
+            is Row.Media -> {
+                val item = row.item
+                val mediaHolder = holder as MediaViewHolder
+                mediaHolder.bind(item, selected.contains(item.path))
+                mediaHolder.itemView.setOnClickListener {
+                    if (selectionMode) toggleSelection(item) else onItemClick?.invoke(item)
+                }
+                mediaHolder.itemView.setOnLongClickListener {
+                    if (!selectionMode) setSelectionMode(true)
+                    toggleSelection(item)
+                    true
+                }
+            }
+        }
+    }
+
+    /** 展示行：日期标题或媒体条目 */
+    private sealed interface Row {
+        data class Header(val date: String) : Row
+        data class Media(val item: MediaItem) : Row
+    }
+
+    class HeaderViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val title: TextView = itemView.findViewById(R.id.tv_date_header)
+
+        fun bind(date: String) {
+            title.text = date
         }
     }
 
@@ -106,5 +161,10 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
                 if (thumb.tag == item.path) thumb.setImageBitmap(bitmap)
             }
         }
+    }
+
+    private companion object {
+        const val TYPE_HEADER = 0
+        const val TYPE_MEDIA = 1
     }
 }
