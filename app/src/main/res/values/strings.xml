@@ -72,6 +72,7 @@
     <string name="toast_manual_input_invalid">请输入设备地址</string>
     <string name="toast_wifi_ssid_required">请输入 Wi-Fi 名称</string>
     <string name="scan_prompt">对准设备屏幕上的二维码</string>
+    <string name="scan_title">扫描二维码</string>
 
     <!-- 连接失败弹窗里的网络诊断，便于用户截图反馈 -->
     <string name="diag_title">— 诊断信息 —</string>
@@ -117,6 +118,7 @@
     <string name="space_control_exit">退出</string>
     <string name="space_control_rotate">旋转</string>
     <string name="space_favourite">喜爱</string>
+    <string name="space_favourite_cancel">取消喜爱</string>
     <string name="space_favourite_on">已喜爱</string>
     <string name="space_select">选择</string>
     <string name="space_select_done">完成</string>
@@ -135,7 +137,13 @@
     <string name="toast_favourite_failed">喜爱标记失败：%1$s</string>
     <string name="toast_control_failed">控制指令下发失败：%1$s</string>
     <string name="toast_media_playing">已切换到播放模式</string>
-    <string name="toast_delete_personal_only">仅个人模式支持删除文件</string>
+    <string name="toast_delete_personal_only">仅家庭模式支持删除文件</string>
+
+    <!-- 导出 Fav（需求 6.3） -->
+    <string name="space_export_fav">导出喜爱</string>
+    <string name="toast_export_fav_done">已导出 %1$d 个喜爱文件到 Fav 文件夹</string>
+    <string name="toast_export_fav_empty">当前没有带心形标记的图片或视频</string>
+    <string name="toast_export_fav_failed">导出失败：%1$s</string>
 
     <!-- 中栏：主页连接信息 -->
     <string name="home_connection">连接状态</string>
@@ -169,4 +177,18 @@
     <string name="settings_need_session">请先连接设备后再设置参数</string>
     <string name="settings_invalid">请输入大于 0 的数字</string>
     <string name="settings_load_failed">读取参数失败：%1$s</string>
+    <string name="action_back">返回</string>
+
+    <!-- 用户身份类型：家庭/门店模式 × 管理员/共享用户(选片用户) -->
+    <string name="settings_identity_home_admin">家庭模式：管理员</string>
+    <string name="settings_identity_home_shared">家庭模式：共享用户</string>
+    <string name="settings_identity_studio_admin">门店模式：管理员</string>
+    <string name="settings_identity_studio_viewer">门店模式：选片用户</string>
+
+    <!-- 关于：版本号与版权信息 -->
+    <string name="settings_about">关于</string>
+    <string name="about_label_mobile_version">移动端版本</string>
+    <string name="about_label_device_version">设备端版本</string>
+    <string name="about_device_version_unknown">未连接设备</string>
+    <string name="about_copyright">版权所有 © %1$s</string>
 </resources>

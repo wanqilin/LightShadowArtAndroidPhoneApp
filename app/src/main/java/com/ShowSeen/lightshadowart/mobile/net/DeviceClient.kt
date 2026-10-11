@@ -3,6 +3,7 @@ package com.ShowSeen.lightshadowart.mobile.net
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.ShowSeen.lightshadowart.mobile.AppConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -53,23 +54,25 @@ data class DeviceParams(
     val autoPlayIntervalMs: Long
 ) {
     companion object {
-        /** 设备端默认值：心跳 5 秒、会话超时 10 分钟、无操作倒计时 60 秒、自动播放 3 分钟 */
+        /** 缺省值取自移动端配置文件 AppConfig：心跳 5 秒、会话超时 10 分钟、无操作倒计时 60 秒、自动播放 3 分钟 */
         val DEFAULT = DeviceParams(
-            heartbeatIntervalMs = 5_000L,
-            sessionTimeoutMs = 10 * 60_000L,
-            noOpCountdownMs = 60_000L,
-            autoPlayIntervalMs = 3 * 60_000L
+            heartbeatIntervalMs = AppConfig.DEFAULT_HEARTBEAT_INTERVAL_MS,
+            sessionTimeoutMs = AppConfig.DEFAULT_SESSION_TIMEOUT_MS,
+            noOpCountdownMs = AppConfig.DEFAULT_NO_OP_COUNTDOWN_MS,
+            autoPlayIntervalMs = AppConfig.DEFAULT_AUTO_PLAY_INTERVAL_MS
         )
     }
 }
 
-/** POST /auth 回执：会话 + 角色 + 授权文件夹 + 交互模式 + 运行参数 */
+/** POST /auth 回执：会话 + 角色 + 授权文件夹 + 交互模式 + 运行参数 + 设备端版本号 */
 data class AuthResult(
     val sessionId: String,
     val role: String,
     val folder: String,
     val mode: Int,
-    val params: DeviceParams
+    val params: DeviceParams,
+    /** 设备端 App 版本号；设备端未返回时为空串 */
+    val deviceVersion: String
 ) {
     /** 管理员可配置参数、可移交控制权；选片用户只读 */
     val isAdmin: Boolean get() = role.equals(DeviceEndpoint.ROLE_ADMIN, ignoreCase = true)
@@ -138,7 +141,8 @@ class DeviceClient(private val resolver: ContentResolver) {
                 role = json?.optString("role").orEmpty(),
                 folder = json?.optString("folder").orEmpty(),
                 mode = json?.optInt("mode", endpoint.mode) ?: endpoint.mode,
-                params = json?.optJSONObject("params").toParams()
+                params = json?.optJSONObject("params").toParams(),
+                deviceVersion = json?.optString("device_version").orEmpty()
             )
         }
     }
@@ -395,6 +399,24 @@ class DeviceClient(private val resolver: ContentResolver) {
             val json = response.jsonOrNull()
             ensureSuccess(response, json)
             json?.optBoolean("favourite", favourite) ?: favourite
+        }
+    }
+
+    /**
+     * POST /api/v1/favourite/export —— 把带心形标记的媒体同步到独立 Fav 文件夹
+     * （个人模式 ALL_Fav，门店模式选片文件夹 + _Fav），返回同步后的文件数量。
+     */
+    suspend fun exportFavourite(endpoint: DeviceEndpoint, sessionId: String): Result<Int> = call {
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/favourite/export"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .post(EMPTY_BODY)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            json?.optInt("count") ?: 0
         }
     }
 

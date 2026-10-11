@@ -34,9 +34,9 @@ data class DeviceEndpoint(
     /** 拼接接口地址，例如 urlOf("/upload") */
     fun urlOf(path: String): String = apiBaseUrl + path
 
-    /** 设备端交互模式：1 = 个人模式，2 = 门店选片模式 */
+    /** 设备端交互模式：1 = 家庭模式，2 = 门店选片模式 */
     val modeName: String
-        get() = if (mode == MODE_PERSONAL) "个人模式" else "门店选片模式"
+        get() = if (mode == MODE_PERSONAL) "家庭模式" else "门店选片模式"
 
     /** 二维码是否声明了管理员角色（选片用户不可配置参数） */
     val isAdmin: Boolean get() = role.equals(ROLE_ADMIN, ignoreCase = true)

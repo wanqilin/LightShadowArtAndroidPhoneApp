@@ -89,6 +89,11 @@ object SessionStore {
     var params: DeviceParams = DeviceParams.DEFAULT
         private set
 
+    /** 设备端 App 版本号，由设备端 /auth 返回；供「关于」页展示 */
+    @Volatile
+    var deviceVersion: String = ""
+        private set
+
     /** 管理员可配置参数、可移交控制权；选片用户只读 */
     val isAdmin: Boolean
         get() = role.equals(DeviceEndpoint.ROLE_ADMIN, ignoreCase = true)
@@ -126,7 +131,8 @@ object SessionStore {
         ttlMs: Long,
         role: String,
         folder: String,
-        params: DeviceParams
+        params: DeviceParams,
+        deviceVersion: String
     ) {
         this.endpoint = endpoint
         this.sessionId = sessionId
@@ -134,6 +140,7 @@ object SessionStore {
         this.role = role
         this.folder = folder
         this.params = params
+        this.deviceVersion = deviceVersion
 
         lastDeviceToken = endpoint.deviceToken
         lastDeviceMode = endpoint.mode
@@ -231,6 +238,7 @@ object SessionStore {
         role = ""
         folder = ""
         params = DeviceParams.DEFAULT
+        deviceVersion = ""
     }
 
     private fun prefs(context: Context): SharedPreferences =

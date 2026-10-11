@@ -18,6 +18,8 @@ import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.util.LruCache
 import android.view.View
+import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -34,7 +36,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textfield.TextInputEditText
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
@@ -47,6 +48,7 @@ import com.ShowSeen.lightshadowart.mobile.net.NsdDiscoverer
 import com.ShowSeen.lightshadowart.mobile.net.QrPayloadParser
 import com.ShowSeen.lightshadowart.mobile.net.SessionExpiredException
 import com.ShowSeen.lightshadowart.mobile.net.toUploadSource
+import com.ShowSeen.lightshadowart.mobile.scan.ScanActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -77,6 +79,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSpaceRefresh: MaterialButton
     private lateinit var btnSpaceSelect: MaterialButton
     private lateinit var btnSpaceDelete: MaterialButton
+    private lateinit var btnSpaceExportFav: MaterialButton
+    private lateinit var btnCtrlFavourite: MaterialButton
     private lateinit var tvMediaEmpty: TextView
     private lateinit var recyclerMedia: RecyclerView
 
@@ -84,7 +88,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvDevice: TextView
     private lateinit var tvSession: TextView
     private lateinit var tvWifiHint: TextView
-    private lateinit var btnScan: MaterialButton
+    private lateinit var btnScan: ImageButton
     private lateinit var btnPick: MaterialButton
     private lateinit var btnWifi: MaterialButton
     private lateinit var btnRefresh: MaterialButton
@@ -94,12 +98,25 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvUploadEmpty: TextView
 
     // 设置
-    private lateinit var etHeartbeat: TextInputEditText
-    private lateinit var etSessionTimeout: TextInputEditText
-    private lateinit var etNoOpCountdown: TextInputEditText
-    private lateinit var etAutoPlay: TextInputEditText
+    private lateinit var etHeartbeat: EditText
+    private lateinit var etSessionTimeout: EditText
+    private lateinit var etNoOpCountdown: EditText
+    private lateinit var etAutoPlay: EditText
     private lateinit var btnSettingsSave: MaterialButton
     private lateinit var tvSettingsHint: TextView
+    private lateinit var tvSettingsIdentity: TextView
+
+    // 设置：一级菜单与二级页面（参数设置 / 关于）
+    private lateinit var settingsMenu: View
+    private lateinit var settingsParamsPage: View
+    private lateinit var settingsAboutPage: View
+    private lateinit var btnSettingsParams: View
+    private lateinit var btnSettingsAbout: View
+    private lateinit var btnSettingsParamsBack: View
+    private lateinit var btnSettingsAboutBack: View
+    private lateinit var tvAboutMobileVersion: TextView
+    private lateinit var tvAboutDeviceVersion: TextView
+    private lateinit var tvAboutCopyright: TextView
 
     private val uploadAdapter = UploadAdapter()
     private lateinit var mediaAdapter: MediaGridAdapter
@@ -245,6 +262,8 @@ class MainActivity : AppCompatActivity() {
         btnSpaceRefresh = findViewById(R.id.btn_space_refresh)
         btnSpaceSelect = findViewById(R.id.btn_space_select)
         btnSpaceDelete = findViewById(R.id.btn_space_delete)
+        btnSpaceExportFav = findViewById(R.id.btn_space_export_fav)
+        btnCtrlFavourite = findViewById(R.id.btn_ctrl_favourite)
         tvMediaEmpty = findViewById(R.id.tv_media_empty)
         recyclerMedia = findViewById(R.id.recycler_media)
 
@@ -266,6 +285,18 @@ class MainActivity : AppCompatActivity() {
         etAutoPlay = findViewById(R.id.et_auto_play)
         btnSettingsSave = findViewById(R.id.btn_settings_save)
         tvSettingsHint = findViewById(R.id.tv_settings_hint)
+        tvSettingsIdentity = findViewById(R.id.tv_settings_identity)
+
+        settingsMenu = findViewById(R.id.settings_menu)
+        settingsParamsPage = findViewById(R.id.settings_params_page)
+        settingsAboutPage = findViewById(R.id.settings_about_page)
+        btnSettingsParams = findViewById(R.id.btn_settings_params)
+        btnSettingsAbout = findViewById(R.id.btn_settings_about)
+        btnSettingsParamsBack = findViewById(R.id.btn_settings_params_back)
+        btnSettingsAboutBack = findViewById(R.id.btn_settings_about_back)
+        tvAboutMobileVersion = findViewById(R.id.tv_about_mobile_version)
+        tvAboutDeviceVersion = findViewById(R.id.tv_about_device_version)
+        tvAboutCopyright = findViewById(R.id.tv_about_copyright)
     }
 
     private fun setupBottomNav() {
@@ -289,6 +320,7 @@ class MainActivity : AppCompatActivity() {
         }
         mediaAdapter.onSelectionChanged = { count ->
             btnSpaceDelete.isEnabled = mediaAdapter.selectionMode && count > 0
+            updateFavouriteButton()
         }
         recyclerMedia.adapter = mediaAdapter
         applyMediaLayout(groupBrowseMode.checkedRadioButtonId)
@@ -306,10 +338,11 @@ class MainActivity : AppCompatActivity() {
         }
         btnSpaceSelect.setOnClickListener { toggleSelectionMode() }
         btnSpaceDelete.setOnClickListener { deleteSelected() }
+        btnSpaceExportFav.setOnClickListener { exportFavourite() }
         findViewById<MaterialButton>(R.id.btn_ctrl_rotate).setOnClickListener {
             sendControl(CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
         }
-        findViewById<MaterialButton>(R.id.btn_ctrl_favourite).setOnClickListener { favouriteSelected() }
+        btnCtrlFavourite.setOnClickListener { favouriteSelected() }
         mapOf(
             R.id.btn_ctrl_up to CTRL_UP,
             R.id.btn_ctrl_down to CTRL_DOWN,
@@ -354,7 +387,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSettings() {
+        btnSettingsParams.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_PARAMS) }
+        btnSettingsAbout.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_ABOUT) }
+        btnSettingsParamsBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
+        btnSettingsAboutBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
         btnSettingsSave.setOnClickListener { saveSettings() }
+    }
+
+    /** 设置栏二级页面切换：一级菜单 / 参数设置 / 关于 */
+    private fun showSettingsSubPage(page: Int) {
+        settingsMenu.isVisible = page == SETTINGS_PAGE_MENU
+        settingsParamsPage.isVisible = page == SETTINGS_PAGE_PARAMS
+        settingsAboutPage.isVisible = page == SETTINGS_PAGE_ABOUT
+        if (page == SETTINGS_PAGE_ABOUT) renderAbout()
     }
 
     /** 底部标签切换：三栏同一时刻仅显示一个 */
@@ -365,7 +410,11 @@ class MainActivity : AppCompatActivity() {
 
         when (tabId) {
             R.id.tab_space -> reloadMedia()
-            R.id.tab_settings -> loadSettings()
+            R.id.tab_settings -> {
+                // 每次进入设置栏回到一级菜单
+                showSettingsSubPage(SETTINGS_PAGE_MENU)
+                loadSettings()
+            }
         }
     }
 
@@ -377,6 +426,7 @@ class MainActivity : AppCompatActivity() {
         scanLauncher.launch(
             ScanOptions()
                 .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                .setCaptureActivity(ScanActivity::class.java)
                 .setPrompt(getString(R.string.scan_prompt))
                 .setBeepEnabled(false)
                 .setOrientationLocked(true)
@@ -457,7 +507,8 @@ class MainActivity : AppCompatActivity() {
                 DEFAULT_SESSION_TTL_MS,
                 result.role,
                 result.folder,
-                result.params
+                result.params,
+                result.deviceVersion
             )
             client.heartbeat(endpoint, result.sessionId).onSuccess { heartbeat ->
                 SessionStore.touch(heartbeat.expiresInMs)
@@ -761,10 +812,12 @@ class MainActivity : AppCompatActivity() {
 
         // 空间栏
         btnSpaceRefresh.isEnabled = active
+        btnSpaceExportFav.isEnabled = active
         spaceControlIds.forEach { findViewById<MaterialButton>(it).isEnabled = active }
 
         // 设置栏的角色权限
         applySettingsRole()
+        renderAbout()
 
         // 提醒设备接入的是哪个网络：手机不在同一 Wi-Fi 时「刷新连接」找不到设备
         val ssid = SessionStore.lastWifiSsid
@@ -882,7 +935,25 @@ class MainActivity : AppCompatActivity() {
         updateSelectButton()
     }
 
-    /** 喜爱标记：对已选中的文件批量标记为喜爱（需求 6.1） */
+    /**
+     * 喜爱按钮文案随选中项状态切换：选中的文件已全部带喜爱标记时显示「取消喜爱」，
+     * 否则显示「喜爱」（需求 6.1）。
+     */
+    private fun updateFavouriteButton() {
+        btnCtrlFavourite.setText(
+            if (mediaAdapter.selectedAllFavourite()) {
+                R.string.space_favourite_cancel
+            } else {
+                R.string.space_favourite
+            }
+        )
+    }
+
+    /**
+     * 喜爱标记：对已选中的文件批量切换喜爱状态（需求 6.1）。
+     * 选中项已全部为喜爱时本次为「取消喜爱」，否则为「标记喜爱」，
+     * 结果以设备端为准并经 [reloadMedia] 回读同步。
+     */
     private fun favouriteSelected() {
         val paths = mediaAdapter.selectedPaths()
         if (paths.isEmpty()) {
@@ -895,11 +966,12 @@ class MainActivity : AppCompatActivity() {
             requireSession()
             return
         }
+        val target = !mediaAdapter.selectedAllFavourite()
         lifecycleScope.launch {
             var success = 0
             var firstError: String? = null
             paths.forEach { path ->
-                client.favourite(endpoint, sessionId, path, true)
+                client.favourite(endpoint, sessionId, path, target)
                     .onSuccess { success++ }
                     .onFailure { error ->
                         if (error is SessionExpiredException) {
@@ -910,10 +982,10 @@ class MainActivity : AppCompatActivity() {
                     }
             }
             toast(
-                if (success > 0) {
-                    getString(R.string.toast_favourite_added)
-                } else {
-                    getString(R.string.toast_favourite_failed, firstError.orEmpty())
+                when {
+                    success <= 0 -> getString(R.string.toast_favourite_failed, firstError.orEmpty())
+                    target -> getString(R.string.toast_favourite_added)
+                    else -> getString(R.string.toast_favourite_removed)
                 }
             )
             reloadMedia()
@@ -961,6 +1033,43 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .show()
+    }
+
+    /**
+     * 导出 Fav：把设备端当前带心形标记的图片 / 视频同步到独立 Fav 文件夹
+     * （个人模式 `ALL_Fav`，门店模式「选片文件夹_Fav」），需求 6.3。
+     *
+     * 每次以设备端当前的喜爱标记为准：新加标记的导出进去，取消标记的从 Fav 文件夹内移除。
+     */
+    private fun exportFavourite() {
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            requireSession()
+            return
+        }
+        btnSpaceExportFav.isEnabled = false
+        lifecycleScope.launch {
+            client.exportFavourite(endpoint, sessionId)
+                .onSuccess { count ->
+                    toast(
+                        if (count > 0) {
+                            getString(R.string.toast_export_fav_done, count)
+                        } else {
+                            getString(R.string.toast_export_fav_empty)
+                        }
+                    )
+                    reloadMedia()
+                }
+                .onFailure { error ->
+                    if (error is SessionExpiredException) {
+                        handleSessionExpired()
+                    } else {
+                        toast(getString(R.string.toast_export_fav_failed, error.message.orEmpty()))
+                    }
+                }
+            btnSpaceExportFav.isEnabled = SessionStore.isActive
+        }
     }
 
     private fun sendControl(action: String, params: JSONObject? = null) {
@@ -1193,7 +1302,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun readPositive(edit: TextInputEditText): Long? =
+    private fun readPositive(edit: EditText): Long? =
         edit.text?.toString()?.trim()?.toLongOrNull()?.takeIf { it > 0L }
 
     /** 设置栏可用性：未连接提示先连接，选片用户只读，管理员可配 */
@@ -1210,6 +1319,32 @@ class MainActivity : AppCompatActivity() {
             !admin -> getString(R.string.settings_viewer_readonly)
             else -> getString(R.string.settings_admin_hint)
         }
+        renderSettingsIdentity()
+    }
+
+    /** 身份类型：家庭/门店模式 × 管理员/共享用户(选片用户)，小号灰字；未连接时隐藏 */
+    private fun renderSettingsIdentity() {
+        val active = SessionStore.isActive
+        tvSettingsIdentity.isVisible = active
+        if (!active) return
+        val studio = SessionStore.inStudioMode
+        val admin = SessionStore.isAdmin
+        tvSettingsIdentity.text = getString(
+            when {
+                studio && admin -> R.string.settings_identity_studio_admin
+                studio -> R.string.settings_identity_studio_viewer
+                admin -> R.string.settings_identity_home_admin
+                else -> R.string.settings_identity_home_shared
+            }
+        )
+    }
+
+    /** 关于页：移动端与设备端版本号以及开发公司（ShowSeen）版权信息 */
+    private fun renderAbout() {
+        tvAboutMobileVersion.text = AppConfig.VERSION
+        tvAboutDeviceVersion.text = SessionStore.deviceVersion
+            .ifEmpty { getString(R.string.about_device_version_unknown) }
+        tvAboutCopyright.text = getString(R.string.about_copyright, AppConfig.COMPANY)
     }
 
     // -----------------------------------------------------------------------
@@ -1386,5 +1521,10 @@ class MainActivity : AppCompatActivity() {
         const val BROWSER_MODE_DATE = 0
         const val BROWSER_MODE_IMMERSIVE = 1
         const val BROWSER_MODE_FAVOURITE = 2
+
+        // 设置栏二级页面
+        const val SETTINGS_PAGE_MENU = 0
+        const val SETTINGS_PAGE_PARAMS = 1
+        const val SETTINGS_PAGE_ABOUT = 2
     }
 }

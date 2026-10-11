@@ -197,10 +197,17 @@
         android:layout_marginTop="4dp"
         android:orientation="horizontal">
 
-        <Space
+        <!-- 导出喜爱：左下角，把带心形标记的图片 / 视频导出到独立 Fav 文件夹（需求 6.3） -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_space_export_fav"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:text="@string/space_export_fav" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_ctrl_down"

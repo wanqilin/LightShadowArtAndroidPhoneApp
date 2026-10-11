@@ -82,6 +82,12 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
 
     fun selectedPaths(): List<String> = selected.toList()
 
+    /** 已选中条目是否全部带喜爱标记（无选中时返回 false），用于切换「喜爱 / 取消喜爱」按钮文案 */
+    fun selectedAllFavourite(): Boolean {
+        val picked = items.filter { selected.contains(it.path) }
+        return picked.isNotEmpty() && picked.all { it.favourite }
+    }
+
     private fun toggleSelection(item: MediaItem) {
         if (!selected.add(item.path)) selected.remove(item.path)
         val index = rows.indexOfFirst { it is Row.Media && it.item.path == item.path }

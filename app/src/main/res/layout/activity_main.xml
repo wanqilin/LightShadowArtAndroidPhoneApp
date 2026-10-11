@@ -30,6 +30,22 @@
             android:layout_height="10dp"
             android:layout_marginStart="8dp"
             android:background="@drawable/dot_session" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- 扫码连接：小图标，右置并与应用名底部对齐 -->
+        <ImageButton
+            android:id="@+id/btn_scan"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_scan"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_scan" />
     </LinearLayout>
 
     <!-- 三栏容器：同一时刻仅显示一栏，由底部标签切换 -->
