@@ -25,10 +25,10 @@ data class DeviceEndpoint(
     /** 二维码里带了设备热点，可直接自动接入 */
     val hasHotspot: Boolean get() = apSsid.isNotEmpty()
 
-    /** 形如 http://192.168.1.20:8080 */
+    /** 形如 http://192.168.1.20:39217 */
     val baseUrl: String get() = "http://$host:$port"
 
-    /** 形如 http://192.168.1.20:8080/api/v1 */
+    /** 形如 http://192.168.1.20:39217/api/v1 */
     val apiBaseUrl: String get() = "$baseUrl/api/v1"
 
     /** 拼接接口地址，例如 urlOf("/upload") */
@@ -44,7 +44,7 @@ data class DeviceEndpoint(
     companion object {
         const val MODE_PERSONAL = 1
         const val MODE_STUDIO = 2
-        const val DEFAULT_PORT = 8080
+        const val DEFAULT_PORT = 39217
 
         /** 与设备端 ServerConfig.ROLE_ADMIN / ROLE_VIEWER 保持一致 */
         const val ROLE_ADMIN = "admin"
