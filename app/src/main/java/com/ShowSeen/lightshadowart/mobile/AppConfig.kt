@@ -25,4 +25,10 @@ object AppConfig {
 
     /** 自动播放间隔时间（毫秒） */
     const val DEFAULT_AUTO_PLAY_INTERVAL_MS = 3 * 60_000L
+
+    /**
+     * 单文件上传上限（字节）：与设备端 `DeviceConfig.MAX_UPLOAD_FILE_BYTES` 保持一致，
+     * 上传前据此预检，超过即拦截并提示「超过4G无法写入」，避免白传一遍再被服务端拒绝。
+     */
+    const val MAX_UPLOAD_FILE_BYTES = 4L * 1024 * 1024 * 1024
 }

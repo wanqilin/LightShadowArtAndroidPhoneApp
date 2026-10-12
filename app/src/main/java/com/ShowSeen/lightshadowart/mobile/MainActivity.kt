@@ -42,6 +42,7 @@ import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
 import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
 import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
 import com.ShowSeen.lightshadowart.mobile.net.DiscoveredDevice
+import com.ShowSeen.lightshadowart.mobile.net.FileTooLargeException
 import com.ShowSeen.lightshadowart.mobile.net.HotspotConnector
 import com.ShowSeen.lightshadowart.mobile.net.MediaItem
 import com.ShowSeen.lightshadowart.mobile.net.NsdDiscoverer
@@ -1100,6 +1101,28 @@ class MainActivity : AppCompatActivity() {
             toast(getString(R.string.toast_upload_busy))
             return
         }
+        // 选文件前先探测设备剩余空间：不足时提示用户释放，确认后再继续（需求 4.5 / T-3）
+        lifecycleScope.launch {
+            val endpoint = SessionStore.endpoint
+            val sessionId = SessionStore.sessionId
+            val low = if (endpoint != null && sessionId != null) {
+                client.storage(endpoint, sessionId).getOrNull()?.low == true
+            } else {
+                false
+            }
+            if (low) {
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setMessage(R.string.toast_storage_low)
+                    .setPositiveButton(R.string.dialog_continue_upload) { _, _ -> launchPicker() }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            } else {
+                launchPicker()
+            }
+        }
+    }
+
+    private fun launchPicker() {
         pickLauncher.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
         )
@@ -1112,6 +1135,18 @@ class MainActivity : AppCompatActivity() {
         uploadAdapter.addAll(items)
         updateUploadSummary()
 
+        // 预检：单文件超过 4G 上限的直接拦截，不发起上传，避免白传一遍再被服务端拒绝（需求 4.5 / T-4）
+        var tooLarge = false
+        items.forEachIndexed { index, item ->
+            if (item.source.sizeBytes > AppConfig.MAX_UPLOAD_FILE_BYTES) {
+                item.status = UploadStatus.FAILED
+                item.detail = getString(R.string.toast_file_too_large)
+                uploadAdapter.refresh(baseIndex + index)
+                tooLarge = true
+            }
+        }
+        if (tooLarge) toast(getString(R.string.toast_file_too_large))
+
         btnPick.isEnabled = false
         uploadJob = lifecycleScope.launch {
             var success = 0
@@ -1122,6 +1157,12 @@ class MainActivity : AppCompatActivity() {
                 val position = baseIndex + index
                 val endpoint = SessionStore.endpoint
                 val sessionId = SessionStore.sessionId
+
+                if (item.status == UploadStatus.FAILED) {
+                    // 预检已判定为超限，无需上传
+                    failed++
+                    return@forEachIndexed
+                }
 
                 if (expired || endpoint == null || sessionId == null) {
                     item.status = UploadStatus.FAILED
@@ -1146,8 +1187,15 @@ class MainActivity : AppCompatActivity() {
                     success++
                 }.onFailure { error ->
                     item.status = UploadStatus.FAILED
-                    item.detail = error.message.orEmpty()
+                    item.detail = if (error is FileTooLargeException) {
+                        getString(R.string.toast_file_too_large)
+                    } else {
+                        error.message.orEmpty()
+                    }
                     failed++
+                    if (error is FileTooLargeException) {
+                        toast(getString(R.string.toast_file_too_large))
+                    }
                     if (error is SessionExpiredException) {
                         expired = true
                         handleSessionExpired()

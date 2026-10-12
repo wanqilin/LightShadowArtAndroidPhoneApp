@@ -30,6 +30,9 @@ open class ApiException(val code: Int, message: String) : IOException(message)
 /** 设备端返回 401：session 不存在、已过期或被店员强制结束 */
 class SessionExpiredException(message: String) : ApiException(401, message)
 
+/** 设备端返回 413：单文件超过 4G 上限，被拒绝写入（对应需求 4.5 / T-4） */
+class FileTooLargeException(message: String) : ApiException(413, message)
+
 /** 待上传的本地媒体 */
 data class UploadSource(
     val uri: Uri,
@@ -77,6 +80,14 @@ data class AuthResult(
     /** 管理员可配置参数、可移交控制权；选片用户只读 */
     val isAdmin: Boolean get() = role.equals(DeviceEndpoint.ROLE_ADMIN, ignoreCase = true)
 }
+
+/** GET /storage 回执：设备剩余可用空间与低存储判定（对应需求 4.5 / T-3） */
+data class StorageState(
+    /** 剩余可用字节数；设备端无法探测时为负数 */
+    val freeBytes: Long,
+    /** 设备端判定的低存储标记（剩余 < 200MB） */
+    val low: Boolean
+)
 
 /** POST /heartbeat 回执：剩余有效期 + 会话预警 + 最新参数 */
 data class HeartbeatResult(
@@ -421,6 +432,28 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
+     * GET /api/v1/storage —— 只读探测设备剩余可用空间（需求 4.5 / T-3）。
+     *
+     * 移动端在上传前调用，`low` 为 true（剩余 < 200MB）时提示用户释放空间。
+     */
+    suspend fun storage(endpoint: DeviceEndpoint, sessionId: String): Result<StorageState> = call {
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/storage"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            StorageState(
+                freeBytes = json?.optLong("free_bytes") ?: -1L,
+                low = json?.optBoolean("low", false) ?: false
+            )
+        }
+    }
+
+    /**
      * 探测设备是否可达：只做一次 TCP 连接，不走完整 HTTP。
      *
      * 下发 Wi-Fi 前用它确认手机确实处在设备热点链路上——设备热点每次重启都会换一个网段，
@@ -446,6 +479,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         if (response.isSuccessful) return
         val message = json?.optString("message").orEmpty().ifEmpty { "HTTP ${response.code}" }
         if (response.code == 401) throw SessionExpiredException(message)
+        if (response.code == 413) throw FileTooLargeException(message)
         throw ApiException(response.code, message)
     }
 
