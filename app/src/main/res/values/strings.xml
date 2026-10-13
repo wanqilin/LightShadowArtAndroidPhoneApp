@@ -234,6 +234,16 @@
     <string name="mode_personal">家庭模式</string>
     <string name="mode_studio">门店选片模式</string>
 
+    <!-- 单文件超过 4G 的提醒框（需求 4.5 / T-4） -->
+    <string name="dialog_file_too_large_title">文件超过 4G 上限</string>
+    <string name="dialog_file_too_large_message">单个文件不能超过 4G，该文件无法上传。请压缩或分段后再试。</string>
+
+    <!-- 背景图规格提醒（需求 3.3.2 / T-9：墙纸须为 1920×1280） -->
+    <string name="dialog_wallpaper_size_title">背景图规格不符</string>
+    <string name="dialog_wallpaper_size_message">背景图需要 1920×1280（与设备屏一致），当前为 %1$d×%2$d。建议重新选择 %3$d×%4$d 的图片。</string>
+    <string name="dialog_wallpaper_size_reselect">重新选择</string>
+    <string name="dialog_wallpaper_size_use">仍然使用</string>
+
     <!-- 用户身份类型：家庭/门店模式 × 管理员/共享用户(选片用户) -->
     <string name="settings_identity_home_admin">家庭模式：管理员</string>
     <string name="settings_identity_home_shared">家庭模式：共享用户</string>

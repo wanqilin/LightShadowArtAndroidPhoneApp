@@ -62,11 +62,11 @@
                 android:layout_height="wrap_content"
                 android:text="@string/frame_style_boundary_hint" />
 
-            <!-- 预览：红色最大边界 + 背景图（centerCrop）；固定高度，边界在内部等比适配 -->
+            <!-- 预览：红色最大边界 + 背景图（centerCrop）；高度由 FramePreviewView 按 1920:1280 自算（Fill：撑满可用宽） -->
             <com.ShowSeen.lightshadowart.mobile.FramePreviewView
                 android:id="@+id/view_frame_preview"
                 android:layout_width="match_parent"
-                android:layout_height="220dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="12dp" />
 
             <TextView

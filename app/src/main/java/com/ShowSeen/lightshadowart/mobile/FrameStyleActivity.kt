@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
 import com.ShowSeen.lightshadowart.mobile.net.FrameParams
 import com.ShowSeen.lightshadowart.mobile.net.SessionExpiredException
@@ -65,11 +66,7 @@ class FrameStyleActivity : AppCompatActivity() {
         btnApply = findViewById(R.id.btn_frame_style_apply)
 
         findViewById<ImageButton>(R.id.btn_frame_style_back).setOnClickListener { finish() }
-        btnImport.setOnClickListener {
-            pickLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-            )
-        }
+        btnImport.setOnClickListener { pickImage() }
         btnApply.setOnClickListener { applyToDevice() }
 
         SessionStore.endpoint?.let { endpoint ->
@@ -86,8 +83,49 @@ class FrameStyleActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    /** 读完图片做降采样后在预览里显示（两遍解码，避免把整张大图读进内存） */
+    /** 拉起相册选一张背景图 */
+    private fun pickImage() {
+        pickLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+    }
+
+    /**
+     * 规格检查后进入预览（用户口径）：背景图**要求 1920x1280**，与设备屏一致。
+     *
+     * 尺寸不符时不直接拒绝——用户手边可能只有 1921x1281 这类差一点的裁切——
+     * 而是明确告知规格并用提醒框让用户选「重新选择 / 仍然使用」。
+     */
     private fun loadPreview(uri: Uri) {
+        lifecycleScope.launch {
+            val size = withContext(Dispatchers.IO) { readImageSize(uri) }
+            if (size == null) {
+                toast(getString(R.string.frame_style_image_failed))
+                return@launch
+            }
+            if (size.first != REQUIRED_WIDTH || size.second != REQUIRED_HEIGHT) {
+                MaterialAlertDialogBuilder(this@FrameStyleActivity)
+                    .setTitle(R.string.dialog_wallpaper_size_title)
+                    .setMessage(
+                        getString(
+                            R.string.dialog_wallpaper_size_message,
+                            size.first,
+                            size.second,
+                            REQUIRED_WIDTH,
+                            REQUIRED_HEIGHT
+                        )
+                    )
+                    .setPositiveButton(R.string.dialog_wallpaper_size_reselect) { _, _ -> pickImage() }
+                    .setNegativeButton(R.string.dialog_wallpaper_size_use) { _, _ -> decodeAndPreview(uri) }
+                    .show()
+                return@launch
+            }
+            decodeAndPreview(uri)
+        }
+    }
+
+    /** 解码并显示预览（两遍采样，避免整张大图进内存） */
+    private fun decodeAndPreview(uri: Uri) {
         lifecycleScope.launch {
             val bitmap = withContext(Dispatchers.IO) { decodeSampled(uri, MAX_PREVIEW_PX) }
             if (bitmap == null) {
@@ -101,6 +139,19 @@ class FrameStyleActivity : AppCompatActivity() {
             renderStatus()
         }
     }
+
+    /** 只读图片原始尺寸（不真正解码像素） */
+    private fun readImageSize(uri: Uri): Pair<Int, Int>? = runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, bounds)
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            null
+        } else {
+            bounds.outWidth to bounds.outHeight
+        }
+    }.getOrNull()
 
     /** 把选中的图上传到设备端，并把样式切到「自定义背景」（需求 3.3.2 / T-9） */
     private fun applyToDevice() {
@@ -203,5 +254,9 @@ class FrameStyleActivity : AppCompatActivity() {
 
         /** 与设备端 `PhotoFrameRegistry.ID_CUSTOM` 一致 */
         const val STYLE_ID_CUSTOM = "custom"
+
+        /** 背景图规格要求：与设备屏逻辑分辨率一致（用户口径） */
+        const val REQUIRED_WIDTH = 1920
+        const val REQUIRED_HEIGHT = 1280
     }
 }

@@ -239,6 +239,16 @@
     <string name="mode_personal">Home mode</string>
     <string name="mode_studio">Studio mode</string>
 
+    <!-- Reminder dialog: a single file over 4 GB -->
+    <string name="dialog_file_too_large_title">File exceeds the 4 GB limit</string>
+    <string name="dialog_file_too_large_message">A single file cannot exceed 4 GB, so this file cannot be uploaded. Please compress or split it and try again.</string>
+
+    <!-- Wallpaper spec reminder: the background image must be 1920×1280 -->
+    <string name="dialog_wallpaper_size_title">Wrong background size</string>
+    <string name="dialog_wallpaper_size_message">The background image must be 1920×1280 (same as the device screen); this one is %1$d×%2$d. Please pick a %3$d×%4$d image.</string>
+    <string name="dialog_wallpaper_size_reselect">Choose another</string>
+    <string name="dialog_wallpaper_size_use">Use anyway</string>
+
     <!-- Account identity: home/studio mode × admin/shared user -->
     <string name="settings_identity_home_admin">Home mode: Admin</string>
     <string name="settings_identity_home_shared">Home mode: Shared user</string>

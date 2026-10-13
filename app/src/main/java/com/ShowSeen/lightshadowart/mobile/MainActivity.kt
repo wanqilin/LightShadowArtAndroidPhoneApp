@@ -1461,6 +1461,21 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * 单文件超过 4G 上限的提醒框（需求 4.5 / T-4）。
+     *
+     * 原先只用 Toast：一闪而过，用户容易漏看甚至以为「点了没反应」。
+     * 拦截本身两端都已生效（移动端按 sizeBytes 预检不发请求；设备端超限删半成品回 413），
+     * 这里把提醒升级成必须确认的弹框。
+     */
+    private fun showFileTooLargeDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dialog_file_too_large_title)
+            .setMessage(R.string.dialog_file_too_large_message)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
     /** 逐个上传，进度按位置回写到列表项 */
     private fun startUpload(uris: List<Uri>) {
         val baseIndex = uploadAdapter.itemCount
@@ -1478,7 +1493,7 @@ class MainActivity : AppCompatActivity() {
                 tooLarge = true
             }
         }
-        if (tooLarge) toast(getString(R.string.toast_file_too_large))
+        if (tooLarge) showFileTooLargeDialog()
 
         btnPick.isEnabled = false
         uploadJob = lifecycleScope.launch {
@@ -1527,7 +1542,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     failed++
                     if (error is FileTooLargeException) {
-                        toast(getString(R.string.toast_file_too_large))
+                        showFileTooLargeDialog()
                     }
                     if (error is SessionExpiredException) {
                         expired = true

@@ -42,6 +42,13 @@ class FramePreviewView @JvmOverloads constructor(
         invalidate()
     }
 
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val width = MeasureSpec.getSize(widthMeasureSpec)
+        // Fill 模式：以手机可用宽为基准等比撑满，高由 1920:1280 自动算出（用户口径，需求 3.3.2 / T-9）
+        val height = (width * BOUNDARY_HEIGHT / BOUNDARY_WIDTH).toInt()
+        setMeasuredDimension(width, height)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val boundary = boundaryRect()
@@ -70,18 +77,9 @@ class FramePreviewView @JvmOverloads constructor(
         canvas.drawRect(boundary, borderPaint)
     }
 
-    /** 把 1920x1280 等比装进本 View 并居中，得到最大边界矩形 */
+    /** 最大边界＝整个 View：本 View 的尺寸已按 1920:1280 由 [onMeasure] 定好 */
     private fun boundaryRect(): RectF {
-        val viewWidth = width.toFloat()
-        val viewHeight = height.toFloat()
-        if (viewWidth <= 0f || viewHeight <= 0f) return RectF()
-
-        val scale = minOf(viewWidth / BOUNDARY_WIDTH, viewHeight / BOUNDARY_HEIGHT)
-        val boundaryWidth = BOUNDARY_WIDTH * scale
-        val boundaryHeight = BOUNDARY_HEIGHT * scale
-        val left = (viewWidth - boundaryWidth) / 2f
-        val top = (viewHeight - boundaryHeight) / 2f
-        return RectF(left, top, left + boundaryWidth, top + boundaryHeight)
+        return RectF(0f, 0f, width.toFloat(), height.toFloat())
     }
 
     companion object {
