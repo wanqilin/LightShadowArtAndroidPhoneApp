@@ -115,7 +115,7 @@ data class MediaItem(
  *
  * 对应设备端 `ApiRoutes.kt`：
  * auth / upload / control / wifi-config / heartbeat / session-end /
- * config / studio-folder / media / media-raw / media-delete / favourite。
+ * config / studio-folder / studio-confirm / media / media-raw / media-delete / favourite。
  */
 class DeviceClient(private val resolver: ContentResolver) {
 
@@ -128,12 +128,17 @@ class DeviceClient(private val resolver: ContentResolver) {
      *
      * 同时回传设备端判定的 role / folder / mode / params：
      * 设备首次绑定者即管理员，其余为选片用户（需求 4.2.2 / 7）。
+     *
+     * @param studioToken 门店选片模式下本次会话独有的 token（需求 3.4 / T-12）：
+     *                    设备端据此建 `年月日+流水号+token` 文件夹并把回执里的 folder 换成它。
+     *                    家庭模式传空串。
      */
-    suspend fun auth(endpoint: DeviceEndpoint): Result<AuthResult> = call {
+    suspend fun auth(endpoint: DeviceEndpoint, studioToken: String = ""): Result<AuthResult> = call {
         val payload = JSONObject()
             .put("device_token", endpoint.deviceToken)
         // 二维码声明 role=admin（手动唤醒出码 / 管理员移交控制权）时带上，设备端据此判定管理员
         if (endpoint.role.isNotEmpty()) payload.put("role", endpoint.role)
+        if (studioToken.isNotEmpty()) payload.put("studio_token", studioToken)
         val body = jsonBody(payload)
         val request = Request.Builder()
             .url(endpoint.urlOf("/auth"))
@@ -326,6 +331,27 @@ class DeviceClient(private val resolver: ContentResolver) {
                 json?.optString("folder").orEmpty()
             }
         }
+
+    /**
+     * POST /api/v1/studio/confirm —— 门店模式：摄影师已把照片放进本次会话的文件夹，
+     * 用户点「确认开始选片」；设备端据此结束屏显提示并进入选片界面（需求 3.4 / T-12）。
+     */
+    suspend fun confirmStudioSelection(
+        endpoint: DeviceEndpoint,
+        sessionId: String
+    ): Result<String> = call {
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/studio/confirm"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .post(EMPTY_BODY)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            json?.optString("folder").orEmpty()
+        }
+    }
 
     /** GET /api/v1/media —— 列出授权文件夹下的媒体；favouriteOnly 时仅返回已标记喜爱的 */
     suspend fun listMedia(

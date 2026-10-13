@@ -164,6 +164,11 @@
     <string name="toast_studio_folder_failed">创建文件夹失败：%1$s</string>
     <string name="toast_studio_folder_personal">仅门店选片模式可用</string>
     <string name="toast_admin_only">该操作仅管理员可用</string>
+    <!-- 门店新工作流（需求 3.4 / T-12）：扫码建夹后提示文件夹名，确认后开始选片 -->
+    <string name="dialog_studio_folder_title">请摄影师导入照片</string>
+    <string name="dialog_studio_folder_message">请摄影师把照片放入此文件夹：%1$s\n导入完成后，点下方按钮开始选片。</string>
+    <string name="dialog_studio_folder_confirm">确认开始选片</string>
+    <string name="toast_studio_confirm_failed">确认开始选片失败：%1$s</string>
 
     <!-- 右栏：设置（需求 6.3） -->
     <string name="settings_title">参数设置</string>

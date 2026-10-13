@@ -58,6 +58,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.Inet4Address
+import java.util.UUID
 import kotlin.coroutines.resume
 
 /**
@@ -491,7 +492,11 @@ class MainActivity : AppCompatActivity() {
     private fun authenticate(endpoint: DeviceEndpoint) {
         tvDevice.text = getString(R.string.state_connecting, endpoint.baseUrl)
         lifecycleScope.launch {
-            val result = client.auth(endpoint).getOrElse { error ->
+            // 门店模式（T-12）：本次选片会话独有的 token 随鉴权上传，
+            // 设备端据此建「年月日+流水号+token」文件夹，并在回执的 folder 里回传该文件夹名
+            val studioToken =
+                if (endpoint.mode == DeviceEndpoint.MODE_STUDIO) newStudioToken() else ""
+            val result = client.auth(endpoint, studioToken).getOrElse { error ->
                 Log.e(TAG, "auth failed: ${endpoint.baseUrl}", error)
                 connecting = false
                 tvSession.text = getString(R.string.state_no_session)
@@ -520,6 +525,38 @@ class MainActivity : AppCompatActivity() {
             updateSelectButton()
             renderSession()
             reloadMedia()
+            // 门店模式（T-12）：把设备端建好的文件夹名告诉用户，等摄影师放好照片再确认开始选片
+            if (SessionStore.inStudioMode) promptStudioFolder(result.folder)
+        }
+    }
+
+    /** 门店会话独有 token：取 UUID 前若干位，长度与设备端 DeviceConfig.STUDIO_TOKEN_MAX_LENGTH 对应 */
+    private fun newStudioToken(): String =
+        UUID.randomUUID().toString().replace("-", "").take(STUDIO_TOKEN_LENGTH)
+
+    /**
+     * 门店模式（T-12）：扫码建夹后提示「请摄影师把照片放入此文件夹：<文件夹名>」，
+     * 用户点「确认开始选片」才通知设备端进入选片（此前设备屏上一直显示同一个文件夹名）。
+     */
+    private fun promptStudioFolder(folder: String) {
+        if (folder.isEmpty()) return
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dialog_studio_folder_title)
+            .setMessage(getString(R.string.dialog_studio_folder_message, folder))
+            .setCancelable(false)
+            .setPositiveButton(R.string.dialog_studio_folder_confirm) { _, _ -> confirmStudioSelection() }
+            .show()
+    }
+
+    /** 通知设备端「确认开始选片」，并落到空间页查看该文件夹的缩略图 */
+    private fun confirmStudioSelection() {
+        val endpoint = SessionStore.endpoint ?: return
+        val sessionId = SessionStore.sessionId ?: return
+        lifecycleScope.launch {
+            client.confirmStudioSelection(endpoint, sessionId)
+                .onFailure { toast(getString(R.string.toast_studio_confirm_failed, it.message.orEmpty())) }
+            reloadMedia()
+            findViewById<BottomNavigationView>(R.id.bottom_nav).selectedItemId = R.id.tab_space
         }
     }
 
@@ -1549,6 +1586,9 @@ class MainActivity : AppCompatActivity() {
 
         /** 空间媒体网格每行个数 */
         const val MEDIA_SPAN_COUNT = 3
+
+        /** 门店会话 token 长度，与设备端 DeviceConfig.STUDIO_TOKEN_MAX_LENGTH 保持一致 */
+        const val STUDIO_TOKEN_LENGTH = 6
 
         /** 缩略图缓存条目数 */
         const val THUMB_CACHE_ITEMS = 60
