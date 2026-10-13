@@ -79,6 +79,12 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <!-- 添加边框二级页面（F-6）：取代原「边框预设」弹窗，同样只从空间页的管理员入口进入 -->
+        <activity
+            android:name=".AddFrameActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <!--
             ZXing 内置的 CaptureActivity 在库清单里被写死为 sensorLandscape（横屏），
             这里用 tools:replace 覆盖成竖屏，使取景器与手机方向一致。

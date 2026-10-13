@@ -234,9 +234,9 @@
 
     <!--
         画框相关入口（仅管理员可见，写接口都要求管理员）：
-        · 边框预设 = 内置简单线条框等预设的参数（需求 3.3.1 / T-13）
+        · 添加边框 = 给设备端播放的照片加边框（F-6，二级页面）
         · 风格     = 导入自己的背景图自助设计（需求 3.3.2 / T-9）
-        两者同属「画框与背景纸」，故并排一行。
+        两者同属「画框与背景」，故并排一行。
     -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -245,7 +245,7 @@
         android:orientation="horizontal">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_frame_preset"
+            android:id="@+id/btn_add_frame"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -254,7 +254,7 @@
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:minWidth="0dp"
-            android:text="@string/space_frame_preset"
+            android:text="@string/space_add_frame"
             android:visibility="gone" />
 
         <com.google.android.material.button.MaterialButton

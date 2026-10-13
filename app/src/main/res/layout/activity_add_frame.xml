@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    添加边框二级页（F-6）：由空间页「添加边框」入口进入（原「边框预设」弹窗已随之删除）。
+    四项可调参数：① 边框与图片的距离、② 边框到最外层的距离、③ 边框颜色（色盘 + R/G/B，不出现十六进制）、
+    ④ 边框样式与粗细；改完点「下发到设备」走 POST /api/v1/frame。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:orientation="vertical">
+
+    <!-- 页头：返回 + 标题 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+
+        <ImageButton
+            android:id="@+id/btn_add_frame_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_back"
+            android:padding="8dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/Text.PageTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/space_add_frame" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
+
+            <!-- 边框样式：列表由设备端 GET /frame 的 styles[] 下发，客户端不硬编码样式名 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/frame_style" />
+
+            <Spinner
+                android:id="@+id/spinner_add_frame_style"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- ① 边框与图片的距离 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/add_frame_padding" />
+
+            <EditText
+                android:id="@+id/et_add_frame_padding"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:singleLine="true" />
+
+            <!-- ② 边框到最外层的距离 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/add_frame_inset" />
+
+            <EditText
+                android:id="@+id/et_add_frame_inset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:singleLine="true" />
+
+            <!-- ③ 边框颜色：色盘 + R/G/B，全程不出现十六进制 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/add_frame_color" />
+
+            <com.ShowSeen.lightshadowart.mobile.ColorWheelView
+                android:id="@+id/view_add_frame_wheel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:contentDescription="@string/add_frame_wheel" />
+
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/add_frame_color_hint" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/color_channel_r" />
+
+                <SeekBar
+                    android:id="@+id/seek_add_frame_r"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="255" />
+
+                <TextView
+                    android:id="@+id/tv_add_frame_r"
+                    style="@style/Text.RowValue"
+                    android:layout_width="40dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/color_channel_g" />
+
+                <SeekBar
+                    android:id="@+id/seek_add_frame_g"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="255" />
+
+                <TextView
+                    android:id="@+id/tv_add_frame_g"
+                    style="@style/Text.RowValue"
+                    android:layout_width="40dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/color_channel_b" />
+
+                <SeekBar
+                    android:id="@+id/seek_add_frame_b"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="255" />
+
+                <TextView
+                    android:id="@+id/tv_add_frame_b"
+                    style="@style/Text.RowValue"
+                    android:layout_width="40dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/add_frame_preview" />
+
+                <View
+                    android:id="@+id/view_add_frame_preview"
+                    android:layout_width="56dp"
+                    android:layout_height="32dp" />
+            </LinearLayout>
+
+            <!-- ④ 边框粗细：只对带粗细的样式（如简单线条框）生效，设备端对其它样式忽略该值 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/add_frame_width" />
+
+            <EditText
+                android:id="@+id/et_add_frame_width"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:singleLine="true" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add_frame_apply"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:minHeight="48dp"
+                android:text="@string/frame_apply" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

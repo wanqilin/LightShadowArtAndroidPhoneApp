@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -19,10 +18,8 @@ import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.util.LruCache
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
@@ -33,7 +30,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.isVisible
-import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -42,7 +38,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.tabs.TabLayout
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -52,7 +47,6 @@ import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
 import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
 import com.ShowSeen.lightshadowart.mobile.net.DiscoveredDevice
 import com.ShowSeen.lightshadowart.mobile.net.FileTooLargeException
-import com.ShowSeen.lightshadowart.mobile.net.FrameParams
 import com.ShowSeen.lightshadowart.mobile.net.HotspotConnector
 import com.ShowSeen.lightshadowart.mobile.net.MediaItem
 import com.ShowSeen.lightshadowart.mobile.net.NsdDiscoverer
@@ -123,8 +117,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSettingsLanguage: View
     private lateinit var tvSettingsLanguageValue: TextView
 
-    /** 边框预设入口（需求 3.3.1 / T-13），仅管理员可见 */
-    private lateinit var btnFramePreset: MaterialButton
+    /** 「添加边框」入口（F-6，取代原「边框预设」），进二级页面，仅管理员可见 */
+    private lateinit var btnAddFrame: MaterialButton
 
     /** 「风格」入口（需求 3.3.2 / T-9）：进自定义边框编辑页，仅管理员可见 */
     private lateinit var btnFrameStyle: MaterialButton
@@ -316,7 +310,7 @@ class MainActivity : AppCompatActivity() {
         etAutoPlay = findViewById(R.id.et_auto_play)
         btnSettingsSave = findViewById(R.id.btn_settings_save)
         btnSettingsLogout = findViewById(R.id.btn_settings_logout)
-        btnFramePreset = findViewById(R.id.btn_frame_preset)
+        btnAddFrame = findViewById(R.id.btn_add_frame)
         btnFrameStyle = findViewById(R.id.btn_frame_style)
         btnSettingsLanguage = findViewById(R.id.btn_settings_language)
         tvSettingsLanguageValue = findViewById(R.id.tv_settings_language_value)
@@ -390,7 +384,7 @@ class MainActivity : AppCompatActivity() {
         btnSpaceSelect.setOnClickListener { toggleSelectionMode() }
         btnSpaceDelete.setOnClickListener { deleteSelected() }
         btnSpaceExportFav.setOnClickListener { exportFavourite() }
-        btnFramePreset.setOnClickListener { showFramePresetDialog() }
+        btnAddFrame.setOnClickListener { openAddFrameEditor() }
         btnFrameStyle.setOnClickListener { openFrameStyleEditor() }
         findViewById<MaterialButton>(R.id.btn_ctrl_rotate).setOnClickListener {
             sendControl(CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
@@ -671,98 +665,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 边框预设（需求 3.3.1 / T-13）：先读设备端当前值填表，改完再整份下发。
+     * 打开「添加边框」二级页面（F-6，取代原「边框预设」弹窗）。
      *
-     * 样式列表由设备端下发，客户端不硬编码样式名；颜色用 `#RRGGBB` 文本 + 实时预览；
-     * 数字做本地校验，校验不过**不关闭对话框**——否则用户输错一次就得重开重填。
+     * 参数读写都在页面里完成（读设备端当前值 → 改 → 下发）；这里只做会话检查与跳转，
+     * 与 [openFrameStyleEditor] 同一写法。
      */
-    private fun showFramePresetDialog() {
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-        if (endpoint == null || sessionId == null) {
+    private fun openAddFrameEditor() {
+        if (!SessionStore.isActive) {
             requireSession()
             return
         }
-        lifecycleScope.launch {
-            val config = client.readFrame(endpoint, sessionId).getOrElse { error ->
-                toast(getString(R.string.frame_load_failed, error.message.orEmpty()))
-                return@launch
-            }
-
-            val view = layoutInflater.inflate(R.layout.dialog_frame_preset, null)
-            val styleSpinner = view.findViewById<Spinner>(R.id.spinner_frame_style)
-            val etLineColor = view.findViewById<EditText>(R.id.et_frame_line_color)
-            val etLineWidth = view.findViewById<EditText>(R.id.et_frame_line_width)
-            val etLineGap = view.findViewById<EditText>(R.id.et_frame_line_gap)
-            val etPaperColor = view.findViewById<EditText>(R.id.et_frame_paper_color)
-            val switchPaper = view.findViewById<SwitchMaterial>(R.id.switch_frame_paper)
-            val linePreview = view.findViewById<View>(R.id.view_frame_line_preview)
-            val paperPreview = view.findViewById<View>(R.id.view_frame_paper_preview)
-
-            val styles = config.styles
-            styleSpinner.adapter = ArrayAdapter(
-                this@MainActivity,
-                android.R.layout.simple_spinner_item,
-                styles.map { it.name }
-            ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-            styles.indexOfFirst { it.id == config.params.styleId }
-                .takeIf { it >= 0 }
-                ?.let { styleSpinner.setSelection(it) }
-
-            etLineColor.setText(formatHexColor(config.params.lineColor))
-            etLineWidth.setText(trimFloat(config.params.lineWidthDp))
-            etLineGap.setText(trimFloat(config.params.lineGapDp))
-            etPaperColor.setText(formatHexColor(config.params.paperColor))
-            switchPaper.isChecked = config.params.paperEnabled
-
-            // 颜色预览：写错了立刻看得出来（最终观感仍以设备屏为准）
-            fun refreshPreview() {
-                linePreview.setBackgroundColor(
-                    parseHexColor(etLineColor.text.toString()) ?: Color.TRANSPARENT
-                )
-                paperPreview.setBackgroundColor(
-                    parseHexColor(etPaperColor.text.toString()) ?: Color.TRANSPARENT
-                )
-            }
-            etLineColor.doAfterTextChanged { refreshPreview() }
-            etPaperColor.doAfterTextChanged { refreshPreview() }
-            refreshPreview()
-
-            val dialog = MaterialAlertDialogBuilder(this@MainActivity)
-                .setTitle(R.string.space_frame_preset)
-                .setView(view)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.frame_apply, null)
-                .create()
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                    val lineColor = parseHexColor(etLineColor.text.toString())
-                    val paperColor = parseHexColor(etPaperColor.text.toString())
-                    val lineWidth = etLineWidth.text.toString().trim().toFloatOrNull()
-                    val lineGap = etLineGap.text.toString().trim().toFloatOrNull()
-                    if (lineColor == null || paperColor == null ||
-                        lineWidth == null || lineWidth <= 0f ||
-                        lineGap == null || lineGap < 0f
-                    ) {
-                        toast(getString(R.string.frame_invalid))
-                        return@setOnClickListener
-                    }
-                    val styleId = styles.getOrNull(styleSpinner.selectedItemPosition)?.id.orEmpty()
-                    dialog.dismiss()
-                    applyFramePreset(
-                        FrameParams(
-                            styleId = styleId,
-                            lineColor = lineColor,
-                            lineWidthDp = lineWidth,
-                            lineGapDp = lineGap,
-                            paperColor = paperColor,
-                            paperEnabled = switchPaper.isChecked
-                        )
-                    )
-                }
-            }
-            dialog.show()
-        }
+        startActivity(Intent(this, AddFrameActivity::class.java))
     }
 
     /** 打开自定义边框编辑页（需求 3.3.2 / T-9） */
@@ -773,42 +686,6 @@ class MainActivity : AppCompatActivity() {
         }
         startActivity(Intent(this, FrameStyleActivity::class.java))
     }
-
-    /** 下发边框预设并提示结果（需求 3.3.1 / T-13） */
-    private fun applyFramePreset(params: FrameParams) {
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-        if (endpoint == null || sessionId == null) {
-            requireSession()
-            return
-        }
-        lifecycleScope.launch {
-            client.writeFrame(endpoint, sessionId, params)
-                .onSuccess { toast(getString(R.string.frame_applied)) }
-                .onFailure { error ->
-                    if (error is SessionExpiredException) {
-                        handleSessionExpired()
-                    } else {
-                        toast(getString(R.string.frame_save_failed, error.message.orEmpty()))
-                    }
-                }
-        }
-    }
-
-    /** `#RRGGBB` / `#AARRGGBB` 文本 → 颜色；非法返回 null（调用方据此提示，不静默当成黑色） */
-    private fun parseHexColor(text: String): Int? {
-        val hex = text.trim().removePrefix("#")
-        if (hex.length != 6 && hex.length != 8) return null
-        val value = hex.toLongOrNull(16) ?: return null
-        return if (hex.length == 6) (0xFF000000L or value).toInt() else value.toInt()
-    }
-
-    /** 颜色 → `#RRGGBB`：编辑框只让用户填 6 位，忽略 alpha */
-    private fun formatHexColor(color: Int): String = String.format("#%06X", color and 0xFFFFFF)
-
-    /** 去掉浮点尾巴，便于编辑：12.0 → "12"，12.5 → "12.5" */
-    private fun trimFloat(value: Float): String =
-        if (value == value.toInt().toFloat()) value.toInt().toString() else value.toString()
 
     /** 自动接入设备热点所需的权限：13+ 用「附近的设备」，10~12 用定位，更低版本无需权限 */    private fun requiredWifiPermissions(): List<String> = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
@@ -1144,8 +1021,8 @@ class MainActivity : AppCompatActivity() {
         btnSpaceExportFav.isEnabled = active
         // 门店模式不提供删除入口（服务端亦按模式返回 403，见 T-15）
         btnSpaceDelete.isVisible = active && !SessionStore.inStudioMode
-        // 边框预设只有管理员能下发（写接口 requireAdmin），非管理员不显示入口
-        btnFramePreset.isVisible = active && SessionStore.isAdmin
+        // 「添加边框」只有管理员能下发（写接口 requireAdmin），非管理员不显示入口
+        btnAddFrame.isVisible = active && SessionStore.isAdmin
         // 「风格」编辑页同样只对管理员开放（上传背景图与切换样式都要管理员）
         btnFrameStyle.isVisible = active && SessionStore.isAdmin
         spaceControlIds.forEach { findViewById<MaterialButton>(it).isEnabled = active }

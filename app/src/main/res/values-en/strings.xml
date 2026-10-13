@@ -148,20 +148,24 @@
     <string name="toast_media_playing">Switched to playback</string>
     <string name="toast_delete_personal_only">Deleting files is only supported in home mode</string>
 
-    <!-- Frame preset (admin only) -->
-    <string name="space_frame_preset">Frame preset</string>
+    <!-- Add-frame page (F-6, admin only); the style list comes from the device styles[] -->
+    <string name="space_add_frame">Add frame</string>
     <string name="frame_style">Style</string>
-    <string name="frame_line_color">Line colour (#RRGGBB)</string>
-    <string name="frame_line_width">Line width (dp, &gt; 0)</string>
-    <string name="frame_line_gap">Gap between lines (dp, may be 0)</string>
-    <string name="frame_paper_color">Paper colour (#RRGGBB)</string>
-    <string name="frame_color_hint">#RRGGBB</string>
-    <string name="frame_paper_enabled">Use paper background (off falls back to blurred edges)</string>
+    <string name="add_frame_padding">① Gap: frame to photo (dp)</string>
+    <string name="add_frame_inset">② Gap: frame to screen edge (dp)</string>
+    <string name="add_frame_color">③ Frame colour</string>
+    <string name="add_frame_color_hint">Drag on the wheel to pick a colour, or fine-tune with R / G / B below</string>
+    <string name="add_frame_wheel">Frame colour wheel</string>
+    <string name="color_channel_r">R</string>
+    <string name="color_channel_g">G</string>
+    <string name="color_channel_b">B</string>
+    <string name="add_frame_preview">Colour preview</string>
+    <string name="add_frame_width">④ Line width (dp, &gt; 0)</string>
     <string name="frame_apply">Apply to device</string>
-    <string name="frame_load_failed">Failed to load the frame preset: %1$s</string>
-    <string name="frame_save_failed">Failed to apply the frame preset: %1$s</string>
-    <string name="frame_applied">Frame preset applied</string>
-    <string name="frame_invalid">Check the colours (#RRGGBB) and numbers: width must be &gt; 0, gap must be ≥ 0</string>
+    <string name="frame_load_failed">Failed to load the frame settings: %1$s</string>
+    <string name="frame_save_failed">Failed to apply the frame settings: %1$s</string>
+    <string name="frame_applied">Frame applied</string>
+    <string name="frame_invalid">Check the distances and width: distances ≥ 0, width &gt; 0</string>
 
     <!-- Custom frame editor (admin only) -->
     <string name="space_frame_style">Style</string>
