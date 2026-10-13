@@ -67,6 +67,12 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <!-- 语言选择二级页面（F-3）：由设置页「语言」入口进入，选中即生效 -->
+        <activity
+            android:name=".LanguageActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <!-- 自定义边框编辑页（需求 3.3.2 / T-9）：仅从「空间」页的管理员入口进入 -->
         <activity
             android:name=".FrameStyleActivity"

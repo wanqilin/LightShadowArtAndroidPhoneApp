@@ -446,7 +446,10 @@ class MainActivity : AppCompatActivity() {
         btnSettingsAboutBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
         btnSettingsSave.setOnClickListener { saveSettings() }
         btnSettingsLogout.setOnClickListener { confirmLogout() }
-        btnSettingsLanguage.setOnClickListener { showLanguageDialog() }
+        btnSettingsLanguage.setOnClickListener {
+            // F-3：语言改为二级页面（原为弹窗）
+            startActivity(Intent(this, LanguageActivity::class.java))
+        }
     }
 
     /** 设置栏二级页面切换：一级菜单 / 参数设置 / 关于 */
@@ -1728,20 +1731,8 @@ class MainActivity : AppCompatActivity() {
      * 因此选择会被自动持久化（重启后保持），语言变化时 AppCompat 会重建 Activity，
      * 界面文案随之全部切换。
      */
-    private fun showLanguageDialog() {
-        val tags = LANGUAGE_TAGS
-        val labels = tags.map {
-            getString(if (it == LANGUAGE_ZH) R.string.language_zh else R.string.language_en)
-        }
-        val checked = tags.indexOf(currentLanguageTag()).coerceAtLeast(0)
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.settings_language_title)
-            .setSingleChoiceItems(labels.toTypedArray(), checked) { dialog, which ->
-                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tags[which]))
-                dialog.dismiss()
-            }
-            .show()
-    }
+    // 语言选择的 UI 已移到二级页面 LanguageActivity（F-3），原弹窗实现已删除；
+    // 持久化仍由 Manifest 里 AppLocalesMetadataHolderService 的 autoStoreLocales 负责。
 
     /**
      * 当前界面实际使用的语言。
