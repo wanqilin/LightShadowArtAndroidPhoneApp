@@ -108,7 +108,7 @@
             <com.ShowSeen.lightshadowart.mobile.ColorWheelView
                 android:id="@+id/view_add_frame_wheel"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="240dp"
                 android:layout_marginTop="8dp"
                 android:contentDescription="@string/add_frame_wheel" />
 

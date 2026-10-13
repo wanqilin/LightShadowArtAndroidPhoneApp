@@ -57,7 +57,15 @@ class ColorWheelView @JvmOverloads constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         // 正方形：色盘按可用宽撑满，高度自动
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        setMeasuredDimension(width, width)
+        // 布局给了确定高度就按它来（F-6 修）：原先一律 setMeasuredDimension(width, width)，
+        // 色盘被撑成满宽正方形（约 1160px），加上它自己消费触摸，用户根本滑不到下面的 R/G/B。
+        // onDraw / onTouchEvent 用的是 min(cx, cy) 与 width/2、height/2，非正方形也能正确居中和缩放。
+        val height = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
+            MeasureSpec.getSize(heightMeasureSpec)
+        } else {
+            width
+        }
+        setMeasuredDimension(width, height)
     }
 
     override fun onDraw(canvas: Canvas) {
