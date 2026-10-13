@@ -575,8 +575,18 @@ class MainActivity : AppCompatActivity() {
         announceStudioFolder: Boolean
     ) {
         Log.i(TAG, "auth ok: ${endpoint.baseUrl}, session=${result.sessionId}, role=${result.role}")
+        // 以设备端回执为准对齐交互模式（真机验证补）：设备是模式的唯一权威（编译期常量），
+        // 手机侧记的值可能已过期（设备换过模式后，只认二维码里的旧值就必须重新扫码）。
+        // 回读后重连即可自愈；只在回执给了合法模式时才覆盖。
+        val effective = if (result.mode == DeviceEndpoint.MODE_PERSONAL ||
+            result.mode == DeviceEndpoint.MODE_STUDIO
+        ) {
+            endpoint.copy(mode = result.mode)
+        } else {
+            endpoint
+        }
         SessionStore.save(
-            endpoint,
+            effective,
             result.sessionId,
             DEFAULT_SESSION_TTL_MS,
             result.role,
@@ -584,7 +594,7 @@ class MainActivity : AppCompatActivity() {
             result.params,
             result.deviceVersion
         )
-        client.heartbeat(endpoint, result.sessionId).onSuccess { heartbeat ->
+        client.heartbeat(effective, result.sessionId).onSuccess { heartbeat ->
             SessionStore.touch(heartbeat.expiresInMs)
             SessionStore.updateParams(heartbeat.params)
         }
