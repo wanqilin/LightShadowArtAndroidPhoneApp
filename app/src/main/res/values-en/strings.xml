@@ -17,9 +17,9 @@
     <string name="state_wifi_hint">Network the device joined: %1$s</string>
 
     <string name="action_scan">Scan to connect</string>
-    <string name="action_pick">Choose photos / videos</string>
+    <string name="action_pick">Choose media</string>
     <string name="action_wifi">Connect Wi-Fi</string>
-    <string name="action_refresh">Refresh connection</string>
+    <string name="action_refresh">Refresh</string>
     <string name="action_refresh_connecting">Connecting…</string>
     <string name="action_refresh_connected">Connected</string>
     <string name="action_disconnect">Disconnect</string>
