@@ -115,7 +115,7 @@
     <string name="space_browse_mode">Browse mode</string>
     <string name="space_mode_immersive">Immersive</string>
     <string name="space_mode_date">By date</string>
-    <string name="space_mode_favourite">Favourites</string>
+    <string name="space_mode_favourite">Favs</string>
     <string name="space_refresh">Refresh</string>
     <string name="space_empty">No photos or videos yet</string>
     <string name="space_control">Device control</string>
@@ -126,9 +126,9 @@
     <string name="space_control_confirm">OK</string>
     <string name="space_control_exit">Back</string>
     <string name="space_control_rotate">Rotate</string>
-    <string name="space_favourite">Favourite</string>
-    <string name="space_favourite_cancel">Remove favourite</string>
-    <string name="space_favourite_on">Favourited</string>
+    <string name="space_favourite">Fav</string>
+    <string name="space_favourite_cancel">Remove fav</string>
+    <string name="space_favourite_on">Faved</string>
     <string name="space_select">Select</string>
     <string name="space_select_done">Done</string>
     <string name="space_delete">Delete</string>
@@ -177,13 +177,13 @@
     <string name="frame_style_apply_failed">Failed to apply: %1$s</string>
 
     <!-- Export favourites -->
-    <string name="space_export_fav">Export favourites</string>
+    <string name="space_export_fav">Export favs</string>
     <string name="toast_export_fav_done">Exported %1$d favourite files to the Fav folder</string>
     <string name="toast_export_fav_empty">No photos or videos are marked as favourite</string>
     <string name="toast_export_fav_failed">Export failed: %1$s</string>
 
     <!-- Middle tab: Home connection info -->
-    <string name="home_connection">Connection status</string>
+    <string name="home_connection">Status</string>
     <string name="home_info_wifi">Wi-Fi name</string>
     <string name="home_info_ip">IP address</string>
     <string name="home_info_port">Port</string>

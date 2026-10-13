@@ -35,13 +35,38 @@
                 android:layout_marginTop="4dp"
                 android:visibility="gone" />
 
-            <!-- 分组卡片：参数设置 / 关于 -->
+            <!-- 分组卡片：语言（F-2 起为第一行）/ 参数设置 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/bg_card"
                 android:orientation="vertical">
+
+                <!-- 中英文切换（需求 5.7.3 / T-8；F-2 提到第一行，F-3 起改为二级页面） -->
+                <LinearLayout
+                    android:id="@+id/btn_settings_language"
+                    style="@style/Settings.Row.Clickable">
+
+                    <TextView
+                        style="@style/Text.RowTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_language" />
+
+                    <TextView
+                        android:id="@+id/tv_settings_language_value"
+                        style="@style/Text.Hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@color/divider" />
 
                 <!-- 参数设置入口（二级页面） -->
                 <LinearLayout
@@ -60,56 +85,6 @@
                         android:layout_height="20dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
-
-                <!-- 关于入口（二级页面） -->
-                <LinearLayout
-                    android:id="@+id/btn_settings_about"
-                    style="@style/Settings.Row.Clickable">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_about" />
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_chevron_right" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
-
-                <!-- 中英文切换（需求 5.7.3 / T-8）：所有用户可用，点开选择 中文 / English -->
-                <LinearLayout
-                    android:id="@+id/btn_settings_language"
-                    style="@style/Settings.Row.Clickable">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_language" />
-
-                    <TextView
-                        android:id="@+id/tv_settings_language_value"
-                        style="@style/Text.Hint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -131,6 +106,27 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/settings_logout" />
+            </LinearLayout>
+
+            <!-- 关于入口（二级页面；F-2 起为最后一行） -->
+            <LinearLayout
+                android:id="@+id/btn_settings_about"
+                style="@style/Settings.Row.Clickable"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_card">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_about" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
