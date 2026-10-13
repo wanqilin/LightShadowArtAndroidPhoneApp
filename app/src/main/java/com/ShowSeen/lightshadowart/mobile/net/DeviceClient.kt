@@ -335,6 +335,51 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
+    /** GET /api/v1/frame —— 读取设备端边框预设参数与可选样式列表（需求 3.3.1 / T-13） */
+    suspend fun readFrame(endpoint: DeviceEndpoint, sessionId: String): Result<FrameConfig> = call {
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/frame"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            json.toFrameConfig()
+        }
+    }
+
+    /**
+     * POST /api/v1/frame —— 下发边框预设参数；仅管理员（选片用户会收到 403）。
+     *
+     * 只传要改的字段即可，未传的字段设备端沿用当前值；回执是真实生效的值。
+     */
+    suspend fun writeFrame(
+        endpoint: DeviceEndpoint,
+        sessionId: String,
+        params: FrameParams
+    ): Result<FrameConfig> = call {
+        val payload = JSONObject()
+            .put("style_id", params.styleId)
+            .put("line_color", params.lineColor)
+            .put("line_width_dp", params.lineWidthDp.toDouble())
+            .put("line_gap_dp", params.lineGapDp.toDouble())
+            .put("paper_color", params.paperColor)
+            .put("paper_enabled", params.paperEnabled)
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/frame"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .post(jsonBody(payload))
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            json.toFrameConfig()
+        }
+    }
+
     /** POST /api/v1/studio/folder —— 门店模式：管理员创建下一个客户文件夹，返回文件夹名 */
     suspend fun createStudioFolder(endpoint: DeviceEndpoint, sessionId: String): Result<String> =
         call {
@@ -637,8 +682,34 @@ private fun JSONObject?.toParams(): DeviceParams {
     )
 }
 
-/** 解析 GET /media 的 items 数组 */
-private fun JSONArray?.toMediaItems(): List<MediaItem> {
+/**
+ * 解析 `GET/POST /frame` 回执（字段名与设备端 `ApiRoutes.frameJson` 一致）。
+ * 缺失字段回退到 [FrameParams] 的默认值，保证旧设备端也能被解析。
+ */
+private fun JSONObject?.toFrameConfig(): FrameConfig {
+    if (this == null) return FrameConfig(FrameParams(), emptyList())
+    val params = FrameParams(
+        styleId = optString("style_id").orEmpty(),
+        lineColor = optInt("line_color", FrameParams.DEFAULT_LINE_COLOR),
+        lineWidthDp = optDouble("line_width_dp", FrameParams.DEFAULT_LINE_WIDTH_DP.toDouble())
+            .toFloat(),
+        lineGapDp = optDouble("line_gap_dp", FrameParams.DEFAULT_LINE_GAP_DP.toDouble()).toFloat(),
+        paperColor = optInt("paper_color", FrameParams.DEFAULT_PAPER_COLOR),
+        paperEnabled = optBoolean("paper_enabled", FrameParams.DEFAULT_PAPER_ENABLED)
+    )
+    val styles = buildList {
+        val array = optJSONArray("styles") ?: return@buildList
+        for (i in 0 until array.length()) {
+            val item = array.optJSONObject(i) ?: continue
+            val id = item.optString("id")
+            if (id.isEmpty()) continue
+            add(FrameStyleInfo(id, item.optString("name")))
+        }
+    }
+    return FrameConfig(params, styles)
+}
+
+/** 解析 GET /media 的 items 数组 */private fun JSONArray?.toMediaItems(): List<MediaItem> {
     val array = this ?: return emptyList()
     return buildList {
         for (i in 0 until array.length()) {
