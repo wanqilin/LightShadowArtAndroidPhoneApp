@@ -177,7 +177,7 @@
     <string name="frame_style_apply_failed">Failed to apply: %1$s</string>
 
     <!-- Export favourites -->
-    <string name="space_export_fav">Export</string>
+    <string name="space_export_fav">Ex.Fav</string>
     <string name="toast_export_fav_done">Exported %1$d favourite files to the Fav folder</string>
     <string name="toast_export_fav_empty">No photos or videos are marked as favourite</string>
     <string name="toast_export_fav_failed">Export failed: %1$s</string>
