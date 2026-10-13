@@ -38,6 +38,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import com.ShowSeen.lightshadowart.mobile.net.AuthResult
 import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
 import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
 import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
@@ -128,6 +129,9 @@ class MainActivity : AppCompatActivity() {
 
     private var uploadJob: Job? = null
     private var mediaJob: Job? = null
+
+    /** 断线自动重连任务（需求 5.2 / T-5）：30 秒窗口内静默重试鉴权 */
+    private var autoReconnectJob: Job? = null
 
     /** 缩略图内存缓存：按条目数计（每张算 1），避免大图过多占用内存 */
     private val thumbCache = LruCache<String, Bitmap>(THUMB_CACHE_ITEMS)
@@ -241,6 +245,9 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         renderSession()
+        // 会话也可能在本页之外失效（配网页拿到 401 后会调 SessionStore.clear()）：
+        // 回到前台时若已无会话，就把缩略图缓存清掉，否则重新连接会先显示上一次会话的图（需求 5.4 / T-6）
+        if (!SessionStore.isActive) thumbCache.evictAll()
         // 从 Wi‑Fi 配置页回来时设备可能已换到局域网，本地却还记着已失效的热点地址，自动迁移一次
         migrateToLan()
     }
@@ -505,28 +512,72 @@ class MainActivity : AppCompatActivity() {
                 showConnectError(getString(R.string.toast_connect_failed, error.message.orEmpty()), endpoint)
                 return@launch
             }
+            applyAuthResult(endpoint, result, announceStudioFolder = true)
+        }
+    }
 
-            Log.i(TAG, "auth ok: ${endpoint.baseUrl}, session=${result.sessionId}, role=${result.role}")
-            SessionStore.save(
-                endpoint,
-                result.sessionId,
-                DEFAULT_SESSION_TTL_MS,
-                result.role,
-                result.folder,
-                result.params,
-                result.deviceVersion
-            )
-            client.heartbeat(endpoint, result.sessionId).onSuccess { heartbeat ->
-                SessionStore.touch(heartbeat.expiresInMs)
-                SessionStore.updateParams(heartbeat.params)
+    /**
+     * 鉴权成功后的统一收尾：保存会话、对齐剩余时间、刷界面与列表。
+     * 扫码 / 刷新连接（[authenticate]）与断线自动重连（[scheduleAutoReconnect]）共用同一套落地逻辑。
+     *
+     * @param announceStudioFolder 门店模式下是否弹「请摄影师把照片放入此文件夹」（T-12）：
+     *        扫码与刷新连接时为 true；断线自动重连时为 false——那个文件夹名已经告知过用户了。
+     */
+    private suspend fun applyAuthResult(
+        endpoint: DeviceEndpoint,
+        result: AuthResult,
+        announceStudioFolder: Boolean
+    ) {
+        Log.i(TAG, "auth ok: ${endpoint.baseUrl}, session=${result.sessionId}, role=${result.role}")
+        SessionStore.save(
+            endpoint,
+            result.sessionId,
+            DEFAULT_SESSION_TTL_MS,
+            result.role,
+            result.folder,
+            result.params,
+            result.deviceVersion
+        )
+        client.heartbeat(endpoint, result.sessionId).onSuccess { heartbeat ->
+            SessionStore.touch(heartbeat.expiresInMs)
+            SessionStore.updateParams(heartbeat.params)
+        }
+        connecting = false
+        mediaAdapter.setSelectionMode(false)
+        updateSelectButton()
+        renderSession()
+        reloadMedia()
+        // 门店模式（T-12）：把设备端建好的文件夹名告诉用户，等摄影师放好照片再确认开始选片
+        if (announceStudioFolder && SessionStore.inStudioMode) promptStudioFolder(result.folder)
+    }
+
+    /**
+     * 断线自动重连（需求 5.2 / T-5）。
+     *
+     * 会话已建立、但设备一时请求不通（设备重启 / 热点抖动 / 刚换网）时，在
+     * [AUTO_RECONNECT_WINDOW_MS] 内每隔 [AUTO_RECONNECT_RETRY_MS] 静默重试一次鉴权；
+     * 目标一旦可达就自动恢复会话，用户不必点「刷新连接」。
+     *
+     * 重连**不带门店会话 token**：接着用本次会话已建好的客户文件夹，否则每次重连都会在
+     * 设备上多建一个空文件夹（T-12）。
+     * 窗口结束仍不通就安静放手——设备可能真的下线了，留给用户手动刷新或重新扫码。
+     * 用户主动断开 / 手动刷新会取消本任务（见 [disconnect] / [refresh]），避免把刚结束的会话又拉起来。
+     */
+    private fun scheduleAutoReconnect() {
+        if (autoReconnectJob?.isActive == true) return
+        val endpoint = SessionStore.endpoint ?: return
+        autoReconnectJob = lifecycleScope.launch {
+            val deadline = System.currentTimeMillis() + AUTO_RECONNECT_WINDOW_MS
+            Log.i(TAG, "autoReconnect: 进入重连窗口，目标 ${endpoint.baseUrl}")
+            while (System.currentTimeMillis() < deadline) {
+                delay(AUTO_RECONNECT_RETRY_MS)
+                val result = client.auth(endpoint).getOrNull() ?: continue
+                applyAuthResult(endpoint, result, announceStudioFolder = false)
+                Log.i(TAG, "autoReconnect: 已自动恢复会话 ${result.sessionId}")
+                toast(getString(R.string.toast_auto_reconnected))
+                return@launch
             }
-            connecting = false
-            mediaAdapter.setSelectionMode(false)
-            updateSelectButton()
-            renderSession()
-            reloadMedia()
-            // 门店模式（T-12）：把设备端建好的文件夹名告诉用户，等摄影师放好照片再确认开始选片
-            if (SessionStore.inStudioMode) promptStudioFolder(result.folder)
+            Log.i(TAG, "autoReconnect: 重连窗口结束仍未连通，交回用户手动「刷新连接」")
         }
     }
 
@@ -576,6 +627,9 @@ class MainActivity : AppCompatActivity() {
      */
     private fun refresh() {
         if (connecting) return
+
+        // 手动刷新接管：停掉正在跑的自动重连，避免两路同时鉴权各建一个会话（T-5）
+        autoReconnectJob?.cancel()
 
         // 手机还挂在设备热点上：直接用记下的设备地址重建会话，不再请求系统连一次热点
         // （避免重复弹确认框）
@@ -743,6 +797,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleSessionExpired() {
         SessionStore.clear()
+        // 会话已结束，别再让自动重连把它拉起来（T-5）
+        autoReconnectJob?.cancel()
+        // 会话已结束，缩略图缓存属于上一次会话，必须一起清掉（需求 5.4 / T-6）
+        thumbCache.evictAll()
         mediaAdapter.submit(emptyList())
         updateMediaEmpty()
         renderSession()
@@ -768,6 +826,10 @@ class MainActivity : AppCompatActivity() {
 
             hotspotConnector.release()
             SessionStore.clear()
+            // 用户主动断开后不得再自动重连（T-5）
+            autoReconnectJob?.cancel()
+            // 主动断开同样是会话结束：清掉缩略图缓存（需求 5.4 / T-6）
+            thumbCache.evictAll()
             mediaAdapter.submit(emptyList())
             updateMediaEmpty()
             renderSession()
@@ -806,10 +868,13 @@ class MainActivity : AppCompatActivity() {
                         .onFailure {
                             if (it is SessionExpiredException) {
                                 handleSessionExpired()
-                            } else if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                                // 仍记着热点地址却请求不通：设备多半已接入局域网，自动找回来。
-                                // 只在主页可见时做——配网页自己有一整套等设备的发现流程，别互相抢
-                                migrateToLan()
+                            } else {
+                                // 请求不通：设备可能重启 / 换网 / 抖动。仍在热点地址上时先按老逻辑
+                                // 尝试迁移到局域网；迁移没接手（地址已是局域网地址等）才走断线自动重连（T-5）
+                                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                                    migrateToLan()
+                                }
+                                if (!migratingToLan) scheduleAutoReconnect()
                             }
                         }
                     if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) renderSession()
@@ -1571,6 +1636,12 @@ class MainActivity : AppCompatActivity() {
 
         /** 手动「刷新连接」的发现窗口，与 NsdDiscoverer 默认值一致 */
         const val DISCOVER_TIMEOUT_MS = 5_000L
+
+        /** 断线自动重连窗口：会话请求不通后 30 秒内若目标可达就自动恢复（需求 5.2 / T-5） */
+        const val AUTO_RECONNECT_WINDOW_MS = 30_000L
+
+        /** 自动重连的重试间隔：5 秒一次，与心跳周期一致 */
+        const val AUTO_RECONNECT_RETRY_MS = 5_000L
 
         /** 自动迁移到局域网地址的最小间隔，避免心跳失败时反复空跑发现 */
         const val LAN_MIGRATE_COOLDOWN_MS = 20_000L
