@@ -814,6 +814,8 @@ class MainActivity : AppCompatActivity() {
         // 空间栏
         btnSpaceRefresh.isEnabled = active
         btnSpaceExportFav.isEnabled = active
+        // 门店模式不提供删除入口（服务端亦按模式返回 403，见 T-15）
+        btnSpaceDelete.isVisible = active && !SessionStore.inStudioMode
         spaceControlIds.forEach { findViewById<MaterialButton>(it).isEnabled = active }
 
         // 设置栏的角色权限
