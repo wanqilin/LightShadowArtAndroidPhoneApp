@@ -163,6 +163,19 @@
     <string name="frame_applied">Frame preset applied</string>
     <string name="frame_invalid">Check the colours (#RRGGBB) and numbers: width must be &gt; 0, gap must be ≥ 0</string>
 
+    <!-- Custom frame editor (admin only) -->
+    <string name="space_frame_style">Style</string>
+    <string name="frame_style_boundary_hint">The red border marks the maximum boundary 1920×1280 (same as the device screen). Keep your design inside it.</string>
+    <string name="frame_style_import">Import background</string>
+    <string name="frame_style_apply">Apply to device</string>
+    <string name="frame_style_applying">Applying to the device…</string>
+    <string name="frame_style_no_image">No background selected yet; you can still switch the device style to “custom background”.</string>
+    <string name="frame_style_selected">Background selected. Tap “Apply to device” to send it (the preview is approximate; the device screen is authoritative).</string>
+    <string name="frame_style_applied">Applied to the device</string>
+    <string name="frame_style_image_failed">Could not read the image; please try another one</string>
+    <string name="frame_style_upload_failed">Failed to upload the background image</string>
+    <string name="frame_style_apply_failed">Failed to apply: %1$s</string>
+
     <!-- Export favourites -->
     <string name="space_export_fav">Export favourites</string>
     <string name="toast_export_fav_done">Exported %1$d favourite files to the Fav folder</string>

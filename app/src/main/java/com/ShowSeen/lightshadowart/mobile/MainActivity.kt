@@ -125,6 +125,9 @@ class MainActivity : AppCompatActivity() {
 
     /** 边框预设入口（需求 3.3.1 / T-13），仅管理员可见 */
     private lateinit var btnFramePreset: MaterialButton
+
+    /** 「风格」入口（需求 3.3.2 / T-9）：进自定义边框编辑页，仅管理员可见 */
+    private lateinit var btnFrameStyle: MaterialButton
     private lateinit var tvSettingsHint: TextView
     private lateinit var tvSettingsIdentity: TextView
 
@@ -314,6 +317,7 @@ class MainActivity : AppCompatActivity() {
         btnSettingsSave = findViewById(R.id.btn_settings_save)
         btnSettingsLogout = findViewById(R.id.btn_settings_logout)
         btnFramePreset = findViewById(R.id.btn_frame_preset)
+        btnFrameStyle = findViewById(R.id.btn_frame_style)
         btnSettingsLanguage = findViewById(R.id.btn_settings_language)
         tvSettingsLanguageValue = findViewById(R.id.tv_settings_language_value)
         tvSettingsHint = findViewById(R.id.tv_settings_hint)
@@ -387,6 +391,7 @@ class MainActivity : AppCompatActivity() {
         btnSpaceDelete.setOnClickListener { deleteSelected() }
         btnSpaceExportFav.setOnClickListener { exportFavourite() }
         btnFramePreset.setOnClickListener { showFramePresetDialog() }
+        btnFrameStyle.setOnClickListener { openFrameStyleEditor() }
         findViewById<MaterialButton>(R.id.btn_ctrl_rotate).setOnClickListener {
             sendControl(CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
         }
@@ -745,6 +750,15 @@ class MainActivity : AppCompatActivity() {
             }
             dialog.show()
         }
+    }
+
+    /** 打开自定义边框编辑页（需求 3.3.2 / T-9） */
+    private fun openFrameStyleEditor() {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return
+        }
+        startActivity(Intent(this, FrameStyleActivity::class.java))
     }
 
     /** 下发边框预设并提示结果（需求 3.3.1 / T-13） */
@@ -1112,6 +1126,8 @@ class MainActivity : AppCompatActivity() {
         btnSpaceDelete.isVisible = active && !SessionStore.inStudioMode
         // 边框预设只有管理员能下发（写接口 requireAdmin），非管理员不显示入口
         btnFramePreset.isVisible = active && SessionStore.isAdmin
+        // 「风格」编辑页同样只对管理员开放（上传背景图与切换样式都要管理员）
+        btnFrameStyle.isVisible = active && SessionStore.isAdmin
         spaceControlIds.forEach { findViewById<MaterialButton>(it).isEnabled = active }
 
         // 设置栏的角色权限

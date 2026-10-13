@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    自定义边框编辑页（需求 3.3.2 / T-9）。
+    红色边框 = 最大边界 1920x1280；导入的背景图按 centerCrop 在边界内预览，
+    与设备端 BlurFillView 的铺图方式一致。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:orientation="vertical">
+
+    <!-- 页头：返回 + 标题 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+
+        <ImageButton
+            android:id="@+id/btn_frame_style_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_back"
+            android:padding="8dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/Text.PageTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/space_frame_style" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@+id/tv_frame_style_hint"
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/frame_style_boundary_hint" />
+
+            <!-- 预览：红色最大边界 + 背景图（centerCrop）；固定高度，边界在内部等比适配 -->
+            <com.ShowSeen.lightshadowart.mobile.FramePreviewView
+                android:id="@+id/view_frame_preview"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="12dp" />
+
+            <TextView
+                android:id="@+id/tv_frame_style_status"
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_frame_style_import"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/frame_style_import" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_frame_style_apply"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/frame_style_apply" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

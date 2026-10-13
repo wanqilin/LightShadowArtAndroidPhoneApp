@@ -158,6 +158,19 @@
     <string name="frame_applied">边框预设已下发</string>
     <string name="frame_invalid">请检查颜色（#RRGGBB）与数字：粗细须大于 0，间距不小于 0</string>
 
+    <!-- 自定义边框编辑页（需求 3.3.2 / T-9）：仅管理员 -->
+    <string name="space_frame_style">风格</string>
+    <string name="frame_style_boundary_hint">红色边框为最大边界 1920×1280（与设备屏一致），请把设计内容放在边界内。</string>
+    <string name="frame_style_import">导入背景图</string>
+    <string name="frame_style_apply">应用到设备</string>
+    <string name="frame_style_applying">正在应用到设备…</string>
+    <string name="frame_style_no_image">尚未选择背景图；也可只把设备端样式切到「自定义背景」。</string>
+    <string name="frame_style_selected">已选择背景图，点「应用到设备」下发（预览为近似，最终以设备屏为准）。</string>
+    <string name="frame_style_applied">已应用到设备</string>
+    <string name="frame_style_image_failed">读取图片失败，请换一张试试</string>
+    <string name="frame_style_upload_failed">背景图上传失败</string>
+    <string name="frame_style_apply_failed">应用失败：%1$s</string>
+
     <!-- 导出 Fav（需求 6.3） -->
     <string name="space_export_fav">导出喜爱</string>
     <string name="toast_export_fav_done">已导出 %1$d 个喜爱文件到 Fav 文件夹</string>

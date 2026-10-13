@@ -67,6 +67,12 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <!-- 自定义边框编辑页（需求 3.3.2 / T-9）：仅从「空间」页的管理员入口进入 -->
+        <activity
+            android:name=".FrameStyleActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <!--
             ZXing 内置的 CaptureActivity 在库清单里被写死为 sensorLandscape（横屏），
             这里用 tools:replace 覆盖成竖屏，使取景器与手机方向一致。

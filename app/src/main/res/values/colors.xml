@@ -12,4 +12,6 @@
     <color name="icon_muted">#C3C7CF</color>
     <!-- 喜爱心形标记（与上传的实心红心一致）；Android 框架无自带心形 drawable，故用 App 内向量图 -->
     <color name="favourite">#E53935</color>
+    <!-- 自定义边框编辑页的最大边界标示（需求 3.3.2 / T-9：红色边框标示 1920x1280） -->
+    <color name="frame_boundary">#FFFF0000</color>
 </resources>

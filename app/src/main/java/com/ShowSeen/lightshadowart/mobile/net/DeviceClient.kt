@@ -335,6 +335,36 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
+    /**
+     * POST /api/v1/frame/image —— 上传自定义背景图（需求 3.3.2 / T-9，仅管理员）。
+     *
+     * 复用与 `/upload` 同一套流式上传体（`FilePartBody`），不为此另写一套；
+     * 设备端把它存在 App 私有目录，不会混进客户照片文件夹。
+     */
+    suspend fun uploadFrameImage(
+        endpoint: DeviceEndpoint,
+        sessionId: String,
+        source: UploadSource
+    ): Result<Boolean> = call {
+        val filePart = FilePartBody(resolver, source) {}
+        val multipart = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", source.displayName, filePart)
+            .build()
+
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/frame/image"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .post(multipart)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            json?.optBoolean("has_background", false) ?: false
+        }
+    }
+
     /** GET /api/v1/frame —— 读取设备端边框预设参数与可选样式列表（需求 3.3.1 / T-13） */
     suspend fun readFrame(endpoint: DeviceEndpoint, sessionId: String): Result<FrameConfig> = call {
         val request = Request.Builder()
