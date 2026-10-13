@@ -25,7 +25,9 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -109,6 +111,10 @@ class MainActivity : AppCompatActivity() {
 
     /** 「退出账号」＝移交管理权（需求 5.7.2 / T-7），仅管理员可见 */
     private lateinit var btnSettingsLogout: View
+
+    /** 中英文切换（需求 5.7.3 / T-8）入口与当前语言显示 */
+    private lateinit var btnSettingsLanguage: View
+    private lateinit var tvSettingsLanguageValue: TextView
     private lateinit var tvSettingsHint: TextView
     private lateinit var tvSettingsIdentity: TextView
 
@@ -297,6 +303,8 @@ class MainActivity : AppCompatActivity() {
         etAutoPlay = findViewById(R.id.et_auto_play)
         btnSettingsSave = findViewById(R.id.btn_settings_save)
         btnSettingsLogout = findViewById(R.id.btn_settings_logout)
+        btnSettingsLanguage = findViewById(R.id.btn_settings_language)
+        tvSettingsLanguageValue = findViewById(R.id.tv_settings_language_value)
         tvSettingsHint = findViewById(R.id.tv_settings_hint)
         tvSettingsIdentity = findViewById(R.id.tv_settings_identity)
 
@@ -421,6 +429,7 @@ class MainActivity : AppCompatActivity() {
         btnSettingsAboutBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
         btnSettingsSave.setOnClickListener { saveSettings() }
         btnSettingsLogout.setOnClickListener { confirmLogout() }
+        btnSettingsLanguage.setOnClickListener { showLanguageDialog() }
     }
 
     /** 设置栏二级页面切换：一级菜单 / 参数设置 / 关于 */
@@ -1517,6 +1526,43 @@ class MainActivity : AppCompatActivity() {
             else -> getString(R.string.settings_admin_hint)
         }
         renderSettingsIdentity()
+        renderLanguage()
+    }
+
+    /**
+     * 中英文切换（需求 5.7.3 / T-8）：把所选语言交给 AppCompat 应用。
+     *
+     * Manifest 里给 `AppLocalesMetadataHolderService` 打开了 `autoStoreLocales`，
+     * 因此选择会被自动持久化（重启后保持），语言变化时 AppCompat 会重建 Activity，
+     * 界面文案随之全部切换。
+     */
+    private fun showLanguageDialog() {
+        val tags = LANGUAGE_TAGS
+        val labels = tags.map {
+            getString(if (it == LANGUAGE_ZH) R.string.language_zh else R.string.language_en)
+        }
+        val checked = tags.indexOf(currentLanguageTag()).coerceAtLeast(0)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.settings_language_title)
+            .setSingleChoiceItems(labels.toTypedArray(), checked) { dialog, which ->
+                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tags[which]))
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    /**
+     * 当前界面实际使用的语言。
+     * 取自资源配置而不是 AppCompat 里存的值：用户没手动选过时应用跟随系统语言，
+     * 此时只有资源配置能反映真正在显示的是哪一套文案。
+     */
+    private fun currentLanguageTag(): String = resources.configuration.locales[0].language
+
+    /** 「语言」行右侧显示当前语言 */
+    private fun renderLanguage() {
+        tvSettingsLanguageValue.text = getString(
+            if (currentLanguageTag() == LANGUAGE_ZH) R.string.language_zh else R.string.language_en
+        )
     }
 
     /** 身份类型：家庭/门店模式 × 管理员/共享用户(选片用户)，小号灰字；未连接时隐藏 */
@@ -1554,11 +1600,16 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
+    /** 剩余时长文案（需求 5.7.3 / T-8：必须走字符串资源，否则切到英文后仍显示「小时 / 分」） */
     private fun formatRemaining(ms: Long): String {
         val totalMinutes = ms / 60_000
         val hours = totalMinutes / 60
         val minutes = totalMinutes % 60
-        return if (hours > 0) "${hours}小时${minutes}分" else "${minutes}分"
+        return if (hours > 0) {
+            getString(R.string.duration_hours_minutes, hours, minutes)
+        } else {
+            getString(R.string.duration_minutes, minutes)
+        }
     }
 
     private fun toast(message: String) {
@@ -1705,6 +1756,13 @@ class MainActivity : AppCompatActivity() {
 
         /** 门店会话 token 长度，与设备端 DeviceConfig.STUDIO_TOKEN_MAX_LENGTH 保持一致 */
         const val STUDIO_TOKEN_LENGTH = 6
+
+        /** 中英文切换（需求 5.7.3 / T-8）：与 values/、values-en/ 两套资源对应 */
+        const val LANGUAGE_ZH = "zh"
+        const val LANGUAGE_EN = "en"
+
+        /** 语言选项顺序，与 showLanguageDialog() 的下标一一对应 */
+        val LANGUAGE_TAGS = arrayOf(LANGUAGE_ZH, LANGUAGE_EN)
 
         /** 缩略图缓存条目数 */
         const val THUMB_CACHE_ITEMS = 60

@@ -86,6 +86,31 @@
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right" />
                 </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@color/divider" />
+
+                <!-- 中英文切换（需求 5.7.3 / T-8）：所有用户可用，点开选择 中文 / English -->
+                <LinearLayout
+                    android:id="@+id/btn_settings_language"
+                    style="@style/Settings.Row.Clickable">
+
+                    <TextView
+                        style="@style/Text.RowTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_language" />
+
+                    <TextView
+                        android:id="@+id/tv_settings_language_value"
+                        style="@style/Text.Hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
             </LinearLayout>
 
             <!--

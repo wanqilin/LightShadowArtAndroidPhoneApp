@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    English resources (PRD 5.7.3 / T-8).
+    Every entry must mirror values/strings.xml: same name, same format specifiers (%1$s / %2$d / %%),
+    so the language switch never changes behaviour or breaks a placeholder.
+-->
+<resources>
+    <string name="app_name">LightShadowArt</string>
+
+    <string name="state_disconnected">Not connected to a device</string>
+    <string name="state_no_session">Tap “Scan to connect” and scan the QR code on the device screen</string>
+    <string name="state_connecting">Connecting to %1$s …</string>
+    <string name="state_refreshing">Searching for the device on the local network …</string>
+    <string name="state_disconnecting">Disconnecting …</string>
+    <string name="state_connected">Connected: %1$s · %2$s</string>
+    <string name="state_session_ready">Session established · %1$s · %2$s left</string>
+    <string name="state_wifi_hint">Network the device joined: %1$s</string>
+
+    <string name="action_scan">Scan to connect</string>
+    <string name="action_pick">Choose photos / videos</string>
+    <string name="action_wifi">Connect Wi-Fi</string>
+    <string name="action_refresh">Refresh connection</string>
+    <string name="action_refresh_connecting">Connecting…</string>
+    <string name="action_refresh_connected">Connected</string>
+    <string name="action_disconnect">Disconnect</string>
+
+    <string name="upload_summary_empty">Files you choose are uploaded to the device automatically</string>
+    <string name="upload_summary_running">Uploading %1$d / %2$d</string>
+    <string name="upload_summary_done">Upload finished: %1$d succeeded, %2$d failed</string>
+    <string name="upload_empty">No files chosen yet</string>
+    <string name="upload_status_waiting">Waiting to upload</string>
+    <string name="upload_status_uploading">Uploading %1$d%%</string>
+    <string name="upload_status_uploading_unknown">Uploading…</string>
+    <string name="upload_status_done">Uploaded · %1$s</string>
+    <string name="upload_status_failed">Upload failed: %1$s</string>
+
+    <string name="manual_dialog_cancel">Cancel</string>
+
+    <string name="wifi_title">Connect Wi-Fi</string>
+    <string name="wifi_tip">The device joins this Wi-Fi network. Your phone must be on the same network to keep uploading photos.</string>
+    <string name="wifi_ssid_hint">Wi-Fi name (SSID)</string>
+    <string name="wifi_password_hint">Wi-Fi password</string>
+    <string name="wifi_submit">Send to device</string>
+    <string name="wifi_sending">Sending…</string>
+    <string name="wifi_success">Sent: %1$s. Waiting for the device to join this network; you will return to Home once it succeeds.</string>
+    <string name="wifi_switch_timeout">The device was not found on the local network. Make sure your phone is connected to “%1$s”, then go back to Home and tap “Refresh connection” to retry.</string>
+    <string name="wifi_failed">Failed to send: %1$s</string>
+    <string name="wifi_relinking">Reconnecting to device hotspot %1$s …</string>
+    <string name="wifi_link_lost">Cannot reach device %1$s. Make sure your phone’s Wi-Fi is connected to the device hotspot %2$s; if the QR code is shown on the device screen again, please scan it again.</string>
+    <string name="wifi_link_unreachable">Cannot reach device %1$s. Make sure your phone and the device are on the same network, then retry.</string>
+    <string name="wifi_pick">Choose Wi-Fi</string>
+    <string name="wifi_pick_title">Choose a Wi-Fi network</string>
+    <string name="wifi_pick_current">%1$s (current)</string>
+    <string name="wifi_pick_empty">Cannot read the Wi-Fi list; please enter the Wi-Fi name manually</string>
+    <string name="wifi_pick_need_location">Reading the Wi-Fi list requires the Location permission. Allow it in system settings, then retry.</string>
+    <string name="wifi_pick_need_location_service">Turn on system location first, then tap “Choose Wi-Fi”</string>
+    <string name="wifi_open_settings">Open settings</string>
+    <string name="wifi_current_hint">Phone’s current Wi-Fi: %1$s</string>
+    <string name="wifi_current_unknown">Could not read your phone’s current Wi-Fi; tap “Choose Wi-Fi” or enter it manually</string>
+
+    <string name="toast_scan_cancelled">Scan cancelled</string>
+    <string name="dialog_error_title">Connection failed</string>
+    <string name="toast_connect_failed">Connection failed: %1$s</string>
+    <string name="state_joining_hotspot">Joining device hotspot %1$s …</string>
+    <string name="toast_hotspot_failed">Failed to join hotspot %1$s: %2$s. You can connect to it manually in system Wi-Fi, then use “Manual connect” to enter the device address %3$s</string>
+    <string name="toast_hotspot_failed_brief">Failed to join hotspot %1$s: %2$s. Connect to it manually in system Wi-Fi, then retry.</string>
+    <string name="toast_hotspot_gateway_unknown">Joined hotspot %1$s but could not get the device address. Make sure the device is still showing its QR (hotspot) state, then retry or scan again.</string>
+    <string name="toast_hotspot_permission_denied">The “Nearby devices” permission is required to join the device hotspot automatically</string>
+    <string name="toast_upload_busy">Uploading, please wait</string>
+    <string name="toast_storage_low">Not enough storage space, please free up space</string>
+    <string name="toast_file_too_large">Files over 4 GB cannot be written</string>
+    <string name="dialog_continue_upload">Continue uploading</string>
+    <string name="toast_need_session">Please scan to connect to the device first</string>
+    <string name="toast_session_expired">Session ended. Tap “Refresh connection” to reconnect</string>
+    <string name="toast_auto_reconnected">Connection was interrupted and has been restored automatically</string>
+    <string name="toast_disconnected">Disconnected. The device is back on its standby page and others can scan to connect</string>
+    <string name="toast_disconnected_local">Disconnected and local state cleared; you can scan again to connect</string>
+    <string name="toast_disconnect_failed">Local connection closed; the device was not notified: %1$s</string>
+    <string name="toast_refresh_not_found">Device not found on the local network. Make sure your phone is connected to Wi-Fi “%1$s” (the device’s network), or scan again.</string>
+    <string name="toast_refresh_not_found_without_wifi">Device not found on the local network. Make sure your phone and the device are on the same Wi-Fi, or scan again.</string>
+    <string name="toast_manual_input_invalid">Please enter the device address</string>
+    <string name="toast_wifi_ssid_required">Please enter the Wi-Fi name</string>
+    <string name="scan_prompt">Aim at the QR code on the device screen</string>
+    <string name="scan_title">Scan QR code</string>
+
+    <!-- Network diagnostics shown in the connection-failure dialog -->
+    <string name="diag_title">— Diagnostics —</string>
+    <string name="diag_default_network">Default network: %1$s</string>
+    <string name="diag_bound_network">Process-bound network: %1$s</string>
+    <string name="diag_vpn">VPN: %1$s</string>
+    <string name="diag_hotspot">Hotspot joined: %1$s</string>
+    <string name="diag_device">Device address: %1$s</string>
+    <string name="diag_no_network">No network available</string>
+    <string name="diag_not_bound">Not bound</string>
+    <string name="diag_vpn_on">On</string>
+    <string name="diag_vpn_off">Off</string>
+    <string name="diag_transport_wifi">Wi‑Fi</string>
+    <string name="diag_transport_cellular">Cellular</string>
+    <string name="diag_transport_vpn">VPN</string>
+    <string name="diag_transport_ethernet">Ethernet</string>
+    <string name="diag_transport_unknown">Unknown network</string>
+    <string name="diag_hotspot_not_attempted">Hotspot not attempted</string>
+    <string name="diag_hotspot_requesting">Requesting system connection</string>
+    <string name="diag_hotspot_connected">Connected</string>
+    <string name="diag_hotspot_lost">Connected, then dropped by the system</string>
+    <string name="diag_hotspot_unavailable">The system cannot join this hotspot</string>
+    <string name="diag_hotspot_error">Join request failed</string>
+
+    <!-- Bottom tabs: Space / Home / Settings -->
+    <string name="tab_space">Space</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Left tab: Space -->
+    <string name="space_browse_mode">Browse mode</string>
+    <string name="space_mode_immersive">Immersive</string>
+    <string name="space_mode_date">By date</string>
+    <string name="space_mode_favourite">Favourites</string>
+    <string name="space_refresh">Refresh</string>
+    <string name="space_empty">No photos or videos yet</string>
+    <string name="space_control">Device control</string>
+    <string name="space_control_up">Up</string>
+    <string name="space_control_down">Down</string>
+    <string name="space_control_left">Left</string>
+    <string name="space_control_right">Right</string>
+    <string name="space_control_confirm">OK</string>
+    <string name="space_control_exit">Back</string>
+    <string name="space_control_rotate">Rotate</string>
+    <string name="space_favourite">Favourite</string>
+    <string name="space_favourite_cancel">Remove favourite</string>
+    <string name="space_favourite_on">Favourited</string>
+    <string name="space_select">Select</string>
+    <string name="space_select_done">Done</string>
+    <string name="space_delete">Delete</string>
+    <string name="space_video_badge">Video</string>
+    <string name="toast_delete_confirm_title">Delete files</string>
+    <string name="toast_delete_confirm_message">Delete the %1$d selected files? This cannot be undone.</string>
+    <string name="toast_deleted">Deleted %1$d files</string>
+    <string name="toast_delete_failed">Delete failed: %1$s</string>
+    <string name="toast_delete_none">Please select the files to delete first</string>
+    <string name="toast_select_none">Please select files first</string>
+    <string name="toast_media_empty">No media available on the device</string>
+    <string name="toast_media_failed">Failed to load media: %1$s</string>
+    <string name="toast_favourite_added">Marked as favourite</string>
+    <string name="toast_favourite_removed">Removed from favourites</string>
+    <string name="toast_favourite_failed">Failed to set favourite: %1$s</string>
+    <string name="toast_control_failed">Failed to send the control command: %1$s</string>
+    <string name="toast_media_playing">Switched to playback</string>
+    <string name="toast_delete_personal_only">Deleting files is only supported in home mode</string>
+
+    <!-- Export favourites -->
+    <string name="space_export_fav">Export favourites</string>
+    <string name="toast_export_fav_done">Exported %1$d favourite files to the Fav folder</string>
+    <string name="toast_export_fav_empty">No photos or videos are marked as favourite</string>
+    <string name="toast_export_fav_failed">Export failed: %1$s</string>
+
+    <!-- Middle tab: Home connection info -->
+    <string name="home_connection">Connection status</string>
+    <string name="home_info_wifi">Wi-Fi name</string>
+    <string name="home_info_ip">IP address</string>
+    <string name="home_info_port">Port</string>
+    <string name="home_info_token">DEVICE_TOKEN</string>
+    <string name="home_info_role">Current role</string>
+    <string name="home_info_folder">Authorized folder</string>
+    <string name="home_value_empty">—</string>
+    <string name="home_role_admin">Admin</string>
+    <string name="home_role_viewer">Selection user</string>
+    <string name="action_studio_folder">New client folder</string>
+    <string name="toast_studio_folder_created">Created client folder: %1$s</string>
+    <string name="toast_studio_folder_failed">Failed to create the folder: %1$s</string>
+    <string name="toast_studio_folder_personal">Only available in studio selection mode</string>
+    <string name="toast_admin_only">This action is available to admins only</string>
+    <!-- “Sign out” = hand over admin -->
+    <string name="settings_logout">Sign out</string>
+    <string name="toast_logout_confirm">After signing out this phone is no longer the admin, and the device will show a QR code for someone else to take over. Sign out?</string>
+    <string name="toast_logout_done">Signed out. The device is showing a QR code for someone else to take over</string>
+    <!-- Studio workflow: show the folder name, start selecting after confirmation -->
+    <string name="dialog_studio_folder_title">Ask the photographer to import photos</string>
+    <string name="dialog_studio_folder_message">Ask the photographer to put photos into this folder: %1$s\nWhen the import is done, tap the button below to start selecting.</string>
+    <string name="dialog_studio_folder_confirm">Start selecting</string>
+    <string name="toast_studio_confirm_failed">Failed to start selecting: %1$s</string>
+
+    <!-- Right tab: Settings -->
+    <string name="settings_title">Parameters</string>
+    <string name="settings_heartbeat">Heartbeat interval (seconds)</string>
+    <string name="settings_session_timeout">Session timeout (minutes)</string>
+    <string name="settings_no_op_countdown">No-operation countdown (seconds)</string>
+    <string name="settings_auto_play">Auto-play interval (minutes)</string>
+    <string name="settings_save">Save parameters</string>
+    <string name="settings_saving">Saving…</string>
+    <string name="settings_saved">Parameters saved</string>
+    <string name="settings_failed">Save failed: %1$s</string>
+    <string name="settings_viewer_readonly">You are a selection user; parameters are set by the admin and cannot be changed.</string>
+    <string name="settings_admin_hint">These parameters can only be configured by an admin.</string>
+    <string name="settings_need_session">Connect to the device before setting parameters</string>
+    <string name="settings_invalid">Enter a number greater than 0</string>
+    <string name="settings_load_failed">Failed to read parameters: %1$s</string>
+    <string name="action_back">Back</string>
+
+    <!-- Language switch -->
+    <string name="settings_language">Language / 语言</string>
+    <string name="settings_language_title">Language</string>
+    <string name="language_zh">中文</string>
+    <string name="language_en">English</string>
+
+    <!-- Remaining session time -->
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+
+    <!-- Account identity: home/studio mode × admin/shared user -->
+    <string name="settings_identity_home_admin">Home mode: Admin</string>
+    <string name="settings_identity_home_shared">Home mode: Shared user</string>
+    <string name="settings_identity_studio_admin">Studio mode: Admin</string>
+    <string name="settings_identity_studio_viewer">Studio mode: Selection user</string>
+
+    <!-- About: versions and copyright -->
+    <string name="settings_about">About</string>
+    <string name="about_label_mobile_version">Mobile version</string>
+    <string name="about_label_device_version">Device version</string>
+    <string name="about_device_version_unknown">Not connected</string>
+    <string name="about_copyright">Copyright © %1$s</string>
+</resources>

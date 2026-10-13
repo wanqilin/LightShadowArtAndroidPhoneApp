@@ -192,6 +192,16 @@
     <string name="settings_load_failed">读取参数失败：%1$s</string>
     <string name="action_back">返回</string>
 
+    <!-- 中英文切换（需求 5.7.3 / T-8）：选择结果由 AppCompat 持久化，重启后保持 -->
+    <string name="settings_language">语言 / Language</string>
+    <string name="settings_language_title">语言 / Language</string>
+    <string name="language_zh">中文</string>
+    <string name="language_en">English</string>
+
+    <!-- 会话剩余时长（需求 5.7.3 / T-8：需随语言切换） -->
+    <string name="duration_hours_minutes">%1$d 小时 %2$d 分</string>
+    <string name="duration_minutes">%1$d 分</string>
+
     <!-- 用户身份类型：家庭/门店模式 × 管理员/共享用户(选片用户) -->
     <string name="settings_identity_home_admin">家庭模式：管理员</string>
     <string name="settings_identity_home_shared">家庭模式：共享用户</string>
