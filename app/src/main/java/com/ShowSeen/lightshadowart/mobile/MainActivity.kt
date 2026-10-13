@@ -929,8 +929,11 @@ class MainActivity : AppCompatActivity() {
         hotspotConnector.connect(ssid, password) { result ->
             result
                 .onSuccess {
-                    // 设备地址未知（旧记录没存）时用热点网关兜底：设备自己就是热点网关
-                    val host = knownHost.ifEmpty { hotspotConnector.boundGateway() }
+                    // 设备自己就是热点网关，因此**优先用当前网关**：Android 每次开机都会重新随机化
+                    // 热点网段（真机验证：上次记的是 192.168.23.167，重启后实际是 192.168.222.104），
+                    // 记下的旧地址必然失效，回连后照样连不上设备。
+                    // 只有在取不到网关时才退回记下的地址。
+                    val host = hotspotConnector.boundGateway() ?: knownHost.ifEmpty { null }
                     if (host == null) {
                         Log.e(TAG, "reconnectHotspot: 已接入热点 $ssid 但解析不到设备地址")
                         connecting = false
@@ -1098,10 +1101,14 @@ class MainActivity : AppCompatActivity() {
             tvDevice.text = getString(R.string.state_disconnected)
             tvSession.text = getString(R.string.state_no_session)
         } else {
-            tvDevice.text = getString(R.string.state_connected, endpoint!!.baseUrl, endpoint.modeName)
+            tvDevice.text = getString(
+                R.string.state_connected,
+                endpoint!!.baseUrl,
+                getString(endpoint.modeNameRes)
+            )
             tvSession.text = getString(
                 R.string.state_session_ready,
-                endpoint.modeName,
+                getString(endpoint.modeNameRes),
                 formatRemaining(SessionStore.remainingMs)
             )
         }

@@ -1,5 +1,8 @@
 package com.ShowSeen.lightshadowart.mobile.net
 
+import androidx.annotation.StringRes
+import com.ShowSeen.lightshadowart.mobile.R
+
 /**
  * 设备端二维码解析结果：设备地址 + 鉴权 Token + 交互模式 + 授权文件夹 + 角色 + 设备热点。
  *
@@ -34,9 +37,15 @@ data class DeviceEndpoint(
     /** 拼接接口地址，例如 urlOf("/upload") */
     fun urlOf(path: String): String = apiBaseUrl + path
 
-    /** 设备端交互模式：1 = 家庭模式，2 = 门店选片模式 */
-    val modeName: String
-        get() = if (mode == MODE_PERSONAL) "家庭模式" else "门店选片模式"
+    /**
+     * 模式名对应的字符串资源（T-8）。
+     *
+     * 必须交给资源、不能在这里写死中文：真机切到英文后发现状态行仍显示「家庭模式」，
+     * 就是本属性原先硬编码中文字面量导致的（真机验证发现）。
+     */
+    @get:StringRes
+    val modeNameRes: Int
+        get() = if (mode == MODE_PERSONAL) R.string.mode_personal else R.string.mode_studio
 
     /** 二维码是否声明了管理员角色（选片用户不可配置参数） */
     val isAdmin: Boolean get() = role.equals(ROLE_ADMIN, ignoreCase = true)

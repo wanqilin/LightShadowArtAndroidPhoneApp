@@ -235,6 +235,10 @@
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
 
+    <!-- Interaction mode name shown in the status line -->
+    <string name="mode_personal">Home mode</string>
+    <string name="mode_studio">Studio mode</string>
+
     <!-- Account identity: home/studio mode × admin/shared user -->
     <string name="settings_identity_home_admin">Home mode: Admin</string>
     <string name="settings_identity_home_shared">Home mode: Shared user</string>

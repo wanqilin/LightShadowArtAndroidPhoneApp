@@ -108,7 +108,11 @@ class WifiConfigActivity : AppCompatActivity() {
             return
         }
 
-        tvTarget.text = getString(R.string.state_connected, endpoint.baseUrl, endpoint.modeName)
+        tvTarget.text = getString(
+            R.string.state_connected,
+            endpoint.baseUrl,
+            getString(endpoint.modeNameRes)
+        )
         btnSubmit.setOnClickListener { submit() }
         btnPickWifi.setOnClickListener { showWifiPicker() }
 

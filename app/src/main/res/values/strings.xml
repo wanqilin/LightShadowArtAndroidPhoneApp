@@ -230,6 +230,10 @@
     <string name="duration_hours_minutes">%1$d 小时 %2$d 分</string>
     <string name="duration_minutes">%1$d 分</string>
 
+    <!-- 交互模式名（T-8：状态行会显示，必须随语言切换；原先硬编码在 DeviceEndpoint 里） -->
+    <string name="mode_personal">家庭模式</string>
+    <string name="mode_studio">门店选片模式</string>
+
     <!-- 用户身份类型：家庭/门店模式 × 管理员/共享用户(选片用户) -->
     <string name="settings_identity_home_admin">家庭模式：管理员</string>
     <string name="settings_identity_home_shared">家庭模式：共享用户</string>

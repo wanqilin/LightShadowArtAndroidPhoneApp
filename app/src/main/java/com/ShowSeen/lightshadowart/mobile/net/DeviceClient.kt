@@ -219,7 +219,13 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** POST /api/v1/heartbeat —— 返回会话剩余有效毫秒数与最新参数 */
+    /**
+     * POST /api/v1/heartbeat —— 返回会话剩余有效毫秒数与最新参数。
+     *
+     * 心跳单独设短超时：默认读超时是 60 秒，而静默丢包（设备重启 / 热点消失时典型表现）不会
+     * 立刻报错，请求会一直挂到超时——那样「30 秒内自动重连」（T-5）根本无法达成。
+     * 真机验证时用 iptables 丢包 14 秒，应用毫无反应，就是被这 60 秒拖住的。
+     */
     suspend fun heartbeat(endpoint: DeviceEndpoint, sessionId: String): Result<HeartbeatResult> =
         call {
             val request = Request.Builder()
@@ -228,7 +234,9 @@ class DeviceClient(private val resolver: ContentResolver) {
                 .post(EMPTY_BODY)
                 .build()
 
-            client.newCall(request).execute().use { response ->
+            val call = client.newCall(request)
+            call.timeout().timeout(HEARTBEAT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            call.execute().use { response ->
                 val json = response.jsonOrNull()
                 ensureSuccess(response, json)
                 HeartbeatResult(
@@ -608,6 +616,12 @@ class DeviceClient(private val resolver: ContentResolver) {
         const val CALL_TIMEOUT_SECONDS = 0L
         const val CONNECT_TIMEOUT_SECONDS = 10L
         const val READ_TIMEOUT_SECONDS = 60L
+
+        /**
+         * 心跳的整调用超时（秒）。
+         * 心跳体积很小，必须在心跳间隔量级内失败，否则静默丢包时「30 秒内自动重连」（T-5）无从谈起。
+         */
+        const val HEARTBEAT_TIMEOUT_SECONDS = 8L
 
         /** GET /media 的 view 参数取值，与设备端 ApiRoutes 一致 */
         const val VIEW_ALL = "all"
