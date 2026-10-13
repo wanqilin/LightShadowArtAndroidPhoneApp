@@ -165,6 +165,10 @@
     <string name="toast_studio_folder_failed">创建文件夹失败：%1$s</string>
     <string name="toast_studio_folder_personal">仅门店选片模式可用</string>
     <string name="toast_admin_only">该操作仅管理员可用</string>
+    <!-- 「退出账号」＝移交管理权（需求 5.7.2 / T-7）：仅管理员可见，退出后设备端主动出码 -->
+    <string name="settings_logout">退出账号</string>
+    <string name="toast_logout_confirm">退出后本机不再具备管理员权限，设备端会弹出二维码，需他人扫码接管。确定退出吗？</string>
+    <string name="toast_logout_done">已退出账号，设备端已弹出二维码，可由他人扫码接管</string>
     <!-- 门店新工作流（需求 3.4 / T-12）：扫码建夹后提示文件夹名，确认后开始选片 -->
     <string name="dialog_studio_folder_title">请摄影师导入照片</string>
     <string name="dialog_studio_folder_message">请摄影师把照片放入此文件夹：%1$s\n导入完成后，点下方按钮开始选片。</string>

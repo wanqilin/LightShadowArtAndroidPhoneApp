@@ -87,6 +87,26 @@
                         android:src="@drawable/ic_chevron_right" />
                 </LinearLayout>
             </LinearLayout>
+
+            <!--
+                「退出账号」＝移交管理权（需求 5.7.2 / T-7）：家庭 / 门店共用同一入口，
+                仅管理员可见（applySettingsRole 控制）；退出后设备端解除绑定并主动弹出二维码，
+                供其他人扫码接管管理员。
+            -->
+            <LinearLayout
+                android:id="@+id/btn_settings_logout"
+                style="@style/Settings.Row.Clickable"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_card"
+                android:visibility="gone">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_logout" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 

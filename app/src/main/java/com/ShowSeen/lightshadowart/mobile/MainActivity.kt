@@ -106,6 +106,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etNoOpCountdown: EditText
     private lateinit var etAutoPlay: EditText
     private lateinit var btnSettingsSave: MaterialButton
+
+    /** 「退出账号」＝移交管理权（需求 5.7.2 / T-7），仅管理员可见 */
+    private lateinit var btnSettingsLogout: View
     private lateinit var tvSettingsHint: TextView
     private lateinit var tvSettingsIdentity: TextView
 
@@ -293,6 +296,7 @@ class MainActivity : AppCompatActivity() {
         etNoOpCountdown = findViewById(R.id.et_no_op_countdown)
         etAutoPlay = findViewById(R.id.et_auto_play)
         btnSettingsSave = findViewById(R.id.btn_settings_save)
+        btnSettingsLogout = findViewById(R.id.btn_settings_logout)
         tvSettingsHint = findViewById(R.id.tv_settings_hint)
         tvSettingsIdentity = findViewById(R.id.tv_settings_identity)
 
@@ -416,6 +420,7 @@ class MainActivity : AppCompatActivity() {
         btnSettingsParamsBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
         btnSettingsAboutBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
         btnSettingsSave.setOnClickListener { saveSettings() }
+        btnSettingsLogout.setOnClickListener { confirmLogout() }
     }
 
     /** 设置栏二级页面切换：一级菜单 / 参数设置 / 关于 */
@@ -823,9 +828,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 用户主动断开：结束设备端会话，设备待机页据此回到出码态，手机可以交给下一个人重新扫码。
+     * 「退出账号」＝移交管理权（需求 5.7.2 / T-7）：家庭、门店共用同一入口，仅管理员可见。
+     * 确认后走 [disconnect] 的移交分支，设备端会解除绑定并主动弹出二维码。
      */
-    private fun disconnect() {
+    private fun confirmLogout() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.settings_logout)
+            .setMessage(R.string.toast_logout_confirm)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ -> disconnect(handover = true) }
+            .show()
+    }
+
+    /**
+     * 用户主动断开：结束设备端会话，设备待机页据此回到出码态，手机可以交给下一个人重新扫码。
+     *
+     * @param handover 管理员「退出账号」（需求 5.7.2 / T-7）：走 `/session/handover`，
+     *        设备端除结束会话外还会解除绑定并主动弹出二维码，供其它人扫码接管管理员。
+     */
+    private fun disconnect(handover: Boolean = false) {
         btnDisconnect.isEnabled = false
         tvDevice.text = getString(R.string.state_disconnecting)
 
@@ -834,7 +855,11 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val error = if (endpoint != null && sessionId != null) {
-                client.endSession(endpoint, sessionId).exceptionOrNull()
+                if (handover) {
+                    client.handoverSession(endpoint, sessionId).exceptionOrNull()
+                } else {
+                    client.endSession(endpoint, sessionId).exceptionOrNull()
+                }
             } else {
                 null
             }
@@ -853,7 +878,8 @@ class MainActivity : AppCompatActivity() {
             toast(
                 when {
                     endpoint == null || sessionId == null -> getString(R.string.toast_disconnected_local)
-                    error == null || error is SessionExpiredException -> getString(R.string.toast_disconnected)
+                    error == null || error is SessionExpiredException ->
+                        getString(if (handover) R.string.toast_logout_done else R.string.toast_disconnected)
                     else -> getString(R.string.toast_disconnect_failed, error.message.orEmpty())
                 }
             )
@@ -1483,6 +1509,8 @@ class MainActivity : AppCompatActivity() {
         etNoOpCountdown.isEnabled = admin
         etAutoPlay.isEnabled = admin
         btnSettingsSave.isEnabled = admin
+        // 「退出账号」＝移交管理权：非管理员（家庭共享用户 / 门店选片用户）不显示该入口（需求 5.7.2 / T-7）
+        btnSettingsLogout.isVisible = admin
         tvSettingsHint.text = when {
             !active -> getString(R.string.settings_need_session)
             !admin -> getString(R.string.settings_viewer_readonly)

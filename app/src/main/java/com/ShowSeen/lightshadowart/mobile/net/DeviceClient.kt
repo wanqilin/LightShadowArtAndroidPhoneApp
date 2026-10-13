@@ -115,7 +115,8 @@ data class MediaItem(
  *
  * 对应设备端 `ApiRoutes.kt`：
  * auth / upload / control / wifi-config / heartbeat / session-end /
- * config / studio-folder / studio-confirm / media / media-raw / media-delete / favourite。
+ * config / studio-folder / studio-confirm / media / media-raw / media-delete / favourite /
+ * session-handover。
  */
 class DeviceClient(private val resolver: ContentResolver) {
 
@@ -242,6 +243,24 @@ class DeviceClient(private val resolver: ContentResolver) {
     suspend fun endSession(endpoint: DeviceEndpoint, sessionId: String): Result<Unit> = call {
         val request = Request.Builder()
             .url(endpoint.urlOf("/session/end"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .post(EMPTY_BODY)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            ensureSuccess(response, response.jsonOrNull())
+        }
+    }
+
+    /**
+     * POST /api/v1/session/handover —— 管理员「退出账号」＝移交管理权（需求 5.7.2 / T-7）。
+     *
+     * 与 [endSession] 的区别：设备端除结束会话外，还会**解除绑定并主动弹出二维码**，
+     * 供其它人扫码接管管理员。
+     */
+    suspend fun handoverSession(endpoint: DeviceEndpoint, sessionId: String): Result<Unit> = call {
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/session/handover"))
             .header(AUTH_HEADER, bearer(sessionId))
             .post(EMPTY_BODY)
             .build()
