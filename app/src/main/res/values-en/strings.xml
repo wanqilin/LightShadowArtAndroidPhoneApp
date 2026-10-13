@@ -251,7 +251,6 @@
 
     <!-- Account identity: home/studio mode × admin/shared user -->
     <string name="settings_identity_home_admin">Home mode: Admin</string>
-    <string name="settings_identity_home_shared">Home mode: Shared user</string>
     <string name="settings_identity_studio_admin">Studio mode: Admin</string>
     <string name="settings_identity_studio_viewer">Studio mode: Selection user</string>
 

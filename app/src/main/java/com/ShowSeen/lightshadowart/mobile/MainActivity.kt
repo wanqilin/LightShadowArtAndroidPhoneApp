@@ -1748,7 +1748,12 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** 身份类型：家庭/门店模式 × 管理员/共享用户(选片用户)，小号灰字；未连接时隐藏 */
+    /**
+     * 身份类型：家庭模式恒为管理员、门店模式区分管理员 / 选片用户，小号灰字；未连接时隐藏。
+     *
+     * F-5（用户口径）：家庭模式没有「共享用户」，家里其他人要用设备就通过「退出账号」移交，
+     * 因此这里不再有「家庭模式 × 非管理员」这一分支（设备端也不再发放该角色）。
+     */
     private fun renderSettingsIdentity() {
         val active = SessionStore.isActive
         tvSettingsIdentity.isVisible = active
@@ -1759,8 +1764,7 @@ class MainActivity : AppCompatActivity() {
             when {
                 studio && admin -> R.string.settings_identity_studio_admin
                 studio -> R.string.settings_identity_studio_viewer
-                admin -> R.string.settings_identity_home_admin
-                else -> R.string.settings_identity_home_shared
+                else -> R.string.settings_identity_home_admin
             }
         )
     }
