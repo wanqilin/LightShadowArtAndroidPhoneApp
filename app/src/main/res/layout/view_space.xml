@@ -220,4 +220,19 @@
             android:text="@string/space_control_exit" />
     </LinearLayout>
 
+    <!--
+        边框预设（需求 3.3.1 / T-13）：仅管理员可见（写接口要求管理员）。
+        后续 T-9 的「风格」编辑页落地后，可把本入口并入那一页。
+    -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_frame_preset"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="@string/space_frame_preset"
+        android:visibility="gone" />
+
 </LinearLayout>

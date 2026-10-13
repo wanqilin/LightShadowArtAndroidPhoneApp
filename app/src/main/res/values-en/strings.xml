@@ -148,6 +148,21 @@
     <string name="toast_media_playing">Switched to playback</string>
     <string name="toast_delete_personal_only">Deleting files is only supported in home mode</string>
 
+    <!-- Frame preset (admin only) -->
+    <string name="space_frame_preset">Frame preset</string>
+    <string name="frame_style">Style</string>
+    <string name="frame_line_color">Line colour (#RRGGBB)</string>
+    <string name="frame_line_width">Line width (dp, &gt; 0)</string>
+    <string name="frame_line_gap">Gap between lines (dp, may be 0)</string>
+    <string name="frame_paper_color">Paper colour (#RRGGBB)</string>
+    <string name="frame_color_hint">#RRGGBB</string>
+    <string name="frame_paper_enabled">Use paper background (off falls back to blurred edges)</string>
+    <string name="frame_apply">Apply to device</string>
+    <string name="frame_load_failed">Failed to load the frame preset: %1$s</string>
+    <string name="frame_save_failed">Failed to apply the frame preset: %1$s</string>
+    <string name="frame_applied">Frame preset applied</string>
+    <string name="frame_invalid">Check the colours (#RRGGBB) and numbers: width must be &gt; 0, gap must be ≥ 0</string>
+
     <!-- Export favourites -->
     <string name="space_export_fav">Export favourites</string>
     <string name="toast_export_fav_done">Exported %1$d favourite files to the Fav folder</string>

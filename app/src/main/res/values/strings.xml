@@ -143,6 +143,21 @@
     <string name="toast_media_playing">已切换到播放模式</string>
     <string name="toast_delete_personal_only">仅家庭模式支持删除文件</string>
 
+    <!-- 边框预设（需求 3.3.1 / T-13）：仅管理员可下发 -->
+    <string name="space_frame_preset">边框预设</string>
+    <string name="frame_style">样式</string>
+    <string name="frame_line_color">线条颜色（#RRGGBB）</string>
+    <string name="frame_line_width">线条粗细（dp，大于 0）</string>
+    <string name="frame_line_gap">双框间距（dp，可为 0）</string>
+    <string name="frame_paper_color">背景纸颜色（#RRGGBB）</string>
+    <string name="frame_color_hint">#RRGGBB</string>
+    <string name="frame_paper_enabled">使用背景纸（关闭则回退黑边模糊）</string>
+    <string name="frame_apply">下发到设备</string>
+    <string name="frame_load_failed">读取边框预设失败：%1$s</string>
+    <string name="frame_save_failed">下发边框预设失败：%1$s</string>
+    <string name="frame_applied">边框预设已下发</string>
+    <string name="frame_invalid">请检查颜色（#RRGGBB）与数字：粗细须大于 0，间距不小于 0</string>
+
     <!-- 导出 Fav（需求 6.3） -->
     <string name="space_export_fav">导出喜爱</string>
     <string name="toast_export_fav_done">已导出 %1$d 个喜爱文件到 Fav 文件夹</string>
