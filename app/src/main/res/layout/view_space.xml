@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 左栏：空间 —— 浏览模式、媒体网格、设备控制按键（需求 6.1） -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -15,34 +16,19 @@
         android:layout_height="wrap_content"
         android:text="@string/space_browse_mode" />
 
-    <RadioGroup
-        android:id="@+id/group_browse_mode"
+    <!--
+        三视图改为标签式控件（需求 5.3 / T-11）：标签在上、缩略图在下，点标签即时联动下方列表；
+        形态与设备端顶部 TabLayout 一致。标签内容在 MainActivity.setupSpace() 里按
+        沉浸 / 日期 / 喜爱 的顺序加入，下标与 BROWSER_MODE_* 的对应关系见 BROWSER_MODES。
+    -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabs_browse_mode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:orientation="horizontal">
-
-        <RadioButton
-            android:id="@+id/radio_immersive"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="@string/space_mode_immersive" />
-
-        <RadioButton
-            android:id="@+id/radio_date"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/space_mode_date" />
-
-        <RadioButton
-            android:id="@+id/radio_favourite"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/space_mode_favourite" />
-    </RadioGroup>
+        app:tabGravity="fill"
+        app:tabIndicatorFullWidth="false"
+        app:tabMode="fixed" />
 
     <LinearLayout
         android:layout_width="match_parent"

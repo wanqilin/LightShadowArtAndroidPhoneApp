@@ -20,7 +20,6 @@ import android.util.LruCache
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
@@ -36,6 +35,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.tabs.TabLayout
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.ShowSeen.lightshadowart.mobile.net.AuthResult
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewSettings: View
 
     // 空间
-    private lateinit var groupBrowseMode: RadioGroup
+    private lateinit var tabsBrowseMode: TabLayout
     private lateinit var btnSpaceRefresh: MaterialButton
     private lateinit var btnSpaceSelect: MaterialButton
     private lateinit var btnSpaceDelete: MaterialButton
@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity() {
         viewHome = findViewById(R.id.view_home)
         viewSettings = findViewById(R.id.view_settings)
 
-        groupBrowseMode = findViewById(R.id.group_browse_mode)
+        tabsBrowseMode = findViewById(R.id.tabs_browse_mode)
         btnSpaceRefresh = findViewById(R.id.btn_space_refresh)
         btnSpaceSelect = findViewById(R.id.btn_space_select)
         btnSpaceDelete = findViewById(R.id.btn_space_delete)
@@ -332,16 +332,31 @@ class MainActivity : AppCompatActivity() {
             updateFavouriteButton()
         }
         recyclerMedia.adapter = mediaAdapter
-        applyMediaLayout(groupBrowseMode.checkedRadioButtonId)
+        // 默认落在沉浸视图，与设备端默认浏览视图一致（T-16）
+        applyMediaLayout(BROWSER_MODE_IMMERSIVE)
         updateSelectButton()
     }
 
     private fun setupSpace() {
-        groupBrowseMode.setOnCheckedChangeListener { _, checkedId ->
-            applyMediaLayout(checkedId)
-            reloadMedia()
-            sendBrowseMode(checkedId)
-        }
+        // 三视图标签（需求 5.3 / T-11）：下标顺序必须与 BROWSER_MODES 一致
+        tabsBrowseMode.addTab(
+            tabsBrowseMode.newTab().setText(R.string.space_mode_immersive), true
+        )
+        tabsBrowseMode.addTab(tabsBrowseMode.newTab().setText(R.string.space_mode_date))
+        tabsBrowseMode.addTab(tabsBrowseMode.newTab().setText(R.string.space_mode_favourite))
+        tabsBrowseMode.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                val mode = browseModeOf(tab.position)
+                // 上方标签与下方缩略图连动：切标签即按该视图重排列表，并把模式同步给设备端
+                applyMediaLayout(mode)
+                reloadMedia()
+                sendBrowseMode(mode)
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
+        })
         btnSpaceRefresh.setOnClickListener {
             if (SessionStore.isActive) reloadMedia() else requireSession()
         }
@@ -370,8 +385,8 @@ class MainActivity : AppCompatActivity() {
      * 沉浸 / 喜爱视图为每行 [MEDIA_SPAN_COUNT] 个的网格，
      * 与设备端「日期为列表、其余为网格」保持一致。
      */
-    private fun applyMediaLayout(checkedId: Int) {
-        val dateMode = checkedId == R.id.radio_date
+    private fun applyMediaLayout(mode: Int) {
+        val dateMode = mode == BROWSER_MODE_DATE
         // 日期视图在每组前插入日期标题，列表呈现由近到远
         mediaAdapter.setGroupByDate(dateMode)
         recyclerMedia.layoutManager = if (dateMode) {
@@ -994,7 +1009,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         mediaJob?.cancel()
-        val favouriteOnly = groupBrowseMode.checkedRadioButtonId == R.id.radio_favourite
+        val favouriteOnly = currentBrowseMode() == BROWSER_MODE_FAVOURITE
         mediaJob = lifecycleScope.launch {
             client.listMedia(endpoint, sessionId, favouriteOnly)
                 .onSuccess {
@@ -1012,18 +1027,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 浏览模式切换：把三视图单选结果下发设备端同步切换浏览视图（需求 3.1.2.1 / 6.1）。
+     * 浏览模式切换：把三视图标签的选择下发设备端同步切换浏览视图（需求 3.1.2.1 / 5.3 / 6.1）。
      * 移动端本地列表随之刷新：沉浸 / 日期视图拉全量，喜爱视图只拉已标记喜爱的媒体。
      */
-    private fun sendBrowseMode(checkedId: Int) {
+    private fun sendBrowseMode(mode: Int) {
         if (!SessionStore.isActive) return
-        val mode = when (checkedId) {
-            R.id.radio_immersive -> BROWSER_MODE_IMMERSIVE
-            R.id.radio_favourite -> BROWSER_MODE_FAVOURITE
-            else -> BROWSER_MODE_DATE
-        }
         sendControl(CTRL_SWITCH_VIEW, JSONObject().put("mode", mode))
     }
+
+    /** 标签下标 → 协议取值；下标越界（尚未选中）时回退到沉浸视图 */
+    private fun browseModeOf(tabPosition: Int): Int =
+        BROWSER_MODES.getOrElse(tabPosition) { BROWSER_MODE_IMMERSIVE }
+
+    /** 当前选中的浏览视图取值 */
+    private fun currentBrowseMode(): Int = browseModeOf(tabsBrowseMode.selectedTabPosition)
 
     private fun updateMediaEmpty() {
         tvMediaEmpty.isVisible = mediaAdapter.itemCount == 0
@@ -1682,6 +1699,9 @@ class MainActivity : AppCompatActivity() {
         const val BROWSER_MODE_DATE = 0
         const val BROWSER_MODE_IMMERSIVE = 1
         const val BROWSER_MODE_FAVOURITE = 2
+
+        /** 三视图标签的下标顺序（沉浸 / 日期 / 喜爱），与 view_space.xml 的 TabLayout 顺序一致 */
+        val BROWSER_MODES = intArrayOf(BROWSER_MODE_IMMERSIVE, BROWSER_MODE_DATE, BROWSER_MODE_FAVOURITE)
 
         // 设置栏二级页面
         const val SETTINGS_PAGE_MENU = 0
