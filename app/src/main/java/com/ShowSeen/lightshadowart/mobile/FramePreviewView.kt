@@ -11,13 +11,14 @@ import android.view.View
 import androidx.core.content.ContextCompat
 
 /**
- * 自定义边框的编辑预览（需求 3.3.2 / T-9）。
+ * 背景配置页的编辑预览（需求 3.3.2 / T-9，F-6 第三轮扩展到纯色）。
  *
  * - 用**红色边框**标示最大边界 1920x1280（与设备端逻辑分辨率一致），提示用户设计内容须落在该范围内；
- * - 边界内按 **centerCrop** 叠加用户导入的背景图，与设备端 `BlurFillView` 的铺图方式保持一致，
- *   预览才有参考价值。
+ * - 边界内按 **centerCrop** 叠加用户导入的背景图，与设备端 `BlurFillView` 的铺图方式保持一致；
+ * - 没有图片时铺**背景纯色**（F-6 第三轮），与设备端「图片优先、纯色为底」的取舍一致，
+ *   因此预览里看到的就是设备端会铺的那一层。
  *
- * 注意：预览是近似（实际由设备端按 3840x2560 物理屏渲染），最终观感以设备屏为准。
+ * 注意：预览是近似（实际由设备端按 1920x1280 逻辑分辨率渲染），最终观感以设备屏为准。
  */
 class FramePreviewView @JvmOverloads constructor(
     context: Context,
@@ -26,6 +27,7 @@ class FramePreviewView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private val imagePaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val colorPaint = Paint()
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         color = ContextCompat.getColor(context, R.color.frame_boundary)
@@ -36,9 +38,18 @@ class FramePreviewView @JvmOverloads constructor(
 
     private var previewBitmap: Bitmap? = null
 
+    /** 背景纯色（未选图片时的底色）；`null` 表示不铺 */
+    private var previewColor: Int? = null
+
     /** 设置待预览的背景图；传 null 表示清空（调用方负责 Bitmap 的回收） */
     fun setPreviewBitmap(bitmap: Bitmap?) {
         previewBitmap = bitmap
+        invalidate()
+    }
+
+    /** 设置背景纯色（照片外的底色，与设备端 `BlurFillView` 铺的是同一个色） */
+    fun setPreviewColor(color: Int?) {
+        previewColor = color
         invalidate()
     }
 
@@ -53,6 +64,12 @@ class FramePreviewView @JvmOverloads constructor(
         super.onDraw(canvas)
         val boundary = boundaryRect()
         if (boundary.width() <= 0f || boundary.height() <= 0f) return
+
+        // 先铺纯色底：有图片时图片盖在上面（与设备端的优先级一致）
+        previewColor?.let { color ->
+            colorPaint.color = color
+            canvas.drawRect(boundary, colorPaint)
+        }
 
         val bitmap = previewBitmap
         if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {

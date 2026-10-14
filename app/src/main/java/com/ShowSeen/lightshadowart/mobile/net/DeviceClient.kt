@@ -391,24 +391,27 @@ class DeviceClient(private val resolver: ContentResolver) {
     /**
      * POST /api/v1/frame —— 下发边框参数；仅管理员（选片用户会收到 403）。
      *
-     * 只传要改的字段即可，未传的字段设备端沿用当前值；回执是真实生效的值。
-     * 几何参数（F-6 ①`padding_dp` / ⑤`border_gap_dp` / ②`inset_dp`）带 `null` 时整条不下发——
-     * 「风格」页只切样式，不该顺手把用户调好的边框距离重置掉。
+     * 只把 [FramePatch] 里**非 null** 的字段写进请求体，未提及的字段设备端沿用当前值；
+     * 回执是真实生效的值。上一版这里是无条件整份下发（`FrameParams` 的每个字段都有默认值），
+     * 导致「风格」页只切样式时把用户调好的线条颜色 / 线宽 / 背景纸一并重置——改用补丁类型后
+     * 「没改就不发」由类型保证。
      */
     suspend fun writeFrame(
         endpoint: DeviceEndpoint,
         sessionId: String,
-        params: FrameParams
+        patch: FramePatch
     ): Result<FrameConfig> = call {
         val payload = JSONObject()
-            .put("style_id", params.styleId)
-            .put("line_color", params.lineColor)
-            .put("line_width_dp", params.lineWidthDp.toDouble())
-            .put("paper_color", params.paperColor)
-            .put("paper_enabled", params.paperEnabled)
-        params.paddingDp?.let { payload.put("padding_dp", it.toDouble()) }
-        params.borderGapDp?.let { payload.put("border_gap_dp", it.toDouble()) }
-        params.insetDp?.let { payload.put("inset_dp", it.toDouble()) }
+        patch.styleId?.let { payload.put("style_id", it) }
+        patch.frameEnabled?.let { payload.put("frame_enabled", it) }
+        patch.lineColor?.let { payload.put("line_color", it) }
+        patch.lineWidthDp?.let { payload.put("line_width_dp", it.toDouble()) }
+        patch.paperColor?.let { payload.put("paper_color", it) }
+        patch.paperEnabled?.let { payload.put("paper_enabled", it) }
+        patch.backgroundImage?.let { payload.put("background_image", it) }
+        patch.paddingDp?.let { payload.put("padding_dp", it.toDouble()) }
+        patch.borderGapDp?.let { payload.put("border_gap_dp", it.toDouble()) }
+        patch.insetDp?.let { payload.put("inset_dp", it.toDouble()) }
         val request = Request.Builder()
             .url(endpoint.urlOf("/frame"))
             .header(AUTH_HEADER, bearer(sessionId))
@@ -738,11 +741,14 @@ private fun JSONObject?.toFrameConfig(): FrameConfig {
     if (this == null) return FrameConfig(FrameParams(), emptyList())
     val params = FrameParams(
         styleId = optString("style_id").orEmpty(),
+        frameEnabled = optBoolean("frame_enabled", FrameParams.DEFAULT_FRAME_ENABLED),
         lineColor = optInt("line_color", FrameParams.DEFAULT_LINE_COLOR),
         lineWidthDp = optDouble("line_width_dp", FrameParams.DEFAULT_LINE_WIDTH_DP.toDouble())
             .toFloat(),
         paperColor = optInt("paper_color", FrameParams.DEFAULT_PAPER_COLOR),
         paperEnabled = optBoolean("paper_enabled", FrameParams.DEFAULT_PAPER_ENABLED),
+        backgroundImage = optBoolean("background_image", FrameParams.DEFAULT_BACKGROUND_IMAGE),
+        hasBackground = optBoolean("has_background", false),
         // 解析出来的几何参数一定非空：界面上要直接填表
         paddingDp = optDouble("padding_dp", FrameParams.DEFAULT_PADDING_DP.toDouble()).toFloat(),
         borderGapDp = optDouble("border_gap_dp", FrameParams.DEFAULT_BORDER_GAP_DP.toDouble())

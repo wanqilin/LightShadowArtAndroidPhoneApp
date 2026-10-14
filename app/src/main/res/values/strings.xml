@@ -143,34 +143,39 @@
     <string name="toast_media_playing">已切换到播放模式</string>
     <string name="toast_delete_personal_only">仅家庭模式支持删除文件</string>
 
-    <!-- 添加边框二级页（F-6，第二轮）：整页不滚动；顺序为 样式→①→⑤→②→④→③→Apply -->
+    <!-- 添加边框二级页（F-6，第三轮）：整页不滚动；顺序为 边框开关→样式→①→⑤→②→④→③→背景色→Apply -->
     <string name="space_add_frame">添加边框</string>
+    <string name="add_frame_enabled">边框</string>
     <string name="frame_style">样式</string>
     <string name="add_frame_padding">① 边框与图片的距离（dp）</string>
     <string name="add_frame_border_gap">⑤ 两个边框的间距（dp）</string>
     <string name="add_frame_inset">② 边框与外边界的距离（dp）</string>
     <string name="add_frame_color">③ 边框颜色</string>
     <string name="add_frame_color_hint">拖动色盘选色，或用下面的 R / G / B 微调</string>
-    <string name="add_frame_wheel">边框颜色色盘</string>
+    <string name="add_frame_wheel">颜色色盘</string>
     <string name="add_frame_color_done">完成</string>
     <string name="color_channel_r">R</string>
     <string name="color_channel_g">G</string>
     <string name="color_channel_b">B</string>
     <string name="add_frame_preview">颜色预览</string>
     <string name="add_frame_width">④ 线宽（dp，大于 0）</string>
+    <string name="add_frame_background">背景色</string>
+    <string name="add_frame_background_image">自定义图片</string>
     <string name="frame_apply">下发到设备</string>
     <string name="frame_load_failed">读取边框参数失败：%1$s</string>
     <string name="frame_save_failed">下发边框参数失败：%1$s</string>
     <string name="frame_applied">边框已下发</string>
     <string name="frame_invalid">请检查距离与线宽：距离和间距不小于 0，线宽须大于 0</string>
 
-    <!-- 自定义边框编辑页（需求 3.3.2 / T-9）：仅管理员 -->
-    <string name="space_frame_style">风格</string>
+    <!-- 背景配置页（需求 3.3.2 / T-9，F-6 第三轮加色盘入口）：仅管理员 -->
+    <string name="frame_background_title">背景</string>
+    <string name="frame_background_color">背景颜色</string>
+    <string name="frame_background_status_solid">当前背景：纯色（也可导入自定义图片）</string>
+    <string name="frame_background_status_image">当前背景：设备端已保存的自定义图片（照片不在手机本地，红框内只显示纯色底色；重新导入才能在框内预览）</string>
     <string name="frame_style_boundary_hint">红色边框为最大边界 1920×1280（与设备屏一致），请把设计内容放在边界内。</string>
     <string name="frame_style_import">导入背景图</string>
     <string name="frame_style_apply">应用到设备</string>
     <string name="frame_style_applying">正在应用到设备…</string>
-    <string name="frame_style_no_image">尚未选择背景图；也可只把设备端样式切到「自定义背景」。</string>
     <string name="frame_style_selected">已选择背景图，点「应用到设备」下发（预览为近似，最终以设备屏为准）。</string>
     <string name="frame_style_applied">已应用到设备</string>
     <string name="frame_style_image_failed">读取图片失败，请换一张试试</string>

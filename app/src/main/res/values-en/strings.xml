@@ -148,34 +148,39 @@
     <string name="toast_media_playing">Switched to playback</string>
     <string name="toast_delete_personal_only">Deleting files is only supported in home mode</string>
 
-    <!-- Add-frame page (F-6, 2nd round): no scrolling; order Style→①→⑤→②→④→③→Apply -->
+    <!-- Add-frame page (F-6, 3rd round): no scrolling; order Frame switch→Style→①→⑤→②→④→③→Background→Apply -->
     <string name="space_add_frame">Add frame</string>
+    <string name="add_frame_enabled">Frame</string>
     <string name="frame_style">Style</string>
     <string name="add_frame_padding">① Gap: frame to photo (dp)</string>
     <string name="add_frame_border_gap">⑤ Gap: inner to outer frame (dp)</string>
     <string name="add_frame_inset">② Gap: frame to screen edge (dp)</string>
     <string name="add_frame_color">③ Frame colour</string>
     <string name="add_frame_color_hint">Drag the wheel, or fine-tune with R / G / B</string>
-    <string name="add_frame_wheel">Frame colour wheel</string>
+    <string name="add_frame_wheel">Colour wheel</string>
     <string name="add_frame_color_done">Done</string>
     <string name="color_channel_r">R</string>
     <string name="color_channel_g">G</string>
     <string name="color_channel_b">B</string>
     <string name="add_frame_preview">Colour preview</string>
     <string name="add_frame_width">④ Line width (dp, &gt; 0)</string>
+    <string name="add_frame_background">Background</string>
+    <string name="add_frame_background_image">Custom image</string>
     <string name="frame_apply">Apply to device</string>
     <string name="frame_load_failed">Failed to load the frame settings: %1$s</string>
     <string name="frame_save_failed">Failed to apply the frame settings: %1$s</string>
     <string name="frame_applied">Frame applied</string>
     <string name="frame_invalid">Check the gaps and width: gaps ≥ 0, width &gt; 0</string>
 
-    <!-- Custom frame editor (admin only) -->
-    <string name="space_frame_style">Style</string>
+    <!-- Background page (3.3.2 / T-9, colour wheel added in F-6 round 3; admin only) -->
+    <string name="frame_background_title">Background</string>
+    <string name="frame_background_color">Background colour</string>
+    <string name="frame_background_status_solid">Background: solid colour (or import a custom image)</string>
+    <string name="frame_background_status_image">Background: the custom image stored on the device (the image is not on this phone, so the red frame shows the base colour only; import it again to preview)</string>
     <string name="frame_style_boundary_hint">The red border marks the maximum boundary 1920×1280 (same as the device screen). Keep your design inside it.</string>
     <string name="frame_style_import">Import background</string>
     <string name="frame_style_apply">Apply to device</string>
     <string name="frame_style_applying">Applying to the device…</string>
-    <string name="frame_style_no_image">No background selected yet; you can still switch the device style to “custom background”.</string>
     <string name="frame_style_selected">Background selected. Tap “Apply to device” to send it (the preview is approximate; the device screen is authoritative).</string>
     <string name="frame_style_applied">Applied to the device</string>
     <string name="frame_style_image_failed">Could not read the image; please try another one</string>

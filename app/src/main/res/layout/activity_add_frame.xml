@@ -2,10 +2,12 @@
 <!--
     添加边框二级页（F-6）：由空间页「添加边框」入口进入（原「边框预设」弹窗已随之删除）。
 
-    用户口径（F-6 第二轮）：**整页不滚动**——上下滑动很容易误触发，因此这里不放 ScrollView，
-    控件压缩到一屏内；参数顺序为 样式 → ①边框与图片的距离 → ⑤两个边框的间距 →
-    ②边框与外边界的距离 → ④线宽 → ③颜色 → Apply to device（线宽排在边距之后）。
-    颜色收成一行「③ 边框颜色 + 色块预览」，点击进入独立的 FrameColorActivity 选色。
+    用户口径：
+    - **整页不滚动**——上下滑动很容易误触发，因此这里不放 ScrollView，控件压缩到一屏内；
+    - 参数顺序（第三轮）：**边框开关 → 样式 → ①边框与图片的距离 → ⑤两个边框的间距 →
+      ②边框与外边界的距离 → ④线宽 → ③颜色 → 背景色 → Apply**；
+    - **边框开关关时，下面所有参数行置灰且不可操作**（container_add_frame_params 统一
+      isEnabled=false + alpha 0.4）；开关本身在任何时候都可操作，否则关掉就再也打不开了。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -53,89 +55,12 @@
         android:paddingEnd="16dp"
         android:paddingBottom="12dp">
 
-        <!-- 样式：列表由设备端 GET /frame 的 styles[] 下发，客户端不硬编码样式名 -->
-        <TextView
-            style="@style/Text.Hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/frame_style" />
-
-        <Spinner
-            android:id="@+id/spinner_add_frame_style"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-
-        <!-- ① 边框与图片的距离 -->
-        <TextView
-            style="@style/Text.Hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/add_frame_padding" />
-
-        <EditText
-            android:id="@+id/et_add_frame_padding"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="numberDecimal"
-            android:singleLine="true" />
-
-        <!-- ⑤ 两个边框的间距（内边框 ↔ 外边框） -->
-        <TextView
-            style="@style/Text.Hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/add_frame_border_gap" />
-
-        <EditText
-            android:id="@+id/et_add_frame_border_gap"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="numberDecimal"
-            android:singleLine="true" />
-
-        <!-- ② 边框与外边界的距离 -->
-        <TextView
-            style="@style/Text.Hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/add_frame_inset" />
-
-        <EditText
-            android:id="@+id/et_add_frame_inset"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="numberDecimal"
-            android:singleLine="true" />
-
-        <!-- ④ 线宽：只对带粗细的样式（如简单线条框）生效，设备端对其它样式忽略该值 -->
-        <TextView
-            style="@style/Text.Hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/add_frame_width" />
-
-        <EditText
-            android:id="@+id/et_add_frame_width"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="numberDecimal"
-            android:singleLine="true" />
-
-        <!-- ③ 颜色：本页只留一行标签 + 色块预览，点进 FrameColorActivity 用色盘 + R/G/B 选色 -->
+        <!-- 边框总开关：关 = 设备端不画边框，照片外回到黑边高斯模糊 -->
         <LinearLayout
-            android:id="@+id/row_add_frame_color"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
             android:gravity="center_vertical"
-            android:minHeight="56dp"
+            android:minHeight="48dp"
             android:orientation="horizontal">
 
             <TextView
@@ -143,12 +68,156 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/add_frame_color" />
+                android:text="@string/add_frame_enabled" />
 
-            <View
-                android:id="@+id/view_add_frame_preview"
-                android:layout_width="64dp"
-                android:layout_height="36dp" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_add_frame_enabled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp" />
+        </LinearLayout>
+
+        <!-- 开关关时整块置灰且不可操作（含样式、四个数值、颜色行与背景色行） -->
+        <LinearLayout
+            android:id="@+id/container_add_frame_params"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 样式：列表由设备端 GET /frame 的 styles[] 下发，客户端不硬编码样式名 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/frame_style" />
+
+            <Spinner
+                android:id="@+id/spinner_add_frame_style"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- ① 边框与图片的距离 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/add_frame_padding" />
+
+            <EditText
+                android:id="@+id/et_add_frame_padding"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:singleLine="true" />
+
+            <!-- ⑤ 两个边框的间距（内边框 ↔ 外边框） -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/add_frame_border_gap" />
+
+            <EditText
+                android:id="@+id/et_add_frame_border_gap"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:singleLine="true" />
+
+            <!-- ② 边框与外边界的距离 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/add_frame_inset" />
+
+            <EditText
+                android:id="@+id/et_add_frame_inset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:singleLine="true" />
+
+            <!-- ④ 线宽：只对带粗细的样式（如简单线条框）生效，设备端对其它样式忽略该值 -->
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/add_frame_width" />
+
+            <EditText
+                android:id="@+id/et_add_frame_width"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:singleLine="true" />
+
+            <!-- ③ 颜色：本页只留一行标签 + 色块预览，点进 FrameColorActivity 用色盘 + R/G/B 选色 -->
+            <LinearLayout
+                android:id="@+id/row_add_frame_color"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/add_frame_color" />
+
+                <View
+                    android:id="@+id/view_add_frame_preview"
+                    android:layout_width="64dp"
+                    android:layout_height="36dp" />
+            </LinearLayout>
+
+            <!-- 背景色：本页只留一行「色块 + 当前背景来源」，点进背景配置页（FrameStyleActivity） -->
+            <LinearLayout
+                android:id="@+id/row_add_frame_background"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/add_frame_background" />
+
+                <!-- 选了用户自定义图片时显示「自定义图片」：设备端的图不在手机本地，
+                     拉一张 64x36dp 的缩略图既要新增下载通路又看不清，用字样更清楚 -->
+                <TextView
+                    android:id="@+id/tv_add_frame_background_image"
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="@string/add_frame_background_image"
+                    android:visibility="gone" />
+
+                <View
+                    android:id="@+id/view_add_frame_background_preview"
+                    android:layout_width="64dp"
+                    android:layout_height="36dp" />
+            </LinearLayout>
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton

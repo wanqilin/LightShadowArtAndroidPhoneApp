@@ -117,11 +117,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSettingsLanguage: View
     private lateinit var tvSettingsLanguageValue: TextView
 
-    /** 「添加边框」入口（F-6，取代原「边框预设」），进二级页面，仅管理员可见 */
+    /**
+     * 「添加边框」入口（F-6，取代原「边框预设」），进二级页面，仅管理员可见。
+     *
+     * 空间页原来并排的「风格」入口（T-9 的自定义背景图编辑）已按用户口径删除：
+     * 该功能整体挪到「添加边框」页的「背景色」下级页（[FrameStyleActivity]），
+     * 因此这里不再有第二个入口与对应的 findViewById / 显隐逻辑。
+     */
     private lateinit var btnAddFrame: MaterialButton
 
-    /** 「风格」入口（需求 3.3.2 / T-9）：进自定义边框编辑页，仅管理员可见 */
-    private lateinit var btnFrameStyle: MaterialButton
     private lateinit var tvSettingsHint: TextView
     private lateinit var tvSettingsIdentity: TextView
 
@@ -311,7 +315,6 @@ class MainActivity : AppCompatActivity() {
         btnSettingsSave = findViewById(R.id.btn_settings_save)
         btnSettingsLogout = findViewById(R.id.btn_settings_logout)
         btnAddFrame = findViewById(R.id.btn_add_frame)
-        btnFrameStyle = findViewById(R.id.btn_frame_style)
         btnSettingsLanguage = findViewById(R.id.btn_settings_language)
         tvSettingsLanguageValue = findViewById(R.id.tv_settings_language_value)
         tvSettingsHint = findViewById(R.id.tv_settings_hint)
@@ -385,7 +388,6 @@ class MainActivity : AppCompatActivity() {
         btnSpaceDelete.setOnClickListener { deleteSelected() }
         btnSpaceExportFav.setOnClickListener { exportFavourite() }
         btnAddFrame.setOnClickListener { openAddFrameEditor() }
-        btnFrameStyle.setOnClickListener { openFrameStyleEditor() }
         findViewById<MaterialButton>(R.id.btn_ctrl_rotate).setOnClickListener {
             sendControl(CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
         }
@@ -667,8 +669,9 @@ class MainActivity : AppCompatActivity() {
     /**
      * 打开「添加边框」二级页面（F-6，取代原「边框预设」弹窗）。
      *
-     * 参数读写都在页面里完成（读设备端当前值 → 改 → 下发）；这里只做会话检查与跳转，
-     * 与 [openFrameStyleEditor] 同一写法。
+     * 参数读写都在页面里完成（读设备端当前值 → 改 → 下发）；这里只做会话检查与跳转。
+     * 背景（纯色 / 自定义图片）由该页的「背景色」行进入 [FrameStyleActivity] 配置，
+     * 空间页不再单独提供「风格」入口。
      */
     private fun openAddFrameEditor() {
         if (!SessionStore.isActive) {
@@ -676,15 +679,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
         startActivity(Intent(this, AddFrameActivity::class.java))
-    }
-
-    /** 打开自定义边框编辑页（需求 3.3.2 / T-9） */
-    private fun openFrameStyleEditor() {
-        if (!SessionStore.isActive) {
-            requireSession()
-            return
-        }
-        startActivity(Intent(this, FrameStyleActivity::class.java))
     }
 
     /** 自动接入设备热点所需的权限：13+ 用「附近的设备」，10~12 用定位，更低版本无需权限 */    private fun requiredWifiPermissions(): List<String> = when {
@@ -1021,10 +1015,9 @@ class MainActivity : AppCompatActivity() {
         btnSpaceExportFav.isEnabled = active
         // 门店模式不提供删除入口（服务端亦按模式返回 403，见 T-15）
         btnSpaceDelete.isVisible = active && !SessionStore.inStudioMode
-        // 「添加边框」只有管理员能下发（写接口 requireAdmin），非管理员不显示入口
+        // 「添加边框」只有管理员能下发（写接口 requireAdmin），非管理员不显示入口；
+        // 自定义背景图（原「风格」入口）已并入该页的「背景色」下级页，故不再有第二个入口
         btnAddFrame.isVisible = active && SessionStore.isAdmin
-        // 「风格」编辑页同样只对管理员开放（上传背景图与切换样式都要管理员）
-        btnFrameStyle.isVisible = active && SessionStore.isAdmin
         spaceControlIds.forEach { findViewById<MaterialButton>(it).isEnabled = active }
 
         // 设置栏的角色权限

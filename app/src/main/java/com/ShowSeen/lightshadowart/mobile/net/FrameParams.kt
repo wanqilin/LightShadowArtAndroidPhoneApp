@@ -9,14 +9,23 @@ package com.ShowSeen.lightshadowart.mobile.net
 data class FrameParams(
     /** 当前相框样式 id；空串表示沿用设备端默认样式 */
     val styleId: String = "",
+    /**
+     * 边框总开关（F-6 第三轮）：关 = 设备端不画边框且照片外回到黑边高斯模糊。
+     * 设备端用独立字段而不是 `style_id = "none"` 表达它，因为「关」还要求背景跟着回退。
+     */
+    val frameEnabled: Boolean = DEFAULT_FRAME_ENABLED,
     /** 边框线条颜色，0xAARRGGBB */
     val lineColor: Int = DEFAULT_LINE_COLOR,
     /** 单根线条宽度（dp） */
     val lineWidthDp: Float = DEFAULT_LINE_WIDTH_DP,
-    /** 背景纸纯色，0xAARRGGBB */
+    /** 背景纯色，0xAARRGGBB（照片外铺满整屏的底色） */
     val paperColor: Int = DEFAULT_PAPER_COLOR,
-    /** 背景纸开关：关 = 设备端回退到黑边高斯模糊 */
+    /** 背景纯色开关：关 = 设备端该层回退到黑边高斯模糊 */
     val paperEnabled: Boolean = DEFAULT_PAPER_ENABLED,
+    /** 背景是否用用户自定义图片（F-6 第三轮）：图片优先于纯色 */
+    val backgroundImage: Boolean = DEFAULT_BACKGROUND_IMAGE,
+    /** 设备端是否已存有用户自定义背景图（只读，用于背景色行的呈现与预览） */
+    val hasBackground: Boolean = false,
     /**
      * 内边框与照片的距离（dp），F-6 ①。
      * `null` = 本次不下发该字段、设备端沿用当前值（`POST /frame` 本来就支持部分更新）；
@@ -32,6 +41,8 @@ data class FrameParams(
     val insetDp: Float? = null
 ) {
     companion object {
+        /** 与设备端 `DeviceConfig.FRAME_ENABLED` 一致（编译期默认关） */
+        const val DEFAULT_FRAME_ENABLED: Boolean = false
         /** 与设备端 `DeviceConfig.FRAME_LINE_COLOR` 一致（红） */
         const val DEFAULT_LINE_COLOR: Int = 0xFFD32F2F.toInt()
         /** 与设备端 `DeviceConfig.FRAME_LINE_WIDTH_DP` 一致 */
@@ -40,6 +51,8 @@ data class FrameParams(
         const val DEFAULT_PAPER_COLOR: Int = 0xFFFDFBF7.toInt()
         /** 与设备端 `DeviceConfig.FRAME_PAPER_ENABLED` 一致 */
         const val DEFAULT_PAPER_ENABLED: Boolean = true
+        /** 与设备端 `DeviceConfig.FRAME_BACKGROUND_IMAGE` 一致 */
+        const val DEFAULT_BACKGROUND_IMAGE: Boolean = false
         /** 与设备端 `DeviceConfig.FRAME_PADDING_DP` 一致（F-6 ①） */
         const val DEFAULT_PADDING_DP: Float = 24f
         /** 与设备端 `DeviceConfig.FRAME_BORDER_GAP_DP` 一致（F-6 ⑤） */
@@ -48,6 +61,27 @@ data class FrameParams(
         const val DEFAULT_INSET_DP: Float = 24f
     }
 }
+
+/**
+ * `POST /frame` 的**部分更新**载荷：字段为 `null` 表示本次不下发、设备端沿用当前值。
+ *
+ * 为什么单独一个类而不是复用 [FrameParams]：`FrameParams` 是「一份完整的设备端状态」，
+ * 每个字段都有值；而下发时**只该带用户真正改过的字段**——上一版「风格」页用
+ * `FrameParams(styleId = "custom")` 下发，把没碰过的线条颜色 / 线宽 / 背景纸一起按默认值
+ * 覆盖了设备端（真实缺陷）。类型上区分「完整状态」与「增量补丁」，这类错误就不可能再写出来。
+ */
+data class FramePatch(
+    val styleId: String? = null,
+    val frameEnabled: Boolean? = null,
+    val lineColor: Int? = null,
+    val lineWidthDp: Float? = null,
+    val paperColor: Int? = null,
+    val paperEnabled: Boolean? = null,
+    val backgroundImage: Boolean? = null,
+    val paddingDp: Float? = null,
+    val borderGapDp: Float? = null,
+    val insetDp: Float? = null
+)
 
 /**
  * 相框样式条目（id + 展示名）。

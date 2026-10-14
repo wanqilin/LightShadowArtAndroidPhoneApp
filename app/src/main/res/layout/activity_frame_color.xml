@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    边框颜色二级页（F-6 ③）：从「添加边框」页的颜色行进入。
-    色盘 + R/G/B 三条滑杆，间距给足（原先挤在添加边框页底部，滑杆间隔太窄）；
-    R/G/B 只显示数值、不显示十六进制（用户口径）。返回时把选中的颜色回传给上一页。
+    颜色二级页（F-6 ③ 边框颜色 / 第三轮新增的「背景颜色」共用本页）。
+    色盘 + R/G/B 三条滑杆；R/G/B 只显示数值、不显示十六进制（用户口径）。
+    返回时把选中的颜色回传给上一页。
+
+    行距口径（用户第三轮反馈）：上一版 R/G/B 上下间隔太宽（行距 76dp），
+    这里收到 **56dp**（行与行紧邻，行高即 56dp），同时保证 SeekBar 可触摸高度 48dp、Done 完整可见。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -10,7 +13,7 @@
     android:background="@color/surface"
     android:orientation="vertical">
 
-    <!-- 页头：返回 + 标题 -->
+    <!-- 页头：返回 + 标题（标题由调用方通过 EXTRA_TITLE_RES 指定） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -33,6 +36,7 @@
             android:src="@drawable/ic_arrow_back" />
 
         <TextView
+            android:id="@+id/tv_color_title"
             style="@style/Text.PageTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -67,7 +71,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
             android:minHeight="56dp"
             android:orientation="horizontal">
@@ -81,9 +85,10 @@
             <SeekBar
                 android:id="@+id/seek_color_r"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:max="255" android:minHeight="48dp" />
+                android:max="255"
+                android:minHeight="48dp" />
 
             <TextView
                 android:id="@+id/tv_color_r"
@@ -93,11 +98,10 @@
                 android:gravity="end" />
         </LinearLayout>
 
-        <!-- G -->
+        <!-- G：与 R 紧邻，行距 = 行高 56dp -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
             android:gravity="center_vertical"
             android:minHeight="56dp"
             android:orientation="horizontal">
@@ -111,9 +115,10 @@
             <SeekBar
                 android:id="@+id/seek_color_g"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:max="255" android:minHeight="48dp" />
+                android:max="255"
+                android:minHeight="48dp" />
 
             <TextView
                 android:id="@+id/tv_color_g"
@@ -127,7 +132,6 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
             android:gravity="center_vertical"
             android:minHeight="56dp"
             android:orientation="horizontal">
@@ -141,9 +145,10 @@
             <SeekBar
                 android:id="@+id/seek_color_b"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:max="255" android:minHeight="48dp" />
+                android:max="255"
+                android:minHeight="48dp" />
 
             <TextView
                 android:id="@+id/tv_color_b"
@@ -157,7 +162,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="16dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -174,12 +179,12 @@
                 android:layout_height="40dp" />
         </LinearLayout>
 
-        <!-- 完成：把颜色回传给「添加边框」页（返回箭头与系统返回键同效） -->
+        <!-- 完成：把颜色回传给上一页（返回箭头与系统返回键同效） -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_color_done"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="12dp"
             android:minHeight="48dp"
             android:text="@string/add_frame_color_done" />
     </LinearLayout>

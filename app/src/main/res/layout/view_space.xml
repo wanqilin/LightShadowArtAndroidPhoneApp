@@ -233,43 +233,23 @@
     </LinearLayout>
 
     <!--
-        画框相关入口（仅管理员可见，写接口都要求管理员）：
-        · 添加边框 = 给设备端播放的照片加边框（F-6，二级页面）
-        · 风格     = 导入自己的背景图自助设计（需求 3.3.2 / T-9）
-        两者同属「画框与背景」，故并排一行。
+        画框入口（仅管理员可见，写接口都要求管理员）：
+        · 添加边框 = 给设备端播放的照片加边框（F-6，二级页面），
+          边框开关 / 样式 / 几何 / 颜色 / 背景色都在该页及其下级页里配置。
+        原并排的「风格」入口（T-9 的自定义背景图编辑）已按用户口径删除：
+        它现在从「添加边框」页的「背景色」行进入。
     -->
-    <LinearLayout
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_add_frame"
+        style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_add_frame"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:minHeight="48dp"
-            android:layout_weight="1"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="0dp"
-            android:text="@string/space_add_frame"
-            android:visibility="gone" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_frame_style"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:minHeight="48dp"
-            android:layout_marginStart="4dp"
-            android:layout_weight="1"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="0dp"
-            android:text="@string/space_frame_style"
-            android:visibility="gone" />
-    </LinearLayout>
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minHeight="48dp"
+        android:minWidth="0dp"
+        android:text="@string/space_add_frame"
+        android:visibility="gone" />
 
 </LinearLayout>
