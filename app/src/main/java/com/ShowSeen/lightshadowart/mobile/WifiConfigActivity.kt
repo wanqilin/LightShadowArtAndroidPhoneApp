@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Bundle
@@ -32,6 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import java.net.Inet4Address
 import kotlin.coroutines.resume
 
 /**
@@ -295,7 +299,8 @@ class WifiConfigActivity : AppCompatActivity() {
                 SessionStore.rememberWifiPassword(ssid, password)
                 tvResult.setTextColor(ContextCompat.getColor(this@WifiConfigActivity, R.color.success))
                 tvResult.text = getString(R.string.wifi_success, ssid)
-                waitForLanAndReturn(ssid)
+                // 密码一并交给等待流程：设备接入后手机也要用同一份凭据接入这张 Wi-Fi
+                waitForLanAndReturn(ssid, password)
             }.onFailure { error ->
                 tvResult.setTextColor(ContextCompat.getColor(this@WifiConfigActivity, R.color.error))
                 val reason = if (error is SessionExpiredException) {
@@ -316,20 +321,46 @@ class WifiConfigActivity : AppCompatActivity() {
      * 让他自己返回首页再点「刷新连接」是多余的一步，所以这里替他把设备等出来：
      * 发现设备即说明它已接入局域网，顺手把会话地址换成局域网地址（热点地址已失效），然后 [finish] 回首页。
      *
-     * 等不到就留在本页说明情况——设备可能没连上该 Wi‑Fi，用户可重试下发或返回首页点「刷新连接」。
+     * 等不到就留在本页说明情况——手机没接入该 Wi‑Fi 时提示手机侧原因，手机已在该网上时说明设备侧情况。
+     *
+     * @param password 用户本页输入的 Wi‑Fi 密码，用于把手机也接入同一网络
      */
-    private fun waitForLanAndReturn(ssid: String) {
+    private fun waitForLanAndReturn(ssid: String, password: String) {
         if (waitingForLan) return
         waitingForLan = true
 
         lifecycleScope.launch {
-            // 设备关热点后这张网已经不存在，进程不能继续绑在上面，否则连上目标 Wi-Fi 也发不出请求
+            // 设备热点这张网已经没有用（设备正在切走 / 已切走），进程不能继续绑在上面：
+            // 绑着它时本进程的请求与 mDNS 都走这张网，即便手机已经连上目标 Wi-Fi 也发现不到设备。
             hotspotConnector.release()
+
+            val joinError = joinTargetWifi(ssid, password)
+            if (joinError != null) {
+                // 系统可能已经把手机切到目标网络，却不给我们的请求回调成功：实测 Android 16
+                // 上对着**手机已保存 / 已连接**的网络发起 WifiNetworkSpecifier 请求会直接
+                // 回调 onUnavailable，而与此同时手机确实连在该网络上（默认网络已是 WIFI/VALIDATED）。
+                // 所以失败后复查手机实际所在的网络：真到了目标网络就继续做发现，不把用户的网络
+                // 状况误报成失败；确实没切过去才报错。
+                if (currentSsid() == ssid) {
+                    Log.w(
+                        TAG,
+                        "system refused the request but phone is on the target wifi, continue: $ssid, ${diagSummary()}"
+                    )
+                } else {
+                    waitingForLan = false
+                    Log.w(TAG, "phone failed to join wifi: ssid=$ssid, ${diagSummary()}")
+                    tvResult.setTextColor(ContextCompat.getColor(this@WifiConfigActivity, R.color.error))
+                    tvResult.text = joinError
+                    return@launch
+                }
+            }
 
             val device = awaitDeviceOnLan()
             waitingForLan = false
             if (device == null) {
-                Log.w(TAG, "device not found on lan after wifi-config: $ssid")
+                // 到这一刻才失败，说明手机侧能做的都做完了（已在该 Wi-Fi 上），
+                // 打一条快照：万一再失败，日志能直接说明卡在手机网络还是设备没上来，不必再猜
+                Log.w(TAG, "device not found on lan after wifi-config: $ssid, ${diagSummary()}")
                 tvResult.setTextColor(ContextCompat.getColor(this@WifiConfigActivity, R.color.text_secondary))
                 tvResult.text = getString(R.string.wifi_switch_timeout, ssid)
                 return@launch
@@ -340,6 +371,98 @@ class WifiConfigActivity : AppCompatActivity() {
             SessionStore.updateEndpoint(device.toEndpoint())
             finish()
         }
+    }
+
+    /**
+     * 把手机也接入目标 Wi‑Fi（[waitForLanAndReturn] 里 LAN 发现的前置步骤）。
+     *
+     * 为什么必须由 App 主动接：设备热点是 tethering 形态，设备切 Wi‑Fi 后热点**不会关**，
+     * 手机因此可能仍关联在设备热点上；只解绑进程网络并不等于把手机切到目标网络，
+     * 这时进程没有可用的局域网通路，mDNS 发现无从发起，只能等满整轮然后报「未能在局域网内发现设备」。
+     * 现场实测：手机一旦确实连上同一 Wi‑Fi，发现立刻成功——所以这一步是确定性的关键。
+     *
+     * @return null 表示手机已在该 Wi‑Fi 上（可以开始局域网发现）；否则返回给用户看的失败原因
+     */
+    private suspend fun joinTargetWifi(ssid: String, password: String): String? {
+        // 已经在目标网络上就不必再请系统连一次：既省掉一次系统确认框，
+        // 也避免某些机型「请求自己已连接的网络」要等满超时才回调，把一个本来能成功的场景拖垮
+        if (currentSsid() == ssid) {
+            Log.i(TAG, "phone already on target wifi: $ssid")
+            return null
+        }
+
+        tvResult.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+        tvResult.text = getString(R.string.wifi_joining, ssid)
+
+        val joined = withTimeoutOrNull(JOIN_TIMEOUT_MS) {
+            suspendCancellableCoroutine { continuation ->
+                hotspotConnector.connect(ssid, password) { result ->
+                    if (continuation.isActive) continuation.resume(result.isSuccess)
+                }
+            }
+        } ?: false
+
+        if (joined) {
+            Log.i(TAG, "phone joined wifi: $ssid, ${hotspotConnector.describeBinding()}")
+            return null
+        }
+
+        return getString(joinFailureMessageRes(hotspotConnector.lastOutcome), ssid)
+    }
+
+    /** 手机接入 Wi‑Fi 失败的原因文案：区分「系统没能确认」「系统连不上」「请求异常」 */
+    private fun joinFailureMessageRes(outcome: HotspotConnector.Outcome): Int =
+        when (outcome) {
+            HotspotConnector.Outcome.UNAVAILABLE -> R.string.wifi_join_unavailable
+            HotspotConnector.Outcome.LOST -> R.string.wifi_join_lost
+            HotspotConnector.Outcome.ERROR -> R.string.wifi_join_error
+            HotspotConnector.Outcome.NOT_ATTEMPTED -> R.string.wifi_join_unsupported
+            // REQUESTING：等到超时系统仍停在「正在请求」，多半是系统确认框没被确认
+            HotspotConnector.Outcome.REQUESTING -> R.string.wifi_join_dialog
+            HotspotConnector.Outcome.CONNECTED -> R.string.wifi_join_error
+        }
+
+    /**
+     * 失败瞬间的网络快照，供日志定位（B）。
+     *
+     * 记四件事：手机当前 SSID、系统默认网络及其能力、进程绑定网络、本轮 NSD 是否发现过设备。
+     * 后两项的组合能把原因分开——「绑着旧热点」＝没切网，「无默认网络」＝手机根本没连上网，
+     * 「NSD 发现数为 0 且网络正常」＝设备侧没上来或组播不通。
+     */
+    private fun diagSummary(): String {
+        val manager = getSystemService(ConnectivityManager::class.java)
+        val active = manager?.activeNetwork
+        return listOf(
+            "ssid=${currentSsid() ?: "none"}",
+            "default=${describeNetwork(manager, active)}",
+            "bound=${hotspotConnector.describeBinding() ?: "none"}",
+            "nsdFound=${nsdDiscoverer.foundCount}"
+        ).joinToString(", ")
+    }
+
+    /** 「WIFI / INTERNET / VALIDATED / 192.168.8.126」；网络不可用时为「无可用网络」 */
+    private fun describeNetwork(
+        manager: ConnectivityManager?,
+        network: Network?
+    ): String {
+        val capabilities = network?.let { manager?.getNetworkCapabilities(it) }
+        if (network == null || capabilities == null) return getString(R.string.diag_no_network)
+
+        val ipv4 = manager?.getLinkProperties(network)?.linkAddresses
+            ?.firstOrNull { it.address is Inet4Address }
+            ?.address
+            ?.hostAddress
+        val transports = buildList {
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) add("WIFI")
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) add("CELLULAR")
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) add("VPN")
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) add("ETHERNET")
+        }.ifEmpty { listOf("UNKNOWN") }
+        val flags = listOfNotNull(
+            "INTERNET".takeIf { capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) },
+            "VALIDATED".takeIf { capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) }
+        )
+        return (transports + flags + listOfNotNull(ipv4)).joinToString(" / ")
     }
 
     /** 反复在局域网里找设备，找到即返回；等满 [LAN_WAIT_ATTEMPTS] 轮仍未出现返回 null */
@@ -413,6 +536,14 @@ class WifiConfigActivity : AppCompatActivity() {
 
         /** 等待系统连上设备热点并绑定进程网络的时间；超时说明连不上热点 */
         const val RELINK_TIMEOUT_MS = 15_000L
+
+        /**
+         * 等待系统把手机接入目标 Wi-Fi 的时间。
+         *
+         * 必须大于 HotspotConnector 的请求超时（60 秒）——那段超时里含用户在系统确认框上停留的时间，
+         * 这里若先超时，用户还在看确认框就被判成失败，等于白等一场。
+         */
+        const val JOIN_TIMEOUT_MS = 65_000L
 
         /** 回连成功后的可达性复核次数与间隔 */
         const val PROBE_ATTEMPTS = 5

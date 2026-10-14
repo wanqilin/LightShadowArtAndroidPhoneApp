@@ -43,7 +43,13 @@
     <string name="wifi_submit">Send to device</string>
     <string name="wifi_sending">Sending…</string>
     <string name="wifi_success">Sent: %1$s. Waiting for the device to join this network; you will return to Home once it succeeds.</string>
+    <string name="wifi_joining">Connecting your phone to “%1$s” …</string>
     <string name="wifi_switch_timeout">The device was not found on the local network. Make sure your phone is connected to “%1$s”, then go back to Home and tap “Refresh connection” to retry.</string>
+    <string name="wifi_join_unavailable">Could not connect your phone to “%1$s”: the system cannot join this Wi-Fi. Check the password in system settings and retry.</string>
+    <string name="wifi_join_lost">Your phone joined “%1$s” but the system dropped it right away. Make sure the Wi-Fi signal is good, then retry.</string>
+    <string name="wifi_join_error">Could not connect your phone to “%1$s”: the join request failed. Retry, or connect to that network manually in system Wi-Fi first.</string>
+    <string name="wifi_join_dialog">Connecting your phone to “%1$s” did not finish: the system prompt was not confirmed or timed out. Retry and tap “Connect” on the system prompt.</string>
+    <string name="wifi_join_unsupported">Cannot connect your phone to “%1$s” automatically: this Android version does not support it. Connect to that network manually in system Wi-Fi, then go back to Home and tap “Refresh connection”.</string>
     <string name="wifi_failed">Failed to send: %1$s</string>
     <string name="wifi_relinking">Reconnecting to device hotspot %1$s …</string>
     <string name="wifi_link_lost">Cannot reach device %1$s. Make sure your phone’s Wi-Fi is connected to the device hotspot %2$s; if the QR code is shown on the device screen again, please scan it again.</string>

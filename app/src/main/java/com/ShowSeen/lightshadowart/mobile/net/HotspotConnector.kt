@@ -36,6 +36,29 @@ class HotspotConnector private constructor(context: Context) {
     /** 是否已绑定到设备热点 */
     val isConnected: Boolean get() = boundNetwork != null
 
+    /**
+     * 进程当前绑定网络的只读描述，形如 `net=102 iface=wlan0 ipv4=192.168.8.126`；未绑定返回 null。
+     *
+     * 只作诊断用（失败日志要能看出「进程到底被钉在哪张网上」）。这里不用
+     * `ConnectivityManager.boundNetworkForProcess`：那个 API 从 API 23 起就要求
+     * `ACCESS_NETWORK_STATE` 之外的额外签名权限，普通应用读出来恒为 null，
+     * 而本类持有的 [boundNetwork] 正是自己绑定 / 解绑的那张网，才是可靠来源。
+     */
+    fun describeBinding(): String? {
+        val network = boundNetwork ?: return null
+        val manager = connectivityManager
+        val properties = runCatching { manager?.getLinkProperties(network) }.getOrNull()
+        val ipv4 = properties?.linkAddresses
+            ?.firstOrNull { it.address is Inet4Address }
+            ?.address
+            ?.hostAddress
+        return listOfNotNull(
+            "net=$network",
+            properties?.interfaceName?.let { "iface=$it" },
+            ipv4?.let { "ipv4=$it" }
+        ).joinToString(" ")
+    }
+
     /** 最近一次接入尝试的热点名；未尝试（或已 [release]）为 null */
     var lastAttemptSsid: String? = null
         private set

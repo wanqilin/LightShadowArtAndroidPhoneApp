@@ -510,6 +510,28 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // 手机已经在设备热点上就不再向系统请求接入：对着**已连接**的网络发 WifiNetworkSpecifier
+        // 请求，本平台（Android 16）实测会弹一次系统页、等满 60 秒才回 onUnavailable，
+        // 而这张网已经连上了，再请求一次不可能让链路变得更好——只会把用户白卡一分钟。
+        // 直接按当前链路鉴权，探不通也交给 authenticate 的失败提示走（比等 60 秒弹框有用）。
+        if (isOnWifi(endpoint.apSsid)) {
+            Log.i(TAG, "already on hotspot ${endpoint.apSsid}, skip requestNetwork")
+            lifecycleScope.launch {
+                if (!client.probe(endpoint)) {
+                    Log.w(TAG, "hotspot ${endpoint.apSsid} not reachable yet, authenticate anyway")
+                }
+                SessionStore.rememberWifiSsid(endpoint.apSsid)
+                SessionStore.rememberApCredentials(endpoint)
+                authenticate(endpoint)
+            }
+            return
+        }
+
+        requestHotspot(endpoint)
+    }
+
+    /** 请系统接入设备热点并换取会话（[connectHotspot] 的常规路径） */
+    private fun requestHotspot(endpoint: DeviceEndpoint) {
         tvDevice.text = getString(R.string.state_joining_hotspot, endpoint.apSsid)
         Log.i(TAG, "connectHotspot: ssid=${endpoint.apSsid}, device=${endpoint.baseUrl}")
         hotspotConnector.connect(endpoint.apSsid, endpoint.apPassword) { result ->
@@ -1070,6 +1092,14 @@ class MainActivity : AppCompatActivity() {
         val raw = runCatching { manager?.connectionInfo?.ssid }.getOrNull() ?: return ""
         return raw.trim('"').takeIf { it.isNotEmpty() && it != UNKNOWN_SSID }.orEmpty()
     }
+
+    /**
+     * 手机是否已经连在 [ssid] 上。
+     *
+     * 用来避免「对着已连接的网络再发一次 WifiNetworkSpecifier 请求」——本平台实测会弹系统页
+     * 并等满 60 秒才回 onUnavailable，用户被白卡一分钟（[connectHotspot] 与配网页共用这个判据）。
+     */
+    private fun isOnWifi(ssid: String): Boolean = ssid.isNotEmpty() && currentSsid() == ssid
 
     /** 跑一次局域网发现（最多等 [timeoutMs]），由用户点「刷新连接」触发，不在后台周期扫描 */
     private suspend fun probeLan(timeoutMs: Long): List<DiscoveredDevice> =

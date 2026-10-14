@@ -52,6 +52,16 @@ class NsdDiscoverer(context: Context) {
     /** 已解析完成的设备，key 为服务名 */
     private val found = LinkedHashMap<String, DiscoveredDevice>()
 
+    /**
+     * 本轮发现里 `onServiceFound` 触发的次数（含最后没解析出地址的）。
+     *
+     * 与 [found] 的区别：`found` 只在解析出有效地址后才记账，而排查「找不到设备」时要区分
+     * 「压根没收到任何应答」和「收到了但解析失败」——后者说明组播通了、只差解析，
+     * 前者说明手机可能根本没发出去（例如没连上目标网络）。失败日志靠这个计数说话。
+     */
+    var foundCount: Int = 0
+        private set
+
     /** 待解析队列：resolveService 不允许并发，逐个来 */
     private val resolveQueue = ArrayDeque<NsdServiceInfo>()
 
@@ -79,6 +89,7 @@ class NsdDiscoverer(context: Context) {
         found.clear()
         resolveQueue.clear()
         resolving = false
+        foundCount = 0
         onFinished = onResult
         acquireMulticastLock()
 
@@ -89,6 +100,7 @@ class NsdDiscoverer(context: Context) {
             }
 
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
+                foundCount++
                 Log.i(TAG, "service found: ${serviceInfo.serviceName}")
                 resolveQueue.addLast(serviceInfo)
                 resolveNext()
@@ -130,6 +142,8 @@ class NsdDiscoverer(context: Context) {
         found.clear()
         resolveQueue.clear()
         resolving = false
+        // 作废本轮统计：cancel 后 [foundCount] 是过期数据，失败日志读到会被误导
+        foundCount = 0
         stopDiscovery()
         releaseMulticastLock()
     }
