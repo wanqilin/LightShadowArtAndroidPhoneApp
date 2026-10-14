@@ -148,14 +148,16 @@
     <string name="toast_media_playing">Switched to playback</string>
     <string name="toast_delete_personal_only">Deleting files is only supported in home mode</string>
 
-    <!-- Add-frame page (F-6, admin only); the style list comes from the device styles[] -->
+    <!-- Add-frame page (F-6, 2nd round): no scrolling; order Style→①→⑤→②→④→③→Apply -->
     <string name="space_add_frame">Add frame</string>
     <string name="frame_style">Style</string>
     <string name="add_frame_padding">① Gap: frame to photo (dp)</string>
+    <string name="add_frame_border_gap">⑤ Gap: inner to outer frame (dp)</string>
     <string name="add_frame_inset">② Gap: frame to screen edge (dp)</string>
     <string name="add_frame_color">③ Frame colour</string>
-    <string name="add_frame_color_hint">Drag on the wheel to pick a colour, or fine-tune with R / G / B below</string>
+    <string name="add_frame_color_hint">Drag the wheel, or fine-tune with R / G / B</string>
     <string name="add_frame_wheel">Frame colour wheel</string>
+    <string name="add_frame_color_done">Done</string>
     <string name="color_channel_r">R</string>
     <string name="color_channel_g">G</string>
     <string name="color_channel_b">B</string>
@@ -165,7 +167,7 @@
     <string name="frame_load_failed">Failed to load the frame settings: %1$s</string>
     <string name="frame_save_failed">Failed to apply the frame settings: %1$s</string>
     <string name="frame_applied">Frame applied</string>
-    <string name="frame_invalid">Check the distances and width: distances ≥ 0, width &gt; 0</string>
+    <string name="frame_invalid">Check the gaps and width: gaps ≥ 0, width &gt; 0</string>
 
     <!-- Custom frame editor (admin only) -->
     <string name="space_frame_style">Style</string>

@@ -392,7 +392,7 @@ class DeviceClient(private val resolver: ContentResolver) {
      * POST /api/v1/frame —— 下发边框参数；仅管理员（选片用户会收到 403）。
      *
      * 只传要改的字段即可，未传的字段设备端沿用当前值；回执是真实生效的值。
-     * 几何参数（F-6 ①`padding_dp` / ②`inset_dp`）带 `null` 时整条不下发——
+     * 几何参数（F-6 ①`padding_dp` / ⑤`border_gap_dp` / ②`inset_dp`）带 `null` 时整条不下发——
      * 「风格」页只切样式，不该顺手把用户调好的边框距离重置掉。
      */
     suspend fun writeFrame(
@@ -404,10 +404,10 @@ class DeviceClient(private val resolver: ContentResolver) {
             .put("style_id", params.styleId)
             .put("line_color", params.lineColor)
             .put("line_width_dp", params.lineWidthDp.toDouble())
-            .put("line_gap_dp", params.lineGapDp.toDouble())
             .put("paper_color", params.paperColor)
             .put("paper_enabled", params.paperEnabled)
         params.paddingDp?.let { payload.put("padding_dp", it.toDouble()) }
+        params.borderGapDp?.let { payload.put("border_gap_dp", it.toDouble()) }
         params.insetDp?.let { payload.put("inset_dp", it.toDouble()) }
         val request = Request.Builder()
             .url(endpoint.urlOf("/frame"))
@@ -741,11 +741,12 @@ private fun JSONObject?.toFrameConfig(): FrameConfig {
         lineColor = optInt("line_color", FrameParams.DEFAULT_LINE_COLOR),
         lineWidthDp = optDouble("line_width_dp", FrameParams.DEFAULT_LINE_WIDTH_DP.toDouble())
             .toFloat(),
-        lineGapDp = optDouble("line_gap_dp", FrameParams.DEFAULT_LINE_GAP_DP.toDouble()).toFloat(),
         paperColor = optInt("paper_color", FrameParams.DEFAULT_PAPER_COLOR),
         paperEnabled = optBoolean("paper_enabled", FrameParams.DEFAULT_PAPER_ENABLED),
         // 解析出来的几何参数一定非空：界面上要直接填表
         paddingDp = optDouble("padding_dp", FrameParams.DEFAULT_PADDING_DP.toDouble()).toFloat(),
+        borderGapDp = optDouble("border_gap_dp", FrameParams.DEFAULT_BORDER_GAP_DP.toDouble())
+            .toFloat(),
         insetDp = optDouble("inset_dp", FrameParams.DEFAULT_INSET_DP.toDouble()).toFloat()
     )
     val styles = buildList {

@@ -55,10 +55,10 @@ class ColorWheelView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // 正方形：色盘按可用宽撑满，高度自动
+        // 正方形优先：没给确定高度时按可用宽撑满
         val width = MeasureSpec.getSize(widthMeasureSpec)
         // 布局给了确定高度就按它来（F-6 修）：原先一律 setMeasuredDimension(width, width)，
-        // 色盘被撑成满宽正方形（约 1160px），加上它自己消费触摸，用户根本滑不到下面的 R/G/B。
+        // 色盘被撑成满宽正方形（约 1160px），加上它自己消费触摸，用户根本用不到下面的 R/G/B。
         // onDraw / onTouchEvent 用的是 min(cx, cy) 与 width/2、height/2，非正方形也能正确居中和缩放。
         val height = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
             MeasureSpec.getSize(heightMeasureSpec)
@@ -108,7 +108,8 @@ class ColorWheelView @JvmOverloads constructor(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
                 if (!isEnabled) return false
-                // 色盘嵌在 ScrollView 里：按住拖动是取色，不能被滚动抢走手势
+                // 按住拖动是取色，不能被父容器的滚动/拦截抢走手势
+                // （F-6 第二轮起色盘在独立的颜色页、外层已无 ScrollView，这一句作为兜底保留）
                 parent?.requestDisallowInterceptTouchEvent(true)
                 pick(event.x, event.y)
                 return true

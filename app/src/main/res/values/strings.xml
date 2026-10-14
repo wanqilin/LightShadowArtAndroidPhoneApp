@@ -143,24 +143,26 @@
     <string name="toast_media_playing">已切换到播放模式</string>
     <string name="toast_delete_personal_only">仅家庭模式支持删除文件</string>
 
-    <!-- 添加边框二级页（F-6）：仅管理员可下发；④ 的样式列表来自设备端 styles[] -->
+    <!-- 添加边框二级页（F-6，第二轮）：整页不滚动；顺序为 样式→①→⑤→②→④→③→Apply -->
     <string name="space_add_frame">添加边框</string>
     <string name="frame_style">样式</string>
     <string name="add_frame_padding">① 边框与图片的距离（dp）</string>
-    <string name="add_frame_inset">② 边框到最外层的距离（dp）</string>
+    <string name="add_frame_border_gap">⑤ 两个边框的间距（dp）</string>
+    <string name="add_frame_inset">② 边框与外边界的距离（dp）</string>
     <string name="add_frame_color">③ 边框颜色</string>
-    <string name="add_frame_color_hint">在色盘上拖动选色，或用下面的 R / G / B 微调</string>
+    <string name="add_frame_color_hint">拖动色盘选色，或用下面的 R / G / B 微调</string>
     <string name="add_frame_wheel">边框颜色色盘</string>
+    <string name="add_frame_color_done">完成</string>
     <string name="color_channel_r">R</string>
     <string name="color_channel_g">G</string>
     <string name="color_channel_b">B</string>
     <string name="add_frame_preview">颜色预览</string>
-    <string name="add_frame_width">④ 边框粗细（dp，大于 0）</string>
+    <string name="add_frame_width">④ 线宽（dp，大于 0）</string>
     <string name="frame_apply">下发到设备</string>
     <string name="frame_load_failed">读取边框参数失败：%1$s</string>
     <string name="frame_save_failed">下发边框参数失败：%1$s</string>
     <string name="frame_applied">边框已下发</string>
-    <string name="frame_invalid">请检查距离与粗细：距离不小于 0，粗细须大于 0</string>
+    <string name="frame_invalid">请检查距离与线宽：距离和间距不小于 0，线宽须大于 0</string>
 
     <!-- 自定义边框编辑页（需求 3.3.2 / T-9）：仅管理员 -->
     <string name="space_frame_style">风格</string>

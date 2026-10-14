@@ -13,19 +13,22 @@ data class FrameParams(
     val lineColor: Int = DEFAULT_LINE_COLOR,
     /** 单根线条宽度（dp） */
     val lineWidthDp: Float = DEFAULT_LINE_WIDTH_DP,
-    /** 内外两条线框之间的间距（dp） */
-    val lineGapDp: Float = DEFAULT_LINE_GAP_DP,
     /** 背景纸纯色，0xAARRGGBB */
     val paperColor: Int = DEFAULT_PAPER_COLOR,
     /** 背景纸开关：关 = 设备端回退到黑边高斯模糊 */
     val paperEnabled: Boolean = DEFAULT_PAPER_ENABLED,
     /**
-     * 边框与图片的距离（dp），F-6 ①。
+     * 内边框与照片的距离（dp），F-6 ①。
      * `null` = 本次不下发该字段、设备端沿用当前值（`POST /frame` 本来就支持部分更新）；
      * 从 `GET /frame` 解析出来的值一定非空。
      */
     val paddingDp: Float? = null,
-    /** 边框到屏幕最外层的距离（dp），F-6 ②；语义同 [paddingDp] */
+    /**
+     * 内边框与外边框之间的间距（dp），F-6 ⑤；语义同 [paddingDp]。
+     * 它合并了设备端原有的 `line_gap_dp`（双框间距，同一个量），协议里不再有旧字段。
+     */
+    val borderGapDp: Float? = null,
+    /** 外边框到屏幕边缘的距离（dp），F-6 ②；语义同 [paddingDp] */
     val insetDp: Float? = null
 ) {
     companion object {
@@ -33,14 +36,14 @@ data class FrameParams(
         const val DEFAULT_LINE_COLOR: Int = 0xFFD32F2F.toInt()
         /** 与设备端 `DeviceConfig.FRAME_LINE_WIDTH_DP` 一致 */
         const val DEFAULT_LINE_WIDTH_DP: Float = 2f
-        /** 与设备端 `DeviceConfig.FRAME_LINE_GAP_DP` 一致 */
-        const val DEFAULT_LINE_GAP_DP: Float = 12f
         /** 与设备端 `DeviceConfig.FRAME_PAPER_COLOR` 一致（米白） */
         const val DEFAULT_PAPER_COLOR: Int = 0xFFFDFBF7.toInt()
         /** 与设备端 `DeviceConfig.FRAME_PAPER_ENABLED` 一致 */
         const val DEFAULT_PAPER_ENABLED: Boolean = true
         /** 与设备端 `DeviceConfig.FRAME_PADDING_DP` 一致（F-6 ①） */
         const val DEFAULT_PADDING_DP: Float = 24f
+        /** 与设备端 `DeviceConfig.FRAME_BORDER_GAP_DP` 一致（F-6 ⑤） */
+        const val DEFAULT_BORDER_GAP_DP: Float = 8f
         /** 与设备端 `DeviceConfig.FRAME_INSET_DP` 一致（F-6 ②） */
         const val DEFAULT_INSET_DP: Float = 24f
     }

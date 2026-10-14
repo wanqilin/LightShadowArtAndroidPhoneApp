@@ -85,6 +85,12 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <!-- 边框颜色二级页面（F-6 ③）：从「添加边框」页的颜色行进入，色盘 + R/G/B -->
+        <activity
+            android:name=".FrameColorActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <!--
             ZXing 内置的 CaptureActivity 在库清单里被写死为 sensorLandscape（横屏），
             这里用 tools:replace 覆盖成竖屏，使取景器与手机方向一致。

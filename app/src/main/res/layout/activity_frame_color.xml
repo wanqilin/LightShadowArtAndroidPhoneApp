@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    边框颜色二级页（F-6 ③）：从「添加边框」页的颜色行进入。
+    色盘 + R/G/B 三条滑杆，间距给足（原先挤在添加边框页底部，滑杆间隔太窄）；
+    R/G/B 只显示数值、不显示十六进制（用户口径）。返回时把选中的颜色回传给上一页。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:orientation="vertical">
+
+    <!-- 页头：返回 + 标题 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+
+        <ImageButton
+            android:id="@+id/btn_color_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_back"
+            android:padding="8dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/Text.PageTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/add_frame_color" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp">
+
+        <!-- 色盘：高度固定，支持拖动取色（不放在 ScrollView 里，避免手势被抢） -->
+        <com.ShowSeen.lightshadowart.mobile.ColorWheelView
+            android:id="@+id/view_color_wheel"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:contentDescription="@string/add_frame_wheel" />
+
+        <TextView
+            style="@style/Text.Hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/add_frame_color_hint" />
+
+        <!-- R -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center_vertical"
+            android:minHeight="56dp"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/Text.RowTitle"
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:text="@string/color_channel_r" />
+
+            <SeekBar
+                android:id="@+id/seek_color_r"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="255" android:minHeight="48dp" />
+
+            <TextView
+                android:id="@+id/tv_color_r"
+                style="@style/Text.RowValue"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:gravity="end" />
+        </LinearLayout>
+
+        <!-- G -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center_vertical"
+            android:minHeight="56dp"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/Text.RowTitle"
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:text="@string/color_channel_g" />
+
+            <SeekBar
+                android:id="@+id/seek_color_g"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="255" android:minHeight="48dp" />
+
+            <TextView
+                android:id="@+id/tv_color_g"
+                style="@style/Text.RowValue"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:gravity="end" />
+        </LinearLayout>
+
+        <!-- B -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center_vertical"
+            android:minHeight="56dp"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/Text.RowTitle"
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:text="@string/color_channel_b" />
+
+            <SeekBar
+                android:id="@+id/seek_color_b"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="255" android:minHeight="48dp" />
+
+            <TextView
+                android:id="@+id/tv_color_b"
+                style="@style/Text.RowValue"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:gravity="end" />
+        </LinearLayout>
+
+        <!-- 预览 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/add_frame_preview" />
+
+            <View
+                android:id="@+id/view_color_preview"
+                android:layout_width="72dp"
+                android:layout_height="40dp" />
+        </LinearLayout>
+
+        <!-- 完成：把颜色回传给「添加边框」页（返回箭头与系统返回键同效） -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_color_done"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:minHeight="48dp"
+            android:text="@string/add_frame_color_done" />
+    </LinearLayout>
+</LinearLayout>

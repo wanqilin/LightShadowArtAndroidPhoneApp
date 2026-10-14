@@ -1,15 +1,16 @@
 package com.ShowSeen.lightshadowart.mobile
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.SeekBar
+import android.widget.LinearLayout
 import android.widget.Spinner
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
@@ -22,30 +23,26 @@ import kotlinx.coroutines.launch
 /**
  * 「添加边框」二级页面（F-6，取代原「边框预设」弹窗）。
  *
- * 流程：进页先 `GET /frame` 读回设备端当前值填表 → 用户改四项参数 →
- * 点「下发到设备」`POST /frame`（部分更新，未提及字段设备端沿用）。
+ * 流程：进页先 `GET /frame` 读回设备端当前值填表 → 用户按下面的顺序改参数 →
+ * 点「Apply to device」`POST /frame`（部分更新，未提及字段设备端沿用）。
  *
- * 四项参数（用户口径）：
- * ① 边框与图片的距离 `padding_dp`、② 边框到最外层的距离 `inset_dp`、
- * ③ 边框颜色（**色盘 + R/G/B，界面上不出现十六进制**）、
- * ④ 边框样式（列表来自设备端 `styles[]`）与带粗细样式的粗细。
+ * 参数顺序（用户口径）：**样式 → ①边框与图片的距离 → ⑤两个边框的间距 → ②边框与外边界的距离
+ * → ④线宽 → ③颜色 → Apply to device**（线宽排在边距之后）。
  *
- * 双框间距、背景纸开关不在本页（F-6 只要求上面四项）：读到的值原样回传，不会被本页改掉。
+ * 颜色只在本页留一行「③ 边框颜色 + 色块预览」，点击进入独立的 [FrameColorActivity] 选色
+ * （色盘 + R/G/B，间距充裕），选中返回本页更新预览；**界面上不出现十六进制**。
+ *
+ * 整页**不放 ScrollView**（用户口径：上下滑动容易误触发）：控件已压缩到一屏内，
+ * Apply 按钮与全部参数在一屏里可见可点。
  */
 class AddFrameActivity : AppCompatActivity() {
 
     private lateinit var client: DeviceClient
     private lateinit var styleSpinner: Spinner
     private lateinit var etPadding: EditText
+    private lateinit var etBorderGap: EditText
     private lateinit var etInset: EditText
     private lateinit var etWidth: EditText
-    private lateinit var wheel: ColorWheelView
-    private lateinit var seekR: SeekBar
-    private lateinit var seekG: SeekBar
-    private lateinit var seekB: SeekBar
-    private lateinit var tvR: TextView
-    private lateinit var tvG: TextView
-    private lateinit var tvB: TextView
     private lateinit var colorPreview: View
     private lateinit var btnApply: MaterialButton
 
@@ -55,9 +52,19 @@ class AddFrameActivity : AppCompatActivity() {
     /** 读到的设备端当前参数；为空表示还没读到（此时不允许下发，避免用默认值覆盖设备端） */
     private var current: FrameParams? = null
 
-    /** 程序化改滑杆 / 色盘时抑制回调，避免两边互相触发 */
-    private var syncingColor = false
+    /** 当前边框颜色：在颜色二级页里改，回来后只更新预览 */
+    private var selectedColor: Int = FrameParams.DEFAULT_LINE_COLOR
+
     private var applying = false
+
+    /** 颜色二级页回传选中的颜色（不选也会回传原值，预览因此不会莫名变色） */
+    private val colorLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val color = result.data?.getIntExtra(FrameColorActivity.EXTRA_COLOR, selectedColor)
+        showColor(color ?: selectedColor)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,36 +75,24 @@ class AddFrameActivity : AppCompatActivity() {
 
         styleSpinner = findViewById(R.id.spinner_add_frame_style)
         etPadding = findViewById(R.id.et_add_frame_padding)
+        etBorderGap = findViewById(R.id.et_add_frame_border_gap)
         etInset = findViewById(R.id.et_add_frame_inset)
         etWidth = findViewById(R.id.et_add_frame_width)
-        wheel = findViewById(R.id.view_add_frame_wheel)
-        seekR = findViewById(R.id.seek_add_frame_r)
-        seekG = findViewById(R.id.seek_add_frame_g)
-        seekB = findViewById(R.id.seek_add_frame_b)
-        tvR = findViewById(R.id.tv_add_frame_r)
-        tvG = findViewById(R.id.tv_add_frame_g)
-        tvB = findViewById(R.id.tv_add_frame_b)
         colorPreview = findViewById(R.id.view_add_frame_preview)
         btnApply = findViewById(R.id.btn_add_frame_apply)
 
         findViewById<ImageButton>(R.id.btn_add_frame_back).setOnClickListener { finish() }
+        findViewById<LinearLayout>(R.id.row_add_frame_color).setOnClickListener {
+            colorLauncher.launch(
+                Intent(this, FrameColorActivity::class.java)
+                    .putExtra(FrameColorActivity.EXTRA_COLOR, selectedColor)
+            )
+        }
         btnApply.setOnClickListener { applyToDevice() }
         // 读回设备端当前值之前不允许下发：否则会拿界面默认值把设备端已有的参数覆盖掉
         btnApply.isEnabled = false
 
-        wheel.onColorPicked = { color -> showColor(color, fromWheel = true) }
-        val seekListener = object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (!syncingColor) showColor(selectedColor(), fromWheel = false)
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
-        }
-        seekR.setOnSeekBarChangeListener(seekListener)
-        seekG.setOnSeekBarChangeListener(seekListener)
-        seekB.setOnSeekBarChangeListener(seekListener)
-
+        showColor(selectedColor)
         loadFromDevice()
     }
 
@@ -134,34 +129,21 @@ class AddFrameActivity : AppCompatActivity() {
                 ?.let { styleSpinner.setSelection(it) }
 
             etPadding.setText(trimFloat(config.params.paddingDp ?: FrameParams.DEFAULT_PADDING_DP))
+            etBorderGap.setText(
+                trimFloat(config.params.borderGapDp ?: FrameParams.DEFAULT_BORDER_GAP_DP)
+            )
             etInset.setText(trimFloat(config.params.insetDp ?: FrameParams.DEFAULT_INSET_DP))
             etWidth.setText(trimFloat(config.params.lineWidthDp))
-            showColor(config.params.lineColor, fromWheel = false)
+            showColor(config.params.lineColor)
             btnApply.isEnabled = true
         }
     }
 
-    /**
-     * 把颜色铺到色盘 / R/G/B 滑杆 / 预览块上。
-     *
-     * `fromWheel = true` 时不再回写色盘（本来就是它报上来的），避免自激；
-     * 滑杆→颜色这条路径则要把色盘的位置指示同步过去。
-     */
-    private fun showColor(color: Int, fromWheel: Boolean) {
-        syncingColor = true
-        if (!fromWheel) wheel.setColor(color)
-        seekR.progress = Color.red(color)
-        seekG.progress = Color.green(color)
-        seekB.progress = Color.blue(color)
-        tvR.text = Color.red(color).toString()
-        tvG.text = Color.green(color).toString()
-        tvB.text = Color.blue(color).toString()
-        colorPreview.setBackgroundColor(color)
-        syncingColor = false
+    /** 更新颜色预览色块 */
+    private fun showColor(color: Int) {
+        selectedColor = color
+        colorPreview.setBackgroundColor(Color.rgb(Color.red(color), Color.green(color), Color.blue(color)))
     }
-
-    /** 当前 R/G/B 滑杆代表的颜色（alpha 固定不透明） */
-    private fun selectedColor(): Int = Color.rgb(seekR.progress, seekG.progress, seekB.progress)
 
     /** 校验并下发（部分更新：只发本页可改的字段 + 读取到的其它字段原值） */
     private fun applyToDevice() {
@@ -175,10 +157,11 @@ class AddFrameActivity : AppCompatActivity() {
         val base = current
         if (base == null) return
         val padding = etPadding.text.toString().trim().toFloatOrNull()
+        val borderGap = etBorderGap.text.toString().trim().toFloatOrNull()
         val inset = etInset.text.toString().trim().toFloatOrNull()
         val width = etWidth.text.toString().trim().toFloatOrNull()
-        if (padding == null || padding < 0f || inset == null || inset < 0f ||
-            width == null || width <= 0f
+        if (padding == null || padding < 0f || borderGap == null || borderGap < 0f ||
+            inset == null || inset < 0f || width == null || width <= 0f
         ) {
             toast(getString(R.string.frame_invalid))
             return
@@ -190,13 +173,13 @@ class AddFrameActivity : AppCompatActivity() {
         val styleId = styles.getOrNull(styleSpinner.selectedItemPosition)?.id ?: base.styleId
         val params = FrameParams(
             styleId = styleId,
-            lineColor = selectedColor(),
+            lineColor = selectedColor,
             lineWidthDp = width,
-            // 双框间距 / 背景纸不在本页：原样回传读到的值，避免改边框顺带改掉它们
-            lineGapDp = base.lineGapDp,
+            // 背景纸不在本页：原样回传读到的值，避免改边框顺带改掉它
             paperColor = base.paperColor,
             paperEnabled = base.paperEnabled,
             paddingDp = padding,
+            borderGapDp = borderGap,
             insetDp = inset
         )
 
