@@ -1,69 +1,204 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        App theme (UI PRD v2.0 §2.1 / §2.3): warm light cyan-blue background, soft lake blue as
+        the only primary action colour, white content cards with a thin cyan-grey stroke.
+    -->
     <style name="Theme.LightShadowArtPhone" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="android:colorBackground">@color/surface</item>
-        <item name="android:statusBarColor">@color/card</item>
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorPrimaryContainer">@color/accent_sky</item>
+        <item name="colorOnPrimaryContainer">@color/text_primary</item>
+        <item name="colorSecondary">@color/accent_teal</item>
+        <item name="colorOnSecondary">@color/on_primary</item>
+        <item name="colorSurface">@color/card_bg</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/card_tint</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/divider_stroke</item>
+        <item name="colorError">@color/status_destructive</item>
+        <item name="colorOnError">@color/on_primary</item>
+        <item name="colorControlActivated">@color/primary_blue</item>
+        <item name="android:colorBackground">@color/app_bg</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:statusBarColor">@color/app_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/app_bg</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>
 
-    <!-- parent="" 关闭点号前缀的隐式继承，避免 AAPT 找不到 style/Text -->
-    <style name="Text.Title" parent="">
+    <!-- ================= Text styles (UI PRD §2.2) ================= -->
+
+    <style name="Text.TitleLarge" parent="">
         <item name="android:textColor">@color/text_primary</item>
-        <item name="android:textSize">20sp</item>
+        <item name="android:textSize">@dimen/text_title_large</item>
         <item name="android:textStyle">bold</item>
     </style>
 
+    <style name="Text.TitleMedium" parent="">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/text_title_medium</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Secondary-page header title -->
+    <style name="Text.PageTitle" parent="">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/text_page_title</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Legacy alias for existing screens -->
+    <style name="Text.Title" parent="Text.PageTitle" />
+
     <style name="Text.Body" parent="">
         <item name="android:textColor">@color/text_primary</item>
-        <item name="android:textSize">15sp</item>
+        <item name="android:textSize">@dimen/text_body</item>
+        <item name="android:lineSpacingMultiplier">1.15</item>
     </style>
+
 
     <style name="Text.Hint" parent="">
         <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:textSize">13sp</item>
+        <item name="android:textSize">@dimen/text_hint</item>
     </style>
 
-    <!-- 设置页：页面标题 / 列表行标题 / 列表行取值 -->
-    <style name="Text.PageTitle" parent="">
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:textSize">18sp</item>
-        <item name="android:textStyle">normal</item>
-    </style>
-
-    <style name="Text.RowTitle" parent="">
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:textSize">16sp</item>
-    </style>
-
-    <style name="Text.RowValue" parent="">
+    <style name="Text.Label" parent="">
         <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:textSize">15sp</item>
-    </style>
-
-    <!-- 区块小标题：如主页「连接状态」 -->
-    <style name="Text.SectionLabel" parent="">
-        <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:textSize">12sp</item>
+        <item name="android:textSize">@dimen/text_label</item>
         <item name="android:textStyle">bold</item>
         <item name="android:letterSpacing">0.06</item>
     </style>
 
-    <!-- 设置页列表行：等高的横向行，右侧留出箭头/取值空间 -->
+    <style name="Text.RowTitle" parent="">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/text_row_title</item>
+    </style>
+
+    <style name="Text.RowValue" parent="">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">@dimen/text_body</item>
+    </style>
+
+    <!--
+        Pill buttons never set a fixed height: with a long label in one language the text wraps and a
+        fixed height clips the rounded stroke. minHeight keeps the 48dp touch target.
+    -->
+    <style name="PillButton" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/touch_min_height</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">@dimen/text_button</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="cornerRadius">@dimen/corner_pill</item>
+        <item name="backgroundTint">@color/primary_blue</item>
+        <item name="android:textColor">@color/on_primary</item>
+    </style>
+
+    <style name="PillButton.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">@dimen/touch_min_height</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">@dimen/text_button</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">@dimen/corner_pill</item>
+        <item name="strokeColor">@color/primary_blue</item>
+        <item name="android:textColor">@color/primary_blue</item>
+    </style>
+
+    <style name="PillButton.Destructive" parent="PillButton">
+        <item name="backgroundTint">@color/status_destructive</item>
+        <item name="android:textColor">@color/on_primary</item>
+    </style>
+
+    <!--
+        Read-only status pill: icon + word, so a state is never carried by colour alone
+        (connection state, playback state).
+    -->
+    <style name="StatusPill" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/bg_pill_tint</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:drawablePadding">6dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">@dimen/text_hint</item>
+    </style>
+
+    <!-- Selectable filter pill (Immersive / By Date / Favs) -->
+    <style name="FilterPill" parent="">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">@dimen/touch_min_height</item>
+        <item name="android:background">@drawable/bg_pill_outline</item>
+        <item name="android:gravity">center</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">@dimen/text_button</item>
+    </style>
+
+    <!-- ================= Cards and rows ================= -->
+
+    <!-- Gallery thumbnails: one shared 8dp rounding (UI PRD §2.3) -->
+    <style name="ShapeAppearance.Image" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/corner_image</item>
+    </style>
+
+    <!-- White content card: 22dp corners, thin cyan-grey stroke, very light shadow -->
+    <style name="SurfaceCard" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardBackgroundColor">@color/card_bg</item>
+        <item name="cardCornerRadius">@dimen/corner_large</item>
+        <item name="cardElevation">@dimen/card_elevation</item>
+        <item name="strokeColor">@color/divider_stroke</item>
+        <item name="strokeWidth">@dimen/divider_width</item>
+    </style>
+
+    <!-- Same card, but the whole card is the tap target -->
+    <style name="SurfaceCard.Clickable" parent="SurfaceCard">
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+    </style>
+
     <style name="Settings.Row" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:minHeight">56dp</item>
         <item name="android:orientation">horizontal</item>
         <item name="android:gravity">center_vertical</item>
-        <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingStart">@dimen/card_padding</item>
+        <item name="android:paddingEnd">@dimen/card_padding</item>
     </style>
 
-    <!-- 可点击的行：叠加系统水波纹 -->
     <style name="Settings.Row.Clickable" parent="Settings.Row">
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
         <item name="android:background">?attr/selectableItemBackground</item>
+    </style>
+
+    <!-- Round icon plate shown on the left of a settings row -->
+    <style name="Settings.Row.Icon" parent="">
+        <item name="android:layout_width">@dimen/icon_badge_box</item>
+        <item name="android:layout_height">@dimen/icon_badge_box</item>
+        <item name="android:padding">9dp</item>
+        <item name="android:background">@drawable/bg_icon_plate</item>
+    </style>
+
+    <!-- Separator between rows of the same card -->
+    <style name="Settings.Divider" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">@dimen/divider_width</item>
+        <item name="android:layout_marginStart">68dp</item>
+        <item name="android:background">@color/divider_stroke</item>
     </style>
 </resources>

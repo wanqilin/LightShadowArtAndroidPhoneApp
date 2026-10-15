@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linear icon, 24dp viewport. Defaults to the primary text colour; callers tint it when a different colour is needed. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/text_primary"
+        android:pathData="M10.4 4H4.8C3.8 4 3 4.8 3 5.8v12.4c0 1 0.8 1.8 1.8 1.8h5.6v-2H5V6h5.4z" />
+    <path
+        android:fillColor="@color/text_primary"
+        android:pathData="M15.6 7.4 14.2 8.8l2.2 2.2H8.6v2h7.8l-2.2 2.2 1.4 1.4 4.6-4.6z" />
+</vector>

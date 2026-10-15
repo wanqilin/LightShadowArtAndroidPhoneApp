@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linear icon, 24dp viewport. Defaults to the primary text colour; callers tint it when a different colour is needed. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/text_primary"
+        android:pathData="M12 18.4 5 10h5.4V5.6h3.2V10H19z" />
+</vector>

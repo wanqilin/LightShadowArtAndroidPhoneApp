@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Contents of DeviceControlPadView (UI PRD §3.6 E). Merged into the parent FrameLayout so the
+    scrim can cover the whole gallery while the entry button stays tucked in the corner.
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.FrameLayout">
+
+    <!-- Tapping the scrim collapses the pad again -->
+    <View
+        android:id="@+id/pad_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/scrim"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/pad_panel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="@dimen/page_horizontal_padding"
+        android:layout_marginBottom="@dimen/control_pad_panel_bottom_margin"
+        android:gravity="end"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="@dimen/control_pad_diameter"
+            android:layout_height="@dimen/control_pad_diameter"
+            android:background="@drawable/bg_control_pad"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/pad_up"
+                android:layout_width="@dimen/control_pad_key_size"
+                android:layout_height="@dimen/control_pad_key_size"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/space_control_up"
+                android:padding="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_arrow_up"
+                app:tint="@color/text_primary" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/pad_left"
+                    android:layout_width="@dimen/control_pad_key_size"
+                    android:layout_height="@dimen/control_pad_key_size"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/space_control_left"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_arrow_left"
+                    app:tint="@color/text_primary" />
+
+                <TextView
+                    android:id="@+id/pad_center"
+                    android:layout_width="@dimen/control_pad_center_size"
+                    android:layout_height="@dimen/control_pad_center_size"
+                    android:background="@drawable/bg_pill_primary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:text="@string/space_pad_center_ok"
+                    android:textColor="@color/on_primary"
+                    android:textSize="@dimen/text_hint" />
+
+                <ImageButton
+                    android:id="@+id/pad_right"
+                    android:layout_width="@dimen/control_pad_key_size"
+                    android:layout_height="@dimen/control_pad_key_size"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/space_control_right"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_arrow_right"
+                    app:tint="@color/text_primary" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/pad_down"
+                android:layout_width="@dimen/control_pad_key_size"
+                android:layout_height="@dimen/control_pad_key_size"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/space_control_down"
+                android:padding="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_arrow_down"
+                app:tint="@color/text_primary" />
+        </LinearLayout>
+
+        <!-- Exit sits outside the wheel on purpose, so it cannot be hit while steering -->
+        <ImageButton
+            android:id="@+id/pad_exit"
+            android:layout_width="@dimen/touch_min_height"
+            android:layout_height="@dimen/touch_min_height"
+            android:layout_marginTop="@dimen/item_gap"
+            android:background="@drawable/bg_pill_tint"
+            android:contentDescription="@string/space_control_exit"
+            android:padding="12dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_exit" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/pad_entry"
+        android:layout_width="@dimen/control_pad_entry_size"
+        android:layout_height="@dimen/control_pad_entry_size"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="@dimen/page_horizontal_padding"
+        android:layout_marginBottom="@dimen/control_pad_entry_bottom_margin"
+        android:background="@drawable/bg_control_pad_entry"
+        android:contentDescription="@string/space_pad_entry_desc"
+        android:elevation="4dp"
+        android:padding="13dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_remote"
+        app:tint="@color/on_primary" />
+</merge>

@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Frame Design (UI PRD §3.8): the frame switch, the style list and the geometric / width / colour
+    parameters, in the order the user specified. No ScrollView on purpose — the page fits one screen
+    and scrolling here only causes mis-taps. There is deliberately no background row: the wallpaper
+    belongs to the Backgrounds page.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_gradient"
+    android:orientation="vertical">
+
+    <com.ShowSeen.lightshadowart.mobile.PageTopBarView
+        android:id="@+id/frame_design_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="8dp"
+        android:paddingEnd="@dimen/card_padding" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/page_horizontal_padding"
+        android:paddingTop="@dimen/item_gap"
+        android:paddingEnd="@dimen/page_horizontal_padding"
+        android:paddingBottom="@dimen/page_vertical_padding">
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/SurfaceCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Frame switch: off means the device draws no frame at all -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/touch_min_height"
+                    android:orientation="horizontal"
+                    android:paddingStart="@dimen/card_padding"
+                    android:paddingEnd="@dimen/card_padding">
+
+                    <TextView
+                        style="@style/Text.RowTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/add_frame_enabled" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_frame_design_enabled"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_min_height" />
+                </LinearLayout>
+
+                <View style="@style/Settings.Divider" />
+
+                <!-- Everything below is greyed out and untouchable while the switch is off -->
+                <LinearLayout
+                    android:id="@+id/container_frame_design_params"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="@dimen/card_padding"
+                    android:paddingTop="@dimen/item_gap"
+                    android:paddingEnd="@dimen/card_padding"
+                    android:paddingBottom="@dimen/item_gap">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/frame_style" />
+
+                    <Spinner
+                        android:id="@+id/spinner_frame_design_style"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_min_height" />
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/section_gap"
+                        android:text="@string/add_frame_padding" />
+
+                    <EditText
+                        android:id="@+id/et_frame_design_padding"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:singleLine="true" />
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/section_gap"
+                        android:text="@string/add_frame_border_gap" />
+
+                    <EditText
+                        android:id="@+id/et_frame_design_border_gap"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:singleLine="true" />
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/section_gap"
+                        android:text="@string/add_frame_inset" />
+
+                    <EditText
+                        android:id="@+id/et_frame_design_inset"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:singleLine="true" />
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/section_gap"
+                        android:text="@string/add_frame_width" />
+
+                    <EditText
+                        android:id="@+id/et_frame_design_width"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:singleLine="true" />
+
+                    <!-- Colour row: a swatch only; the HSV picker is its own page -->
+                    <LinearLayout
+                        android:id="@+id/row_frame_design_color"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/section_gap"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="@dimen/touch_min_height"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/Text.RowTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/add_frame_color" />
+
+                        <View
+                            android:id="@+id/view_frame_design_color_preview"
+                            android:layout_width="64dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_media_placeholder" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginStart="8dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_frame_design_apply"
+            style="@style/PillButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/section_gap"
+            android:text="@string/frame_apply" />
+    </LinearLayout>
+</LinearLayout>

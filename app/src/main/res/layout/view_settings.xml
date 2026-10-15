@@ -1,424 +1,396 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 右栏：设置 —— 一级菜单（身份类型 + 参数设置 / 关于），点入为二级页面（需求 6.3） -->
+<!--
+    Settings (UI PRD §3.7). Language / Advanced Settings / About and Version as grouped cards plus
+    a light destructive "Disconnect and exit" at the bottom. The Wi-Fi entry is gone on purpose:
+    network configuration lives on the Network Connection page only.
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_gradient">
 
-    <!-- 一级：设置菜单 -->
-    <ScrollView
+    <!-- Level 1: the settings menu -->
+    <LinearLayout
         android:id="@+id/settings_menu"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:orientation="vertical">
 
-        <LinearLayout
+        <com.ShowSeen.lightshadowart.mobile.PageTopBarView
+            android:id="@+id/settings_top_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingTop="20dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="16dp">
+            android:paddingStart="8dp"
+            android:paddingEnd="@dimen/card_padding" />
 
-            <TextView
-                style="@style/Text.PageTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/tab_settings" />
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true">
 
-            <!-- 用户身份类型：家庭/门店模式 × 管理员/共享用户(选片用户)，小号灰字，标题下方一行 -->
-            <TextView
-                android:id="@+id/tv_settings_identity"
-                style="@style/Text.Hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:visibility="gone" />
-
-            <!-- 分组卡片：语言（F-2 起为第一行）/ 参数设置 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:paddingStart="@dimen/page_horizontal_padding"
+                android:paddingTop="@dimen/item_gap"
+                android:paddingEnd="@dimen/page_horizontal_padding"
+                android:paddingBottom="@dimen/page_vertical_padding">
 
-                <!-- 中英文切换（需求 5.7.3 / T-8；F-2 提到第一行，F-3 起改为二级页面） -->
-                <LinearLayout
-                    android:id="@+id/btn_settings_language"
-                    style="@style/Settings.Row.Clickable">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_language" />
-
-                    <TextView
-                        android:id="@+id/tv_settings_language_value"
-                        style="@style/Text.Hint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-                </LinearLayout>
-
-                <View
+                <!-- Current identity: home admin or studio admin / selection user -->
+                <TextView
+                    android:id="@+id/tv_settings_identity"
+                    style="@style/Text.Hint"
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
 
-                <!-- 参数设置入口（二级页面） -->
-                <LinearLayout
-                    android:id="@+id/btn_settings_params"
-                    style="@style/Settings.Row.Clickable">
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/SurfaceCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/section_gap">
 
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_title" />
+                        android:orientation="vertical">
 
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_chevron_right" />
-                </LinearLayout>
-            </LinearLayout>
+                        <LinearLayout
+                            android:id="@+id/btn_settings_language"
+                            style="@style/Settings.Row.Clickable">
 
-            <!--
-                「退出账号」＝移交管理权（需求 5.7.2 / T-7）：家庭 / 门店共用同一入口，
-                仅管理员可见（applySettingsRole 控制）；退出后设备端解除绑定并主动弹出二维码，
-                供其他人扫码接管管理员。
-            -->
-            <LinearLayout
-                android:id="@+id/btn_settings_logout"
-                style="@style/Settings.Row.Clickable"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_card"
-                android:visibility="gone">
+                            <ImageView
+                                style="@style/Settings.Row.Icon"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_language"
+                                app:tint="@color/primary_blue" />
 
-                <TextView
-                    style="@style/Text.RowTitle"
-                    android:layout_width="0dp"
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/item_gap"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/Text.RowTitle"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_language" />
+
+                                <TextView
+                                    style="@style/Text.Hint"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_language_summary" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/tv_settings_language_value"
+                                style="@style/Text.RowValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_chevron_right" />
+                        </LinearLayout>
+
+                        <View style="@style/Settings.Divider" />
+
+                        <LinearLayout
+                            android:id="@+id/btn_settings_params"
+                            style="@style/Settings.Row.Clickable">
+
+                            <ImageView
+                                style="@style/Settings.Row.Icon"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_settings_gear"
+                                app:tint="@color/primary_blue" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/item_gap"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/Text.RowTitle"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_advanced_title" />
+
+                                <TextView
+                                    style="@style/Text.Hint"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_advanced_summary" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_chevron_right" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/SurfaceCard"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/settings_logout" />
-            </LinearLayout>
+                    android:layout_marginTop="@dimen/section_gap">
 
-            <!-- 关于入口（二级页面；F-2 起为最后一行） -->
-            <LinearLayout
-                android:id="@+id/btn_settings_about"
-                style="@style/Settings.Row.Clickable"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_card">
+                    <LinearLayout
+                        android:id="@+id/btn_settings_about"
+                        style="@style/Settings.Row.Clickable">
 
-                <TextView
-                    style="@style/Text.RowTitle"
-                    android:layout_width="0dp"
+                        <ImageView
+                            style="@style/Settings.Row.Icon"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_info"
+                            app:tint="@color/primary_blue" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/item_gap"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                style="@style/Text.RowTitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_about" />
+
+                            <TextView
+                                style="@style/Text.Hint"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_about_summary" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!--
+                    "Sign out" = hand the administrator role over (administrator only): the device
+                    unbinds and shows its QR code so somebody else can take over.
+                -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/SurfaceCard"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/settings_about" />
+                    android:layout_marginTop="@dimen/section_gap">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron_right" />
+                    <LinearLayout
+                        android:id="@+id/btn_settings_logout"
+                        style="@style/Settings.Row.Clickable"
+                        android:visibility="gone">
+
+                        <ImageView
+                            style="@style/Settings.Row.Icon"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_power"
+                            app:tint="@color/status_destructive" />
+
+                        <TextView
+                            style="@style/Text.RowTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/item_gap"
+                            android:layout_weight="1"
+                            android:text="@string/settings_disconnect_exit"
+                            android:textColor="@color/status_destructive" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
-        </LinearLayout>
-    </ScrollView>
+        </ScrollView>
+    </LinearLayout>
 
-    <!-- 二级：参数设置 -->
-    <ScrollView
+    <!-- Level 2: advanced parameters (administrator only) -->
+    <LinearLayout
         android:id="@+id/settings_params_page"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true"
+        android:background="@drawable/bg_app_gradient"
+        android:orientation="vertical"
         android:visibility="gone">
 
-        <LinearLayout
+        <com.ShowSeen.lightshadowart.mobile.PageTopBarView
+            android:id="@+id/settings_params_top_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingTop="20dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="16dp">
+            android:paddingStart="8dp"
+            android:paddingEnd="@dimen/card_padding" />
 
-            <!-- 页头：返回 + 标题 -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/btn_settings_params_back"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_back"
-                    android:padding="8dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_arrow_back" />
-
-                <TextView
-                    style="@style/Text.PageTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/settings_title" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_settings_hint"
-                style="@style/Text.Hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="@string/settings_admin_hint" />
-
-            <!-- 参数分组卡片：右侧就地编辑。每行带一个紧随其后的分隔线，
-                 两行按设备交互模式显隐（会话超时 / 倒计时仅门店、自动播放仅家庭），
-                 隐藏某行时连同它的分隔线一起隐藏，避免留下悬空分隔线。 -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:id="@+id/row_settings_heartbeat"
-                    style="@style/Settings.Row">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_heartbeat" />
-
-                    <EditText
-                        android:id="@+id/et_heartbeat"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:background="@null"
-                        android:gravity="end"
-                        android:inputType="number"
-                        android:singleLine="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
-                </LinearLayout>
-
-                <View
-                    android:id="@+id/divider_settings_heartbeat"
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
-
-                <LinearLayout
-                    android:id="@+id/row_settings_session_timeout"
-                    style="@style/Settings.Row">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_session_timeout" />
-
-                    <EditText
-                        android:id="@+id/et_session_timeout"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:background="@null"
-                        android:gravity="end"
-                        android:inputType="number"
-                        android:singleLine="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
-                </LinearLayout>
-
-                <View
-                    android:id="@+id/divider_settings_session_timeout"
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
-
-                <LinearLayout
-                    android:id="@+id/row_settings_no_op_countdown"
-                    style="@style/Settings.Row">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_no_op_countdown" />
-
-                    <EditText
-                        android:id="@+id/et_no_op_countdown"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:background="@null"
-                        android:gravity="end"
-                        android:inputType="number"
-                        android:singleLine="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
-                </LinearLayout>
-
-                <View
-                    android:id="@+id/divider_settings_no_op_countdown"
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
-
-                <LinearLayout
-                    android:id="@+id/row_settings_auto_play"
-                    style="@style/Settings.Row">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_auto_play" />
-
-                    <EditText
-                        android:id="@+id/et_auto_play"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:background="@null"
-                        android:gravity="end"
-                        android:inputType="number"
-                        android:singleLine="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
-                </LinearLayout>
-
-                <View
-                    android:id="@+id/divider_settings_auto_play"
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
-            </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_settings_save"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/settings_save" />
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- 二级：关于 -->
-    <ScrollView
-        android:id="@+id/settings_about_page"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:visibility="gone">
-
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingTop="20dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="16dp">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true">
 
-            <!-- 页头：返回 + 标题 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/btn_settings_about_back"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_back"
-                    android:padding="8dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_arrow_back" />
+                android:orientation="vertical"
+                android:paddingStart="@dimen/page_horizontal_padding"
+                android:paddingTop="@dimen/item_gap"
+                android:paddingEnd="@dimen/page_horizontal_padding"
+                android:paddingBottom="@dimen/page_vertical_padding">
 
                 <TextView
-                    style="@style/Text.PageTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/settings_about" />
-            </LinearLayout>
-
-            <!-- 版本信息卡片 -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical">
-
-                <LinearLayout style="@style/Settings.Row">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/about_label_mobile_version" />
-
-                    <TextView
-                        android:id="@+id/tv_about_mobile_version"
-                        style="@style/Text.RowValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-                </LinearLayout>
-
-                <View
+                    android:id="@+id/tv_settings_hint"
+                    style="@style/Text.Hint"
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/divider" />
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_admin_hint" />
 
-                <LinearLayout style="@style/Settings.Row">
+                <!-- Each row carries its own divider; hiding a row hides its divider too -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/SurfaceCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/section_gap">
 
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/about_label_device_version" />
+                        android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/tv_about_device_version"
-                        style="@style/Text.RowValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-                </LinearLayout>
+                        <LinearLayout
+                            android:id="@+id/row_settings_heartbeat"
+                            style="@style/Settings.Row">
+
+                            <TextView
+                                style="@style/Text.RowTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_heartbeat" />
+
+                            <EditText
+                                android:id="@+id/et_heartbeat"
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:background="@null"
+                                android:gravity="end"
+                                android:inputType="number"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_row_title" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/divider_settings_heartbeat"
+                            style="@style/Settings.Divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_settings_session_timeout"
+                            style="@style/Settings.Row">
+
+                            <TextView
+                                style="@style/Text.RowTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_session_timeout" />
+
+                            <EditText
+                                android:id="@+id/et_session_timeout"
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:background="@null"
+                                android:gravity="end"
+                                android:inputType="number"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_row_title" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/divider_settings_session_timeout"
+                            style="@style/Settings.Divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_settings_no_op_countdown"
+                            style="@style/Settings.Row">
+
+                            <TextView
+                                style="@style/Text.RowTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_no_op_countdown" />
+
+                            <EditText
+                                android:id="@+id/et_no_op_countdown"
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:background="@null"
+                                android:gravity="end"
+                                android:inputType="number"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_row_title" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/divider_settings_no_op_countdown"
+                            style="@style/Settings.Divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_settings_auto_play"
+                            style="@style/Settings.Row">
+
+                            <TextView
+                                style="@style/Text.RowTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_auto_play" />
+
+                            <EditText
+                                android:id="@+id/et_auto_play"
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:background="@null"
+                                android:gravity="end"
+                                android:inputType="number"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_row_title" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/divider_settings_auto_play"
+                            style="@style/Settings.Divider" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_settings_save"
+                    style="@style/PillButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/section_gap"
+                    android:text="@string/settings_save" />
             </LinearLayout>
-
-            <!-- 版权信息 -->
-            <TextView
-                android:id="@+id/tv_about_copyright"
-                style="@style/Text.Hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:gravity="center" />
-        </LinearLayout>
-    </ScrollView>
-
+        </ScrollView>
+    </LinearLayout>
 </FrameLayout>

@@ -7,27 +7,16 @@
 <resources>
     <string name="app_name">LightShadowArt</string>
 
-    <string name="state_disconnected">Not connected to a device</string>
-    <string name="state_no_session">Tap “Scan to connect” and scan the QR code on the device screen</string>
-    <string name="state_connecting">Connecting to %1$s …</string>
-    <string name="state_refreshing">Searching for the device on the local network …</string>
-    <string name="state_disconnecting">Disconnecting …</string>
     <string name="state_connected">Connected: %1$s · %2$s</string>
     <string name="state_session_ready">Session established · %1$s · %2$s left</string>
-    <string name="state_wifi_hint">Network the device joined: %1$s</string>
 
-    <string name="action_scan">Scan to connect</string>
-    <string name="action_pick">Choose media</string>
-    <string name="action_wifi">Connect Wi-Fi</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_refresh_connecting">Connecting…</string>
     <string name="action_refresh_connected">Connected</string>
-    <string name="action_disconnect">Disconnect</string>
 
     <string name="upload_summary_empty">Files you choose are uploaded to the device automatically</string>
     <string name="upload_summary_running">Uploading %1$d / %2$d</string>
     <string name="upload_summary_done">Upload finished: %1$d succeeded, %2$d failed</string>
-    <string name="upload_empty">No files chosen yet</string>
     <string name="upload_status_waiting">Waiting to upload</string>
     <string name="upload_status_uploading">Uploading %1$d%%</string>
     <string name="upload_status_uploading_unknown">Uploading…</string>
@@ -64,10 +53,8 @@
     <string name="wifi_current_hint">Phone’s current Wi-Fi: %1$s</string>
     <string name="wifi_current_unknown">Could not read your phone’s current Wi-Fi; tap “Choose Wi-Fi” or enter it manually</string>
 
-    <string name="toast_scan_cancelled">Scan cancelled</string>
     <string name="dialog_error_title">Connection failed</string>
     <string name="toast_connect_failed">Connection failed: %1$s</string>
-    <string name="state_joining_hotspot">Joining device hotspot %1$s …</string>
     <string name="toast_hotspot_failed">Failed to join hotspot %1$s: %2$s. You can connect to it manually in system Wi-Fi, then use “Manual connect” to enter the device address %3$s</string>
     <string name="toast_hotspot_failed_brief">Failed to join hotspot %1$s: %2$s. Connect to it manually in system Wi-Fi, then retry.</string>
     <string name="toast_hotspot_gateway_unknown">Joined hotspot %1$s but could not get the device address. Make sure the device is still showing its QR (hotspot) state, then retry or scan again.</string>
@@ -84,7 +71,6 @@
     <string name="toast_disconnect_failed">Local connection closed; the device was not notified: %1$s</string>
     <string name="toast_refresh_not_found">Device not found on the local network. Make sure your phone is connected to Wi-Fi “%1$s” (the device’s network), or scan again.</string>
     <string name="toast_refresh_not_found_without_wifi">Device not found on the local network. Make sure your phone and the device are on the same Wi-Fi, or scan again.</string>
-    <string name="toast_manual_input_invalid">Please enter the device address</string>
     <string name="toast_wifi_ssid_required">Please enter the Wi-Fi name</string>
     <string name="scan_prompt">Aim at the QR code on the device screen</string>
     <string name="scan_title">Scan QR code</string>
@@ -113,12 +99,9 @@
     <string name="diag_hotspot_error">Join request failed</string>
 
     <!-- Bottom tabs: Space / Home / Settings -->
-    <string name="tab_space">Space</string>
-    <string name="tab_home">Home</string>
     <string name="tab_settings">Settings</string>
 
     <!-- Left tab: Space -->
-    <string name="space_browse_mode">Browse mode</string>
     <string name="space_mode_immersive">Immersive</string>
     <string name="space_mode_date">By date</string>
     <string name="space_mode_favourite">Favs</string>
@@ -129,12 +112,8 @@
     <string name="space_control_down">Down</string>
     <string name="space_control_left">Left</string>
     <string name="space_control_right">Right</string>
-    <string name="space_control_confirm">OK</string>
     <string name="space_control_exit">Back</string>
-    <string name="space_control_rotate">Rotate</string>
     <string name="space_favourite">Fav</string>
-    <string name="space_favourite_cancel">Remove fav</string>
-    <string name="space_favourite_on">Faved</string>
     <string name="space_select">Select</string>
     <string name="space_select_done">Done</string>
     <string name="space_delete">Delete</string>
@@ -145,7 +124,6 @@
     <string name="toast_delete_failed">Delete failed: %1$s</string>
     <string name="toast_delete_none">Please select the files to delete first</string>
     <string name="toast_select_none">Please select files first</string>
-    <string name="toast_media_empty">No media available on the device</string>
     <string name="toast_media_failed">Failed to load media: %1$s</string>
     <string name="toast_favourite_added">Marked as favourite</string>
     <string name="toast_favourite_removed">Removed from favourites</string>
@@ -155,23 +133,13 @@
     <string name="toast_delete_personal_only">Deleting files is only supported in home mode</string>
 
     <!-- Add-frame page (F-6, 3rd round): no scrolling; order Frame switch→Style→①→⑤→②→④→③→Background→Apply -->
-    <string name="space_add_frame">Add frame</string>
     <string name="add_frame_enabled">Frame</string>
     <string name="frame_style">Style</string>
     <string name="add_frame_padding">① Gap: frame to photo (dp)</string>
     <string name="add_frame_border_gap">⑤ Gap: inner to outer frame (dp)</string>
     <string name="add_frame_inset">② Gap: frame to screen edge (dp)</string>
     <string name="add_frame_color">③ Frame colour</string>
-    <string name="add_frame_color_hint">Drag the wheel, or fine-tune with R / G / B</string>
-    <string name="add_frame_wheel">Colour wheel</string>
-    <string name="add_frame_color_done">Done</string>
-    <string name="color_channel_r">R</string>
-    <string name="color_channel_g">G</string>
-    <string name="color_channel_b">B</string>
-    <string name="add_frame_preview">Colour preview</string>
     <string name="add_frame_width">④ Line width (dp, &gt; 0)</string>
-    <string name="add_frame_background">Background</string>
-    <string name="add_frame_background_image">Custom image</string>
     <string name="frame_apply">Apply to device</string>
     <string name="frame_load_failed">Failed to load the frame settings: %1$s</string>
     <string name="frame_save_failed">Failed to apply the frame settings: %1$s</string>
@@ -179,7 +147,6 @@
     <string name="frame_invalid">Check the gaps and width: gaps ≥ 0, width &gt; 0</string>
 
     <!-- Background page (3.3.2 / T-9, colour wheel added in F-6 round 3; admin only) -->
-    <string name="frame_background_title">Background</string>
     <string name="frame_background_color">Background colour</string>
     <string name="frame_background_status_solid">Background: solid colour (or import a custom image)</string>
     <string name="frame_background_status_image">Background: the custom image stored on the device (the image is not on this phone, so the red frame shows the base colour only; import it again to preview)</string>
@@ -200,16 +167,6 @@
     <string name="toast_export_fav_failed">Export failed: %1$s</string>
 
     <!-- Middle tab: Home connection info -->
-    <string name="home_connection">Status</string>
-    <string name="home_info_wifi">Wi-Fi name</string>
-    <string name="home_info_ip">IP address</string>
-    <string name="home_info_port">Port</string>
-    <string name="home_info_token">DEVICE_TOKEN</string>
-    <string name="home_info_role">Current role</string>
-    <string name="home_info_folder">Authorized folder</string>
-    <string name="home_value_empty">—</string>
-    <string name="home_role_admin">Admin</string>
-    <string name="home_role_viewer">Selection user</string>
     <string name="action_studio_folder">New client folder</string>
     <string name="toast_studio_folder_created">Created client folder: %1$s</string>
     <string name="toast_studio_folder_failed">Failed to create the folder: %1$s</string>
@@ -226,7 +183,6 @@
     <string name="toast_studio_confirm_failed">Failed to start selecting: %1$s</string>
 
     <!-- Right tab: Settings -->
-    <string name="settings_title">Parameters</string>
     <string name="settings_heartbeat">Heartbeat interval (seconds)</string>
     <string name="settings_session_timeout">Session timeout (minutes)</string>
     <string name="settings_no_op_countdown">No-operation countdown (seconds)</string>
@@ -244,7 +200,6 @@
 
     <!-- Language switch -->
     <string name="settings_language">Language / 语言</string>
-    <string name="settings_language_title">Language</string>
     <string name="language_zh">中文</string>
     <string name="language_en">English</string>
 
@@ -277,4 +232,97 @@
     <string name="about_label_device_version">Device version</string>
     <string name="about_device_version_unknown">Not connected</string>
     <string name="about_copyright">Copyright © %1$s</string>
+
+    <!-- 2026-10-15 mobile UI refactor: added with the Dashboard / Network / Welcome /
+         Scan / Space / Settings / About / Frame Design / Line Color / Backgrounds pages. -->
+    <string name="dashboard_not_connected">Not connected</string>
+    <string name="dashboard_upload_media">Upload Media</string>
+    <string name="dashboard_frame_settings">Frame Settings</string>
+    <string name="dashboard_browse_art">Browse Art</string>
+    <string name="network_title">Network Connection</string>
+    <string name="network_state_connecting">Connecting…</string>
+    <string name="network_state_connected">Connected</string>
+    <string name="network_state_disconnected">Not connected</string>
+    <string name="network_value_unknown">Not available</string>
+    <string name="network_disconnect">Disconnect</string>
+    <string name="network_bind_action">Scan QR code to bind</string>
+    <string name="network_wifi_config_title">Wi-Fi Config</string>
+    <string name="network_wifi_config_summary">Choose the network the frame should join</string>
+    <string name="network_diagnostics_title">Diagnostics</string>
+    <string name="network_note_connecting">Looking for the device…</string>
+    <string name="network_note_can_reconnect">No active session. Tap Reconnect to resume without scanning again.</string>
+    <string name="network_note_no_target">No device has been bound yet. Scan the QR code on the frame screen to bind one.</string>
+    <string name="network_disconnect_confirm_title">Disconnect?</string>
+    <string name="network_disconnect_confirm_message">Disconnect from the frame? You can reconnect later without scanning again.</string>
+    <string name="welcome_logo_mark">LS</string>
+    <string name="welcome_title">Welcome to LightShadowArt</string>
+    <string name="welcome_subtitle">Art Brings Life to Your Space</string>
+    <string name="welcome_choose_language">Choose your language</string>
+    <string name="welcome_get_started">Get Started</string>
+    <string name="scan_bind_title">Bind Your Device</string>
+    <string name="scan_bind_step">Step 2 of 3</string>
+    <string name="scan_bind_message">Scan the QR code on your photo frame to connect.</string>
+    <string name="scan_bind_action">Scan QR Code</string>
+    <string name="scan_bind_illustration_desc">Phone connecting to the frame over Wi-Fi</string>
+    <string name="scan_permission_title">Camera permission needed</string>
+    <string name="scan_permission_message">Scanning needs the camera. Allow it in system settings and try again.</string>
+    <string name="scan_open_settings">Open settings</string>
+    <string name="scan_invalid_qr">This is not a LightShadowArt frame QR code.</string>
+    <string name="space_title">Space Art Gallery</string>
+    <string name="space_toolbar_design">Design</string>
+    <string name="space_toolbar_backgrounds">Backgrounds</string>
+    <string name="space_toolbar_layers">Layers</string>
+    <string name="space_toolbar_reset">Reset</string>
+    <string name="playback_state_browse">Browse</string>
+    <string name="playback_state_static">Static</string>
+    <string name="playback_state_auto">Auto</string>
+    <string name="playback_state_unknown">Unknown</string>
+    <string name="space_edit_need_pause_auto">Pause auto play first</string>
+    <string name="space_edit_need_enter_playback">Enter playback and pause first</string>
+    <string name="space_now_playing_loading">Loading the current frame from the device…</string>
+    <string name="space_now_playing_failed">Could not load the current frame. Tap to retry.</string>
+    <string name="space_now_playing_desc">Current frame on the device</string>
+    <string name="space_pad_entry_desc">Device control pad</string>
+    <string name="space_pad_center_ok">OK</string>
+    <string name="space_pad_center_play">Play</string>
+    <string name="space_pad_center_pause">Pause</string>
+    <string name="space_menu_title">Actions</string>
+    <string name="space_menu_play">Play</string>
+    <string name="space_menu_rotate">Rotate</string>
+    <string name="space_menu_favourite">Favourite</string>
+    <string name="space_menu_favourite_cancel">Remove fav</string>
+    <string name="space_layers_unavailable">Layer editing is not available yet</string>
+    <string name="space_reset_confirm_title">Reset the design?</string>
+    <string name="space_reset_confirm_message">Frame and background go back to the device defaults.</string>
+    <string name="space_reset_done">Design reset</string>
+    <string name="space_reset_failed">Reset failed: %1$s</string>
+    <string name="settings_language_summary">Change app language</string>
+    <string name="settings_advanced_title">Advanced Settings</string>
+    <string name="settings_advanced_summary">Heartbeat, timeout, countdown</string>
+    <string name="settings_about_summary">App and firmware version</string>
+    <string name="settings_disconnect_exit">Disconnect and exit</string>
+    <string name="about_title">About</string>
+    <string name="about_app_icon_desc">App icon</string>
+    <string name="frame_design_title">Frame Design</string>
+    <string name="line_color_title">Line Color</string>
+    <string name="line_color_title_background">Background Color</string>
+    <string name="color_hue">Hue</string>
+    <string name="color_saturation">Saturation</string>
+    <string name="color_value">Brightness</string>
+    <string name="color_done">Done</string>
+    <string name="color_preview_desc">Colour preview</string>
+    <string name="backgrounds_title">Backgrounds</string>
+
+    <!-- 2026-10-15 mobile UI refactor: colour picker read-outs. -->
+    <string name="color_hue_value">Hue %1$d°</string>
+    <string name="color_percent_value">%1$d%%</string>
+
+    <!-- 2026-10-15 mobile UI refactor: Wi-Fi config zones. -->
+    <string name="wifi_connect_device">Connect Your Device</string>
+    <string name="wifi_network_title">Wi-Fi network</string>
+    <string name="wifi_activate_title">Activate Frame</string>
+    <string name="wifi_activate_unsupported">The device does not expose this switch yet, so it is unavailable.</string>
+
+    <!-- 2026-10-15 mobile UI refactor: dashboard hint. -->
+    <string name="dashboard_connect_hint">Scan the QR code to bind and connect</string>
 </resources>

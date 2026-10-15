@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Contents of PageTopBarView (UI PRD §6.3). Merged into the parent LinearLayout so the
+    top bar adds no extra nesting; every secondary page uses it for back arrow + title.
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.LinearLayout">
+
+    <ImageButton
+        android:id="@+id/top_bar_back"
+        android:layout_width="@dimen/icon_touch_size"
+        android:layout_height="@dimen/icon_touch_size"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_back"
+        android:padding="10dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_arrow_back" />
+
+    <TextView
+        android:id="@+id/top_bar_title"
+        style="@style/Text.PageTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1" />
+
+    <TextView
+        android:id="@+id/top_bar_trailing"
+        style="@style/StatusPill"
+        android:layout_marginStart="8dp"
+        android:visibility="gone"
+        tools:ignore="RelativeOverlap" />
+</merge>

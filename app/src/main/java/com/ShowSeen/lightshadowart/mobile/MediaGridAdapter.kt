@@ -11,13 +11,16 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.ShowSeen.lightshadowart.mobile.net.MediaItem
 
-/** 缩略图加载：由 Activity 用会话内的 HTTP 客户端实现（自带内存缓存），回调保证在主线程 */
+/** Thumbnail loading, implemented by the page with the session HTTP client (it owns the cache). */
 interface ThumbnailProvider {
     fun load(item: MediaItem, onResult: (Bitmap?) -> Unit)
 }
 
 /**
- * 空间媒体网格：每行若干列，展示缩略图并可多选删除、标记喜爱（需求 6.1）。
+ * Gallery adapter: rounded square thumbnails with video / favourite / selection markers.
+ *
+ * A long press opens the page's context menu (UI PRD §3.6 F) instead of entering selection mode,
+ * so "long press shows a menu" and "the Select button starts multi-select" never fight each other.
  */
 class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -25,21 +28,21 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
     private val items = mutableListOf<MediaItem>()
     private val selected = mutableSetOf<String>()
 
-    /** 展开后的展示行：启用 [groupByDate] 时会在每个日期前插入一条日期标题 */
+    /** Flattened rows: date headers are inserted first when [groupByDate] is on */
     private val rows = mutableListOf<Row>()
 
-    /** 多选模式：开启后点击为勾选，关闭后点击为切播放 */
+    /** Multi-select: a tap marks the item instead of starting playback */
     var selectionMode: Boolean = false
         private set
 
-    /** 是否按日期分组展示（日期视图），标题显示分组键 yyyy-MM-dd */
+    /** Whether to group by date (date view): the header shows the yyyy-MM-dd group key */
     var groupByDate: Boolean = false
         private set
 
     var onItemClick: ((MediaItem) -> Unit)? = null
     var onItemLongClick: ((MediaItem) -> Unit)? = null
 
-    /** 选择集变化时回调，供界面刷新「删除」按钮可用态 */
+    /** Selection changed, so the page can enable / disable the delete button */
     var onSelectionChanged: ((Int) -> Unit)? = null
 
     fun submit(newItems: List<MediaItem>) {
@@ -51,7 +54,6 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         onSelectionChanged?.invoke(selected.size)
     }
 
-    /** 切换是否按日期分组（日期视图插入日期标题，其余视图不插入） */
     fun setGroupByDate(enabled: Boolean) {
         if (groupByDate == enabled) return
         groupByDate = enabled
@@ -59,7 +61,6 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         notifyDataSetChanged()
     }
 
-    /** 依据 [groupByDate] 展开展示行；同一日期仅在首条前插入一次标题 */
     private fun rebuildRows() {
         rows.clear()
         var lastDate: String? = null
@@ -82,7 +83,7 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
 
     fun selectedPaths(): List<String> = selected.toList()
 
-    /** 已选中条目是否全部带喜爱标记（无选中时返回 false），用于切换「喜爱 / 取消喜爱」按钮文案 */
+    /** Whether every selected item is already a favourite (drives the favourite button label). */
     fun selectedAllFavourite(): Boolean {
         val picked = items.filter { selected.contains(it.path) }
         return picked.isNotEmpty() && picked.all { it.favourite }
@@ -120,15 +121,14 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
                     if (selectionMode) toggleSelection(item) else onItemClick?.invoke(item)
                 }
                 mediaHolder.itemView.setOnLongClickListener {
-                    if (!selectionMode) setSelectionMode(true)
-                    toggleSelection(item)
+                    onItemLongClick?.invoke(item)
                     true
                 }
             }
         }
     }
 
-    /** 展示行：日期标题或媒体条目 */
+    /** A display row: either a date header or a media entry */
     private sealed interface Row {
         data class Header(val date: String) : Row
         data class Media(val item: MediaItem) : Row
@@ -159,12 +159,22 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
             check.isVisible = selected
             overlay.isVisible = selected
 
-            // 用 tag 记录当前绑定的路径：异步缩略图回来时若已被复用则丢弃，避免错图
+            // Tag the bound path: a late thumbnail for a recycled holder must be dropped
             thumb.tag = item.path
             thumb.setImageDrawable(null)
-            thumb.setBackgroundColor(ContextCompat.getColor(itemView.context, R.color.divider))
+            thumb.imageTintList = null
             thumbnails.load(item) { bitmap ->
-                if (thumb.tag == item.path) thumb.setImageBitmap(bitmap)
+                if (thumb.tag != item.path) return@load
+                if (bitmap != null) {
+                    thumb.setImageBitmap(bitmap)
+                } else {
+                    // Failed (or a video with no decoded frame): a clear placeholder, not a blank cell
+                    thumb.setImageResource(R.drawable.ic_image_broken)
+                    thumb.imageTintList = ContextCompat.getColorStateList(
+                        itemView.context,
+                        R.color.text_disabled
+                    )
+                }
             }
         }
     }

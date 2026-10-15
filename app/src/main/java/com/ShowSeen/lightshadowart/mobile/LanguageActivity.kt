@@ -2,19 +2,18 @@ package com.ShowSeen.lightshadowart.mobile
 
 import android.os.Bundle
 import android.view.View
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 
 /**
- * 语言选择二级页面（F-3：用户要求由弹窗改为二级页面）。
+ * Language selection page (F-3: promoted from a dialog to its own page).
  *
- * 选中即生效：AppCompat 会因语言变化重建 Activity，本页与设置页文案随之切换；
- * 持久化由 Manifest 里 `AppLocalesMetadataHolderService` 的 `autoStoreLocales` 负责。
+ * Choosing takes effect at once: AppCompat applies the locale and recreates the activity, so the
+ * copy on this page and in Settings switches immediately. Persistence is handled by
+ * `AppLocalesMetadataHolderService` with `autoStoreLocales` in the manifest.
  */
 class LanguageActivity : AppCompatActivity() {
 
@@ -22,11 +21,13 @@ class LanguageActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_language)
 
-        findViewById<ImageButton>(R.id.btn_language_back).setOnClickListener { finish() }
+        findViewById<PageTopBarView>(R.id.language_top_bar).apply {
+            setTitle(getString(R.string.settings_language))
+            setOnBackClickListener { finish() }
+        }
 
-        // 与 MainActivity.LANGUAGE_TAGS 同序同值（其 LANGUAGE_ZH / LANGUAGE_EN 即 "zh" / "en"）
-        bind(R.id.row_language_zh, R.id.iv_language_check_zh, "zh")
-        bind(R.id.row_language_en, R.id.iv_language_check_en, "en")
+        bind(R.id.row_language_zh, R.id.iv_language_check_zh, LANGUAGE_ZH)
+        bind(R.id.row_language_en, R.id.iv_language_check_en, LANGUAGE_EN)
     }
 
     private fun bind(rowId: Int, checkId: Int, tag: String) {
@@ -39,9 +40,13 @@ class LanguageActivity : AppCompatActivity() {
     }
 
     /**
-     * 当前界面实际使用的语言。
-     * 取自资源配置而不是 AppCompat 存的值：用户没手动选过时跟随系统语言，
-     * 此时只有资源配置能反映真正在显示的是哪一套文案（与 MainActivity 同口径）。
+     * The language actually in use, read from the resources: with no manual choice the app follows
+     * the system language, and only the configuration reflects that.
      */
     private fun currentLanguageTag(): String = resources.configuration.locales[0].language
+
+    private companion object {
+        const val LANGUAGE_ZH = "zh"
+        const val LANGUAGE_EN = "en"
+    }
 }

@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Connection page (UI PRD §3.4): the single place to see the connection state and to
+    reconnect / disconnect / configure Wi-Fi. All values come from the real session, so an
+    unknown state says so instead of pretending to be connected.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_gradient"
+    android:orientation="vertical">
+
+    <com.ShowSeen.lightshadowart.mobile.PageTopBarView
+        android:id="@+id/network_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="8dp"
+        android:paddingEnd="@dimen/card_padding" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/page_horizontal_padding"
+            android:paddingTop="@dimen/item_gap"
+            android:paddingEnd="@dimen/page_horizontal_padding"
+            android:paddingBottom="@dimen/page_vertical_padding">
+
+            <!-- Connection state -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_padding">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:id="@+id/view_network_dot"
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@drawable/dot_session" />
+
+                        <ImageView
+                            android:id="@+id/iv_network_state_icon"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginStart="8dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_warning"
+                            app:tint="@color/status_destructive" />
+
+                        <TextView
+                            android:id="@+id/tv_network_state"
+                            style="@style/Text.TitleMedium"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:text="@string/network_state_disconnected" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_network_name"
+                        style="@style/Text.Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/item_gap"
+                        android:text="@string/network_value_unknown" />
+
+                    <TextView
+                        android:id="@+id/tv_network_address"
+                        style="@style/Text.Hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/network_value_unknown" />
+
+                    <TextView
+                        android:id="@+id/tv_network_note"
+                        style="@style/Text.Hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Reconnect / Disconnect. Disconnect is the destructive one and asks first. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_network_reconnect"
+                style="@style/PillButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/section_gap"
+                android:text="@string/action_refresh" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_network_bind"
+                style="@style/PillButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap"
+                android:text="@string/network_bind_action"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_network_disconnect"
+                style="@style/PillButton.Destructive"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap"
+                android:text="@string/network_disconnect" />
+
+            <!-- Wi-Fi configuration entry (Settings no longer offers one) -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/section_gap">
+
+                <LinearLayout
+                    android:id="@+id/row_network_wifi"
+                    style="@style/Settings.Row.Clickable">
+
+                    <ImageView
+                        style="@style/Settings.Row.Icon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_network"
+                        app:tint="@color/primary_blue" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/item_gap"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Text.RowTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/network_wifi_config_title" />
+
+                        <TextView
+                            style="@style/Text.Hint"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/network_wifi_config_summary" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Collapsible diagnostics, so a user can screenshot the whole picture at once -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/section_gap">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/row_network_diagnostics"
+                        style="@style/Settings.Row.Clickable">
+
+                        <TextView
+                            style="@style/Text.RowTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/network_diagnostics_title" />
+
+                        <ImageView
+                            android:id="@+id/iv_network_diagnostics"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_network_diagnostics"
+                        style="@style/Text.Hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="@dimen/card_padding"
+                        android:paddingEnd="@dimen/card_padding"
+                        android:paddingBottom="@dimen/card_padding"
+                        android:textIsSelectable="true"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

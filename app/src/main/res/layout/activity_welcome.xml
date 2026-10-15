@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    First-run guide, step 1 (UI PRD §3.1): logo, welcome title, the two language cards and the
+    Get Started button. The whole page scrolls so a small screen or a large system font can never
+    hide the button behind the navigation bar.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_gradient"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/page_horizontal_padding"
+        android:paddingTop="48dp"
+        android:paddingEnd="@dimen/page_horizontal_padding"
+        android:paddingBottom="@dimen/page_vertical_padding">
+
+        <!-- Brand mark: a light cyan disc with the LS monogram -->
+        <TextView
+            android:id="@+id/tv_welcome_logo"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="@drawable/bg_logo_disc"
+            android:gravity="center"
+            android:text="@string/welcome_logo_mark"
+            android:textColor="@color/primary_blue"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_welcome_title"
+            style="@style/Text.TitleLarge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/page_vertical_padding"
+            android:fontFamily="serif"
+            android:gravity="center"
+            android:text="@string/welcome_title" />
+
+        <TextView
+            android:id="@+id/tv_welcome_subtitle"
+            style="@style/Text.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/welcome_subtitle"
+            android:textColor="@color/text_secondary" />
+
+        <TextView
+            style="@style/Text.Hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:gravity="center"
+            android:text="@string/welcome_choose_language" />
+
+        <LinearLayout
+            android:id="@+id/card_language_en"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/section_gap"
+            android:background="@drawable/bg_card_outline"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="60dp"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/card_padding"
+            android:paddingEnd="@dimen/card_padding">
+
+            <TextView
+                android:id="@+id/tv_language_en"
+                style="@style/Text.RowTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/language_en" />
+
+            <ImageView
+                android:id="@+id/iv_language_en_check"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_check_circle"
+                android:visibility="invisible"
+                app:tint="@color/primary_blue" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/card_language_zh"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/item_gap"
+            android:background="@drawable/bg_card_outline"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="60dp"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/card_padding"
+            android:paddingEnd="@dimen/card_padding">
+
+            <TextView
+                android:id="@+id/tv_language_zh"
+                style="@style/Text.RowTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/language_zh" />
+
+            <ImageView
+                android:id="@+id/iv_language_zh_check"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_check_circle"
+                android:visibility="invisible"
+                app:tint="@color/primary_blue" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_welcome_start"
+            style="@style/PillButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:text="@string/welcome_get_started" />
+    </LinearLayout>
+</ScrollView>

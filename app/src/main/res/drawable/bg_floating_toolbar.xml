@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Floating gallery toolbar: translucent white rounded bar above the artwork -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/surface_translucent" />
+    <stroke
+        android:width="@dimen/divider_width"
+        android:color="@color/divider_stroke" />
+    <corners android:radius="@dimen/corner_large" />
+</shape>

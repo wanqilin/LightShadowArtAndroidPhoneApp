@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Spacing / corner / type scale tokens (UI PRD v2.0 §2.2, §2.3).
+
+    Layouts and styles must reference these instead of literal dp / sp values so the
+    spacing system stays consistent across pages.
+-->
+<resources>
+
+    <!-- Corners -->
+    <dimen name="corner_large">22dp</dimen>
+    <dimen name="corner_pill">28dp</dimen>
+    <dimen name="corner_image">8dp</dimen>
+    <dimen name="corner_small">12dp</dimen>
+
+    <!-- Page rhythm -->
+    <dimen name="page_horizontal_padding">20dp</dimen>
+    <dimen name="page_vertical_padding">24dp</dimen>
+    <dimen name="card_padding">18dp</dimen>
+    <dimen name="section_gap">14dp</dimen>
+    <dimen name="item_gap">10dp</dimen>
+
+    <!-- Cards -->
+    <dimen name="card_elevation">2dp</dimen>
+    <dimen name="divider_width">1dp</dimen>
+
+    <!-- Controls: 48dp is the minimum touch target (UI PRD §5) -->
+    <dimen name="touch_min_height">48dp</dimen>
+    <dimen name="top_bar_height">56dp</dimen>
+    <dimen name="icon_touch_size">44dp</dimen>
+    <dimen name="icon_badge_box">40dp</dimen>
+
+    <!-- Media grid -->
+    <dimen name="space_grid_spacing">6dp</dimen>
+
+    <!-- Gallery overlays -->
+    <dimen name="floating_toolbar_height">66dp</dimen>
+    <dimen name="control_pad_diameter">168dp</dimen>
+    <dimen name="control_pad_key_size">52dp</dimen>
+    <dimen name="control_pad_center_size">56dp</dimen>
+    <dimen name="control_pad_entry_size">52dp</dimen>
+    <dimen name="control_pad_entry_bottom_margin">88dp</dimen>
+    <dimen name="control_pad_panel_bottom_margin">150dp</dimen>
+    <dimen name="gallery_bottom_inset">92dp</dimen>
+
+    <!-- Type scale -->
+    <dimen name="text_title_large">24sp</dimen>
+    <dimen name="text_page_title">20sp</dimen>
+    <dimen name="text_title_medium">18sp</dimen>
+    <dimen name="text_row_title">16sp</dimen>
+    <dimen name="text_button">15sp</dimen>
+    <dimen name="text_body">14sp</dimen>
+    <dimen name="text_hint">13sp</dimen>
+    <dimen name="text_label">12sp</dimen>
+</resources>

@@ -1,91 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 语言选择二级页面（F-3）：由设置页「语言」入口进入，选中即生效 -->
+<!-- Language page (F-3): a secondary page rather than a dialog; choosing takes effect immediately -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/surface"
+    android:background="@drawable/bg_app_gradient"
     android:orientation="vertical">
 
-    <LinearLayout
+    <com.ShowSeen.lightshadowart.mobile.PageTopBarView
+        android:id="@+id/language_top_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/card"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="12dp">
+        android:paddingStart="8dp"
+        android:paddingEnd="@dimen/card_padding" />
 
-        <ImageButton
-            android:id="@+id/btn_language_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/action_back"
-            android:padding="8dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_arrow_back" />
-
-        <TextView
-            style="@style/Text.PageTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/settings_language" />
-    </LinearLayout>
-
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
+        style="@style/SurfaceCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:background="@drawable/bg_card"
-        android:orientation="vertical">
+        android:layout_marginStart="@dimen/page_horizontal_padding"
+        android:layout_marginTop="@dimen/item_gap"
+        android:layout_marginEnd="@dimen/page_horizontal_padding">
 
         <LinearLayout
-            android:id="@+id/row_language_zh"
-            style="@style/Settings.Row.Clickable">
-
-            <TextView
-                style="@style/Text.RowTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/language_zh" />
-
-            <ImageView
-                android:id="@+id/iv_language_check_zh"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_check" />
-        </LinearLayout>
-
-        <View
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginStart="16dp"
-            android:background="@color/divider" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-        <LinearLayout
-            android:id="@+id/row_language_en"
-            style="@style/Settings.Row.Clickable">
+            <LinearLayout
+                android:id="@+id/row_language_zh"
+                style="@style/Settings.Row.Clickable">
 
-            <TextView
-                style="@style/Text.RowTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/language_en" />
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/language_zh" />
 
-            <ImageView
-                android:id="@+id/iv_language_check_en"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_check" />
+                <ImageView
+                    android:id="@+id/iv_language_check_zh"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_check_circle"
+                    app:tint="@color/primary_blue" />
+            </LinearLayout>
+
+            <View style="@style/Settings.Divider" />
+
+            <LinearLayout
+                android:id="@+id/row_language_en"
+                style="@style/Settings.Row.Clickable">
+
+                <TextView
+                    style="@style/Text.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/language_en" />
+
+                <ImageView
+                    android:id="@+id/iv_language_check_en"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_check_circle"
+                    app:tint="@color/primary_blue" />
+            </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 </LinearLayout>

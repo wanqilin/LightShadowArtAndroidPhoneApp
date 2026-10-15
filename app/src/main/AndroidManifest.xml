@@ -52,8 +52,12 @@
         android:theme="@style/Theme.LightShadowArtPhone"
         android:usesCleartextTraffic="true">
 
+        <!--
+            First-run guide step 1 is the launcher: it forwards straight to the Dashboard when a
+            device has already been bound, so the guide is only ever seen once per install.
+        -->
         <activity
-            android:name=".MainActivity"
+            android:name=".WelcomeActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>
@@ -61,6 +65,30 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- First-run guide step 2: scan the frame QR code; hands the payload to the Dashboard -->
+        <activity
+            android:name=".BindDeviceActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Dashboard and the Space / Settings pages it hosts (no bottom tab bar) -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Network Connection: the only place to reconnect / disconnect / configure Wi-Fi -->
+        <activity
+            android:name=".NetworkConnectionActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- About and version; opened from Settings -->
+        <activity
+            android:name=".AboutActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".WifiConfigActivity"
@@ -73,21 +101,21 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <!-- 自定义边框编辑页（需求 3.3.2 / T-9）：仅从「空间」页的管理员入口进入 -->
+        <!-- Frame Design (UI PRD §3.8): reached from the Space toolbar, administrator + static playback only -->
         <activity
-            android:name=".FrameStyleActivity"
+            android:name=".FrameDesignActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <!-- 添加边框二级页面（F-6）：取代原「边框预设」弹窗，同样只从空间页的管理员入口进入 -->
+        <!-- Backgrounds (UI PRD §3.10): wallpaper / solid fill behind the photo -->
         <activity
-            android:name=".AddFrameActivity"
+            android:name=".BackgroundsActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <!-- 边框颜色二级页面（F-6 ③）：从「添加边框」页的颜色行进入，色盘 + R/G/B -->
+        <!-- Line colour picker (UI PRD §3.9): HSV sub-page of Frame Design and Backgrounds -->
         <activity
-            android:name=".FrameColorActivity"
+            android:name=".LineColorActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 

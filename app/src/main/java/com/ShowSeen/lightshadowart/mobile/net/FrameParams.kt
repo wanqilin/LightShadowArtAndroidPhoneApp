@@ -47,8 +47,8 @@ data class FrameParams(
         const val DEFAULT_LINE_COLOR: Int = 0xFFD32F2F.toInt()
         /** 与设备端 `DeviceConfig.FRAME_LINE_WIDTH_DP` 一致 */
         const val DEFAULT_LINE_WIDTH_DP: Float = 2f
-        /** 与设备端 `DeviceConfig.FRAME_PAPER_COLOR` 一致（米白） */
-        const val DEFAULT_PAPER_COLOR: Int = 0xFFFDFBF7.toInt()
+        /** 与设备端 `DeviceConfig.FRAME_PAPER_COLOR` 一致（纯黑，2026-10-15 起） */
+        const val DEFAULT_PAPER_COLOR: Int = 0xFF000000.toInt()
         /** 与设备端 `DeviceConfig.FRAME_PAPER_ENABLED` 一致 */
         const val DEFAULT_PAPER_ENABLED: Boolean = true
         /** 与设备端 `DeviceConfig.FRAME_BACKGROUND_IMAGE` 一致 */

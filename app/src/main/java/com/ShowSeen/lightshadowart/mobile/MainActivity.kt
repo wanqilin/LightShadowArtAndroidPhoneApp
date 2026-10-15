@@ -1,116 +1,108 @@
 package com.ShowSeen.lightshadowart.mobile
 
-import android.Manifest
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
 import android.net.Uri
-import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Bundle
-import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.util.LruCache
 import android.view.View
 import android.widget.EditText
-import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
-import androidx.core.os.LocaleListCompat
 import androidx.core.view.isVisible
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.tabs.TabLayout
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
-import com.ShowSeen.lightshadowart.mobile.net.AuthResult
-import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
 import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
 import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
-import com.ShowSeen.lightshadowart.mobile.net.DiscoveredDevice
 import com.ShowSeen.lightshadowart.mobile.net.FileTooLargeException
-import com.ShowSeen.lightshadowart.mobile.net.HotspotConnector
+import com.ShowSeen.lightshadowart.mobile.net.FramePatch
 import com.ShowSeen.lightshadowart.mobile.net.MediaItem
-import com.ShowSeen.lightshadowart.mobile.net.NsdDiscoverer
+import com.ShowSeen.lightshadowart.mobile.net.PlaybackMode
+import com.ShowSeen.lightshadowart.mobile.net.PlaybackState
 import com.ShowSeen.lightshadowart.mobile.net.QrPayloadParser
 import com.ShowSeen.lightshadowart.mobile.net.SessionExpiredException
 import com.ShowSeen.lightshadowart.mobile.net.toUploadSource
-import com.ShowSeen.lightshadowart.mobile.scan.ScanActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.Inet4Address
-import java.util.UUID
-import kotlin.coroutines.resume
 
 /**
- * 主界面：标题栏 + 底部三栏标签（空间 / 主页 / 设置），需求第 6 节。
+ * Main Dashboard and the two sub-pages it hosts: Space Art Gallery and Settings.
  *
- * - 空间：浏览模式（沉浸/日期/喜爱）、媒体网格、设备控制按键、喜爱与多选删除（需求 6.1）
- * - 主页：连接状态与信息、扫码连接、上传、Wi-Fi 下发、刷新网络、断开（需求第 6 节）
- * - 设置：心跳/会话超时/无操作倒计时/自动播放，仅管理员可配（需求 6.3）
+ * The Dashboard is the navigation surface (Network Connection / Upload Media / Frame Settings /
+ * Browse Art); there is deliberately no bottom tab bar. The session plumbing lives in
+ * [DeviceActivity]; this class owns what the pages show and the device actions they trigger.
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : DeviceActivity() {
 
-    // 标题栏与三栏容器
-    private lateinit var viewSessionDot: View
-    private lateinit var viewSpace: View
-    private lateinit var viewHome: View
-    private lateinit var viewSettings: View
+    private enum class Page { DASHBOARD, SPACE, SETTINGS }
 
-    // 空间
-    private lateinit var tabsBrowseMode: TabLayout
-    private lateinit var btnSpaceRefresh: MaterialButton
-    private lateinit var btnSpaceSelect: MaterialButton
-    private lateinit var btnSpaceDelete: MaterialButton
-    private lateinit var btnSpaceExportFav: MaterialButton
-    private lateinit var btnCtrlFavourite: MaterialButton
-    private lateinit var tvMediaEmpty: TextView
-    private lateinit var recyclerMedia: RecyclerView
-
-    // 主页
-    private lateinit var tvDevice: TextView
-    private lateinit var tvSession: TextView
-    private lateinit var tvWifiHint: TextView
-    private lateinit var btnScan: ImageButton
-    private lateinit var btnPick: MaterialButton
-    private lateinit var btnWifi: MaterialButton
-    private lateinit var btnRefresh: MaterialButton
-    private lateinit var btnDisconnect: MaterialButton
+    // Dashboard
+    private lateinit var cardNetwork: View
+    private lateinit var cardUpload: View
+    private lateinit var cardSettings: View
+    private lateinit var cardGallery: View
+    private lateinit var cardUploads: View
+    private lateinit var tvDashboardConnection: TextView
+    private lateinit var tvDashboardNetwork: TextView
+    private lateinit var viewDashboardDot: View
     private lateinit var btnStudioFolder: MaterialButton
     private lateinit var tvUploadSummary: TextView
-    private lateinit var tvUploadEmpty: TextView
 
-    // 设置
+    // Space
+    private lateinit var spaceTopBar: PageTopBarView
+    private lateinit var pillImmersive: TextView
+    private lateinit var pillDate: TextView
+    private lateinit var pillFavourite: TextView
+    private lateinit var btnSpaceRefresh: MaterialButton
+    private lateinit var btnSpaceSelect: MaterialButton
+    private lateinit var btnSpaceFavourite: MaterialButton
+    private lateinit var btnSpaceDelete: MaterialButton
+    private lateinit var btnSpaceExportFav: MaterialButton
+    private lateinit var rowSpaceSelection: View
+    private lateinit var recyclerMedia: RecyclerView
+    private lateinit var spaceEmptyState: View
+    private lateinit var nowPlaying: View
+    private lateinit var ivNowPlaying: ImageView
+    private lateinit var progressNowPlaying: ProgressBar
+    private lateinit var tvNowPlayingStatus: TextView
+    private lateinit var toolbarDesign: View
+    private lateinit var toolbarBackgrounds: View
+    private lateinit var toolbarLayers: View
+    private lateinit var toolbarReset: View
+    private lateinit var controlPad: DeviceControlPadView
+
+    // Settings
+    private lateinit var settingsTopBar: PageTopBarView
+    private lateinit var settingsParamsTopBar: PageTopBarView
+    private lateinit var settingsMenu: View
+    private lateinit var settingsParamsPage: View
+    private lateinit var btnSettingsLanguage: View
+    private lateinit var btnSettingsParams: View
+    private lateinit var btnSettingsAbout: View
+    private lateinit var btnSettingsLogout: View
+    private lateinit var tvSettingsLanguageValue: TextView
+    private lateinit var tvSettingsHint: TextView
+    private lateinit var tvSettingsIdentity: TextView
     private lateinit var etHeartbeat: EditText
     private lateinit var etSessionTimeout: EditText
     private lateinit var etNoOpCountdown: EditText
     private lateinit var etAutoPlay: EditText
     private lateinit var btnSettingsSave: MaterialButton
-
-    /** 参数行及其紧随的分隔线：按模式整行显隐（T-20），隐藏时连同分隔线一起隐藏 */
     private lateinit var rowSettingsHeartbeat: View
     private lateinit var rowSettingsSessionTimeout: View
     private lateinit var rowSettingsNoOpCountdown: View
@@ -120,74 +112,34 @@ class MainActivity : AppCompatActivity() {
     private lateinit var dividerSettingsNoOpCountdown: View
     private lateinit var dividerSettingsAutoPlay: View
 
-    /** 「退出账号」＝移交管理权（需求 5.7.2 / T-7），仅管理员可见 */
-    private lateinit var btnSettingsLogout: View
-
-    /** 中英文切换（需求 5.7.3 / T-8）入口与当前语言显示 */
-    private lateinit var btnSettingsLanguage: View
-    private lateinit var tvSettingsLanguageValue: TextView
-
-    /**
-     * 「添加边框」入口（F-6，取代原「边框预设」），进二级页面，仅管理员可见。
-     *
-     * 空间页原来并排的「风格」入口（T-9 的自定义背景图编辑）已按用户口径删除：
-     * 该功能整体挪到「添加边框」页的「背景色」下级页（[FrameStyleActivity]），
-     * 因此这里不再有第二个入口与对应的 findViewById / 显隐逻辑。
-     */
-    private lateinit var btnAddFrame: MaterialButton
-
-    private lateinit var tvSettingsHint: TextView
-    private lateinit var tvSettingsIdentity: TextView
-
-    // 设置：一级菜单与二级页面（参数设置 / 关于）
-    private lateinit var settingsMenu: View
-    private lateinit var settingsParamsPage: View
-    private lateinit var settingsAboutPage: View
-    private lateinit var btnSettingsParams: View
-    private lateinit var btnSettingsAbout: View
-    private lateinit var btnSettingsParamsBack: View
-    private lateinit var btnSettingsAboutBack: View
-    private lateinit var tvAboutMobileVersion: TextView
-    private lateinit var tvAboutDeviceVersion: TextView
-    private lateinit var tvAboutCopyright: TextView
+    private lateinit var viewDashboard: View
+    private lateinit var viewSpace: View
+    private lateinit var viewSettings: View
 
     private val uploadAdapter = UploadAdapter()
     private lateinit var mediaAdapter: MediaGridAdapter
-    private lateinit var client: DeviceClient
-    private lateinit var hotspotConnector: HotspotConnector
-    private lateinit var nsdDiscoverer: NsdDiscoverer
 
     private var uploadJob: Job? = null
     private var mediaJob: Job? = null
 
-    /** 断线自动重连任务（需求 5.2 / T-5）：30 秒窗口内静默重试鉴权 */
-    private var autoReconnectJob: Job? = null
+    /** Polls the device playback state while the gallery is on screen (U-11 / U-14). */
+    private var playbackJob: Job? = null
 
-    /** 缩略图内存缓存：按条目数计（每张算 1），避免大图过多占用内存 */
+    /** Last playback state the device reported; null means "not known yet" (offline / loading). */
+    private var playbackState: PlaybackState? = null
+
+    /** Path currently drawn in the Now Playing area, to avoid reloading the same frame. */
+    private var nowPlayingPath: String = ""
+
+    /** Thumbnail cache, counted by entry: one entry per image, so a big library cannot blow memory. */
     private val thumbCache = LruCache<String, Bitmap>(THUMB_CACHE_ITEMS)
 
-    /** 用户点了「刷新连接」：正在扫描局域网并连接，按钮显示「连接中…」且保持置灰 */
-    private var connecting = false
+    private var currentPage = Page.DASHBOARD
+    private var currentBrowseMode = BROWSER_MODE_IMMERSIVE
 
-    /** 正在把已失效的热点地址自动迁移到局域网地址；与 [connecting] 分开，避免改动「刷新连接」按钮的状态 */
-    private var migratingToLan = false
-
-    /** 上次自动迁移的时间戳，给心跳失败触发的兜底迁移限流，避免反复空跑发现 */
-    private var lastLanMigrateAtMs = 0L
-
-    /** 等待热点权限授予后再连接的设备（权限回调里使用） */
-    private var pendingEndpoint: DeviceEndpoint? = null
-
-    /** 空间栏「设备控制」按键，统一按会话可用性启用/禁用 */
-    private val spaceControlIds = intArrayOf(
-        R.id.btn_ctrl_up, R.id.btn_ctrl_down, R.id.btn_ctrl_left, R.id.btn_ctrl_right,
-        R.id.btn_ctrl_confirm, R.id.btn_ctrl_exit, R.id.btn_ctrl_rotate, R.id.btn_ctrl_favourite
-    )
-
-    /** 空间缩略图加载：按会话从设备拉取原始字节并解码，命中缓存直接回调 */
     private val thumbnailProvider = object : ThumbnailProvider {
         override fun load(item: MediaItem, onResult: (Bitmap?) -> Unit) {
-            // 视频缩略图不解析原始字节，避免为大文件拉取整段视频
+            // Videos are not fetched in full just to draw a frame
             if (item.isVideo) {
                 onResult(null)
                 return
@@ -204,11 +156,9 @@ class MainActivity : AppCompatActivity() {
             }
             lifecycleScope.launch {
                 val bytes = client.mediaRaw(endpoint, sessionId, item.path)
-                val bitmap = if (bytes == null) {
-                    null
-                } else {
+                val bitmap = bytes?.let {
                     withContext(Dispatchers.Default) {
-                        runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                        runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull()
                     }
                 }
                 if (bitmap != null) thumbCache.put(item.path, bitmap)
@@ -217,33 +167,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 扫码：设备端待机页二维码 */
-    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
-        val contents = result.contents
-        if (contents.isNullOrBlank()) {
-            toast(getString(R.string.toast_scan_cancelled))
-            return@registerForActivityResult
-        }
-        QrPayloadParser.parse(contents)
-            .onSuccess { connect(it) }
-            .onFailure { toast(it.message ?: getString(R.string.toast_manual_input_invalid)) }
-    }
-
-    /** 接入设备热点所需的运行时权限 */
-    private val wifiPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { grants ->
-        val endpoint = pendingEndpoint
-        pendingEndpoint = null
-        if (endpoint == null) return@registerForActivityResult
-        if (grants.values.all { it }) {
-            connectHotspot(endpoint)
-        } else {
-            toast(getString(R.string.toast_hotspot_permission_denied))
-        }
-    }
-
-    /** 相册多选：图片与视频都支持 */
+    /** Media picker: photos and videos, then straight into the upload queue */
     private val pickLauncher = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK_COUNT)
     ) { uris ->
@@ -255,73 +179,107 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         bindViews()
-
-        SessionStore.init(this)
-        client = DeviceClient(contentResolver)
-        hotspotConnector = HotspotConnector.get(this)
-        nsdDiscoverer = NsdDiscoverer(this)
-
-        setupMediaGrid()
-        setupBottomNav()
+        setupDashboard()
         setupSpace()
-        setupHome()
         setupSettings()
 
         updateUploadSummary()
         renderSession()
+        showPage(Page.DASHBOARD)
         startHeartbeat()
+
+        handleScannedEndpoint(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleScannedEndpoint(intent)
     }
 
     override fun onResume() {
         super.onResume()
         renderSession()
-        // 会话也可能在本页之外失效（配网页拿到 401 后会调 SessionStore.clear()）：
-        // 回到前台时若已无会话，就把缩略图缓存清掉，否则重新连接会先显示上一次会话的图（需求 5.4 / T-6）
+        // The session can end while another page is on top (the Wi-Fi page clears it on a 401):
+        // drop the thumbnail cache so a reconnect cannot show the previous session's pictures.
         if (!SessionStore.isActive) thumbCache.evictAll()
-        // 从 Wi‑Fi 配置页回来时设备可能已换到局域网，本地却还记着已失效的热点地址，自动迁移一次
         migrateToLan()
+        if (currentPage == Page.SPACE) startPlaybackPolling()
     }
 
-    override fun onDestroy() {
-        nsdDiscoverer.cancel()
-        super.onDestroy()
+    override fun onPause() {
+        super.onPause()
+        stopPlaybackPolling()
+    }
+
+    /** Android back first returns to the Dashboard; only from there does it leave the app. */
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onBackPressed() {
+        if (currentPage != Page.DASHBOARD) {
+            showPage(Page.DASHBOARD)
+            return
+        }
+        super.onBackPressed()
     }
 
     // -----------------------------------------------------------------------
-    // 界面装配
+    // View wiring
     // -----------------------------------------------------------------------
 
     private fun bindViews() {
-        viewSessionDot = findViewById(R.id.view_session_dot)
+        viewDashboard = findViewById(R.id.view_dashboard)
         viewSpace = findViewById(R.id.view_space)
-        viewHome = findViewById(R.id.view_home)
         viewSettings = findViewById(R.id.view_settings)
 
-        tabsBrowseMode = findViewById(R.id.tabs_browse_mode)
-        btnSpaceRefresh = findViewById(R.id.btn_space_refresh)
-        btnSpaceSelect = findViewById(R.id.btn_space_select)
-        btnSpaceDelete = findViewById(R.id.btn_space_delete)
-        btnSpaceExportFav = findViewById(R.id.btn_space_export_fav)
-        btnCtrlFavourite = findViewById(R.id.btn_ctrl_favourite)
-        tvMediaEmpty = findViewById(R.id.tv_media_empty)
-        recyclerMedia = findViewById(R.id.recycler_media)
-
-        tvDevice = findViewById(R.id.tv_device)
-        tvSession = findViewById(R.id.tv_session)
-        tvWifiHint = findViewById(R.id.tv_wifi_hint)
-        btnScan = findViewById(R.id.btn_scan)
-        btnPick = findViewById(R.id.btn_pick)
-        btnWifi = findViewById(R.id.btn_wifi)
-        btnRefresh = findViewById(R.id.btn_refresh)
-        btnDisconnect = findViewById(R.id.btn_disconnect)
+        cardNetwork = findViewById(R.id.card_network)
+        cardUpload = findViewById(R.id.card_upload)
+        cardSettings = findViewById(R.id.card_settings)
+        cardGallery = findViewById(R.id.card_gallery)
+        cardUploads = findViewById(R.id.card_uploads)
+        tvDashboardConnection = findViewById(R.id.tv_dashboard_connection)
+        tvDashboardNetwork = findViewById(R.id.tv_dashboard_network)
+        viewDashboardDot = findViewById(R.id.view_dashboard_dot)
         btnStudioFolder = findViewById(R.id.btn_studio_folder)
         tvUploadSummary = findViewById(R.id.tv_upload_summary)
-        tvUploadEmpty = findViewById(R.id.tv_upload_empty)
 
+        spaceTopBar = findViewById(R.id.space_top_bar)
+        pillImmersive = findViewById(R.id.pill_space_immersive)
+        pillDate = findViewById(R.id.pill_space_date)
+        pillFavourite = findViewById(R.id.pill_space_favourite)
+        btnSpaceRefresh = findViewById(R.id.btn_space_refresh)
+        btnSpaceSelect = findViewById(R.id.btn_space_select)
+        btnSpaceFavourite = findViewById(R.id.btn_space_favourite)
+        btnSpaceDelete = findViewById(R.id.btn_space_delete)
+        btnSpaceExportFav = findViewById(R.id.btn_space_export_fav)
+        rowSpaceSelection = findViewById(R.id.row_space_selection)
+        recyclerMedia = findViewById(R.id.recycler_media)
+        spaceEmptyState = findViewById(R.id.space_empty_state)
+        nowPlaying = findViewById(R.id.now_playing)
+        ivNowPlaying = findViewById(R.id.iv_now_playing)
+        progressNowPlaying = findViewById(R.id.progress_now_playing)
+        tvNowPlayingStatus = findViewById(R.id.tv_now_playing_status)
+        toolbarDesign = findViewById(R.id.btn_toolbar_design)
+        toolbarBackgrounds = findViewById(R.id.btn_toolbar_backgrounds)
+        toolbarLayers = findViewById(R.id.btn_toolbar_layers)
+        toolbarReset = findViewById(R.id.btn_toolbar_reset)
+        controlPad = findViewById(R.id.device_control_pad)
+
+        settingsTopBar = findViewById(R.id.settings_top_bar)
+        settingsParamsTopBar = findViewById(R.id.settings_params_top_bar)
+        settingsMenu = findViewById(R.id.settings_menu)
+        settingsParamsPage = findViewById(R.id.settings_params_page)
+        btnSettingsLanguage = findViewById(R.id.btn_settings_language)
+        btnSettingsParams = findViewById(R.id.btn_settings_params)
+        btnSettingsAbout = findViewById(R.id.btn_settings_about)
+        btnSettingsLogout = findViewById(R.id.btn_settings_logout)
+        tvSettingsLanguageValue = findViewById(R.id.tv_settings_language_value)
+        tvSettingsHint = findViewById(R.id.tv_settings_hint)
+        tvSettingsIdentity = findViewById(R.id.tv_settings_identity)
         etHeartbeat = findViewById(R.id.et_heartbeat)
         etSessionTimeout = findViewById(R.id.et_session_timeout)
         etNoOpCountdown = findViewById(R.id.et_no_op_countdown)
         etAutoPlay = findViewById(R.id.et_auto_play)
+        btnSettingsSave = findViewById(R.id.btn_settings_save)
         rowSettingsHeartbeat = findViewById(R.id.row_settings_heartbeat)
         rowSettingsSessionTimeout = findViewById(R.id.row_settings_session_timeout)
         rowSettingsNoOpCountdown = findViewById(R.id.row_settings_no_op_countdown)
@@ -330,121 +288,15 @@ class MainActivity : AppCompatActivity() {
         dividerSettingsSessionTimeout = findViewById(R.id.divider_settings_session_timeout)
         dividerSettingsNoOpCountdown = findViewById(R.id.divider_settings_no_op_countdown)
         dividerSettingsAutoPlay = findViewById(R.id.divider_settings_auto_play)
-        btnSettingsSave = findViewById(R.id.btn_settings_save)
-        btnSettingsLogout = findViewById(R.id.btn_settings_logout)
-        btnAddFrame = findViewById(R.id.btn_add_frame)
-        btnSettingsLanguage = findViewById(R.id.btn_settings_language)
-        tvSettingsLanguageValue = findViewById(R.id.tv_settings_language_value)
-        tvSettingsHint = findViewById(R.id.tv_settings_hint)
-        tvSettingsIdentity = findViewById(R.id.tv_settings_identity)
-
-        settingsMenu = findViewById(R.id.settings_menu)
-        settingsParamsPage = findViewById(R.id.settings_params_page)
-        settingsAboutPage = findViewById(R.id.settings_about_page)
-        btnSettingsParams = findViewById(R.id.btn_settings_params)
-        btnSettingsAbout = findViewById(R.id.btn_settings_about)
-        btnSettingsParamsBack = findViewById(R.id.btn_settings_params_back)
-        btnSettingsAboutBack = findViewById(R.id.btn_settings_about_back)
-        tvAboutMobileVersion = findViewById(R.id.tv_about_mobile_version)
-        tvAboutDeviceVersion = findViewById(R.id.tv_about_device_version)
-        tvAboutCopyright = findViewById(R.id.tv_about_copyright)
     }
 
-    private fun setupBottomNav() {
-        val nav: BottomNavigationView = findViewById(R.id.bottom_nav)
-        nav.setOnItemSelectedListener { item ->
-            showTab(item.itemId)
-            true
+    private fun setupDashboard() {
+        cardNetwork.setOnClickListener {
+            startActivity(Intent(this, NetworkConnectionActivity::class.java))
         }
-        // 默认停在「主页」
-        showTab(R.id.tab_home)
-        nav.selectedItemId = R.id.tab_home
-    }
-
-    private fun setupMediaGrid() {
-        mediaAdapter = MediaGridAdapter(thumbnailProvider)
-        mediaAdapter.onItemClick = { item ->
-            // 设备端 /control 只认动作名，无法指定具体图片，点击即让设备进入播放
-            sendControl(CTRL_PLAY)
-            toast(getString(R.string.toast_media_playing))
-            Log.i(TAG, "media click: ${item.path}")
-        }
-        mediaAdapter.onSelectionChanged = { count ->
-            btnSpaceDelete.isEnabled = mediaAdapter.selectionMode && count > 0
-            updateFavouriteButton()
-        }
-        recyclerMedia.adapter = mediaAdapter
-        // 默认落在沉浸视图，与设备端默认浏览视图一致（T-16）
-        applyMediaLayout(BROWSER_MODE_IMMERSIVE)
-        updateSelectButton()
-    }
-
-    private fun setupSpace() {
-        // 三视图标签（需求 5.3 / T-11）：下标顺序必须与 BROWSER_MODES 一致
-        tabsBrowseMode.addTab(
-            tabsBrowseMode.newTab().setText(R.string.space_mode_immersive), true
-        )
-        tabsBrowseMode.addTab(tabsBrowseMode.newTab().setText(R.string.space_mode_date))
-        tabsBrowseMode.addTab(tabsBrowseMode.newTab().setText(R.string.space_mode_favourite))
-        tabsBrowseMode.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) {
-                val mode = browseModeOf(tab.position)
-                // 上方标签与下方缩略图连动：切标签即按该视图重排列表，并把模式同步给设备端
-                applyMediaLayout(mode)
-                reloadMedia()
-                sendBrowseMode(mode)
-            }
-
-            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
-
-            override fun onTabReselected(tab: TabLayout.Tab) = Unit
-        })
-        btnSpaceRefresh.setOnClickListener {
-            if (SessionStore.isActive) reloadMedia() else requireSession()
-        }
-        btnSpaceSelect.setOnClickListener { toggleSelectionMode() }
-        btnSpaceDelete.setOnClickListener { deleteSelected() }
-        btnSpaceExportFav.setOnClickListener { exportFavourite() }
-        btnAddFrame.setOnClickListener { openAddFrameEditor() }
-        findViewById<MaterialButton>(R.id.btn_ctrl_rotate).setOnClickListener {
-            sendControl(CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
-        }
-        btnCtrlFavourite.setOnClickListener { favouriteSelected() }
-        mapOf(
-            R.id.btn_ctrl_up to CTRL_UP,
-            R.id.btn_ctrl_down to CTRL_DOWN,
-            R.id.btn_ctrl_left to CTRL_LEFT,
-            R.id.btn_ctrl_right to CTRL_RIGHT,
-            R.id.btn_ctrl_confirm to CTRL_CONFIRM,
-            R.id.btn_ctrl_exit to CTRL_EXIT
-        ).forEach { (id, action) ->
-            findViewById<MaterialButton>(id).setOnClickListener { sendControl(action) }
-        }
-    }
-
-    /**
-     * 按浏览模式切换移动端媒体排列（需求 3.1.2.1 / 6.1）：
-     * 日期视图为单列列表并按日期分组（每组前显示日期标题，由近到远），
-     * 沉浸 / 喜爱视图为每行 [MEDIA_SPAN_COUNT] 个的网格，
-     * 与设备端「日期为列表、其余为网格」保持一致。
-     */
-    private fun applyMediaLayout(mode: Int) {
-        val dateMode = mode == BROWSER_MODE_DATE
-        // 日期视图在每组前插入日期标题，列表呈现由近到远
-        mediaAdapter.setGroupByDate(dateMode)
-        recyclerMedia.layoutManager = if (dateMode) {
-            LinearLayoutManager(this)
-        } else {
-            GridLayoutManager(this, MEDIA_SPAN_COUNT)
-        }
-    }
-
-    private fun setupHome() {
-        btnScan.setOnClickListener { startScan() }
-        btnPick.setOnClickListener { pickMedia() }
-        btnWifi.setOnClickListener { openWifiConfig() }
-        btnRefresh.setOnClickListener { refresh() }
-        btnDisconnect.setOnClickListener { disconnect() }
+        cardUpload.setOnClickListener { pickMedia() }
+        cardSettings.setOnClickListener { showPage(Page.SETTINGS) }
+        cardGallery.setOnClickListener { showPage(Page.SPACE) }
         btnStudioFolder.setOnClickListener { createStudioFolder() }
 
         findViewById<RecyclerView>(R.id.recycler_uploads).apply {
@@ -453,684 +305,242 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupSpace() {
+        spaceTopBar.setTitle(getString(R.string.space_title))
+        spaceTopBar.setOnBackClickListener { showPage(Page.DASHBOARD) }
+
+        pillImmersive.setOnClickListener { selectBrowseMode(BROWSER_MODE_IMMERSIVE) }
+        pillDate.setOnClickListener { selectBrowseMode(BROWSER_MODE_DATE) }
+        pillFavourite.setOnClickListener { selectBrowseMode(BROWSER_MODE_FAVOURITE) }
+
+        mediaAdapter = MediaGridAdapter(thumbnailProvider)
+        mediaAdapter.onItemClick = { item ->
+            // The device control API takes actions only, so a tap asks the device to start playing
+            sendControl(CTRL_PLAY)
+            toast(getString(R.string.toast_media_playing))
+            Log.i(TAG, "media click: ${item.path}")
+        }
+        mediaAdapter.onItemLongClick = { item -> showItemMenu(item) }
+        mediaAdapter.onSelectionChanged = { count ->
+            btnSpaceDelete.isEnabled = mediaAdapter.selectionMode && count > 0
+            rowSpaceSelection.isVisible = mediaAdapter.selectionMode
+            updateFavouriteButton()
+        }
+        recyclerMedia.adapter = mediaAdapter
+        applyMediaLayout(BROWSER_MODE_IMMERSIVE)
+        renderFilterPills(BROWSER_MODE_IMMERSIVE)
+        updateSelectButton()
+
+        btnSpaceRefresh.setOnClickListener {
+            if (SessionStore.isActive) reloadMedia() else requireSession()
+        }
+        btnSpaceSelect.setOnClickListener { toggleSelectionMode() }
+        btnSpaceFavourite.setOnClickListener { favouriteSelected() }
+        btnSpaceDelete.setOnClickListener { deleteSelected() }
+        btnSpaceExportFav.setOnClickListener { exportFavourite() }
+
+        toolbarDesign.setOnClickListener { openFrameDesign() }
+        toolbarBackgrounds.setOnClickListener { openBackgrounds() }
+        toolbarLayers.setOnClickListener { toast(getString(R.string.space_layers_unavailable)) }
+        toolbarReset.setOnClickListener { confirmResetDesign() }
+
+        controlPad.onAction = { action -> sendControl(action) }
+        controlPad.onCenterClick = { onControlPadCenter() }
+        controlPad.onExpandedChanged = { expanded ->
+            // Keep the pad from covering the last row while it is expanded
+            val extra = if (expanded) resources.getDimensionPixelSize(R.dimen.control_pad_diameter) else 0
+            recyclerMedia.setPadding(
+                recyclerMedia.paddingLeft,
+                recyclerMedia.paddingTop,
+                recyclerMedia.paddingRight,
+                resources.getDimensionPixelSize(R.dimen.gallery_bottom_inset) + extra
+            )
+        }
+
+        nowPlaying.setOnClickListener { onControlPadCenter() }
+    }
+
     private fun setupSettings() {
-        btnSettingsParams.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_PARAMS) }
-        btnSettingsAbout.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_ABOUT) }
-        btnSettingsParamsBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
-        btnSettingsAboutBack.setOnClickListener { showSettingsSubPage(SETTINGS_PAGE_MENU) }
-        btnSettingsSave.setOnClickListener { saveSettings() }
-        btnSettingsLogout.setOnClickListener { confirmLogout() }
+        settingsTopBar.setTitle(getString(R.string.tab_settings))
+        settingsTopBar.setOnBackClickListener { showPage(Page.DASHBOARD) }
+        settingsParamsTopBar.setTitle(getString(R.string.settings_advanced_title))
+        settingsParamsTopBar.setOnBackClickListener { showSettingsPage(SETTINGS_PAGE_MENU) }
+
         btnSettingsLanguage.setOnClickListener {
-            // F-3：语言改为二级页面（原为弹窗）
             startActivity(Intent(this, LanguageActivity::class.java))
         }
+        btnSettingsParams.setOnClickListener { showSettingsPage(SETTINGS_PAGE_PARAMS) }
+        btnSettingsAbout.setOnClickListener {
+            startActivity(Intent(this, AboutActivity::class.java))
+        }
+        btnSettingsLogout.setOnClickListener { confirmLogout() }
+        btnSettingsSave.setOnClickListener { saveSettings() }
     }
 
-    /** 设置栏二级页面切换：一级菜单 / 参数设置 / 关于 */
-    private fun showSettingsSubPage(page: Int) {
-        settingsMenu.isVisible = page == SETTINGS_PAGE_MENU
-        settingsParamsPage.isVisible = page == SETTINGS_PAGE_PARAMS
-        settingsAboutPage.isVisible = page == SETTINGS_PAGE_ABOUT
-        if (page == SETTINGS_PAGE_ABOUT) renderAbout()
-    }
+    // -----------------------------------------------------------------------
+    // Page switching
+    // -----------------------------------------------------------------------
 
-    /** 底部标签切换：三栏同一时刻仅显示一个 */
-    private fun showTab(tabId: Int) {
-        viewSpace.isVisible = tabId == R.id.tab_space
-        viewHome.isVisible = tabId == R.id.tab_home
-        viewSettings.isVisible = tabId == R.id.tab_settings
+    private fun showPage(page: Page) {
+        currentPage = page
+        viewDashboard.isVisible = page == Page.DASHBOARD
+        viewSpace.isVisible = page == Page.SPACE
+        viewSettings.isVisible = page == Page.SETTINGS
 
-        when (tabId) {
-            R.id.tab_space -> reloadMedia()
-            R.id.tab_settings -> {
-                // 每次进入设置栏回到一级菜单
-                showSettingsSubPage(SETTINGS_PAGE_MENU)
+        when (page) {
+            Page.DASHBOARD -> {
+                stopPlaybackPolling()
+                renderDashboard()
+            }
+
+            Page.SPACE -> {
+                renderFilterPills(currentBrowseMode)
+                reloadMedia()
+                startPlaybackPolling()
+            }
+
+            Page.SETTINGS -> {
+                stopPlaybackPolling()
+                showSettingsPage(SETTINGS_PAGE_MENU)
                 loadSettings()
             }
         }
     }
 
+    private fun showSettingsPage(page: Int) {
+        settingsMenu.isVisible = page == SETTINGS_PAGE_MENU
+        settingsParamsPage.isVisible = page == SETTINGS_PAGE_PARAMS
+    }
+
     // -----------------------------------------------------------------------
-    // 连接与会话
+    // Session rendering (DeviceActivity callbacks)
     // -----------------------------------------------------------------------
 
-    private fun startScan() {
-        scanLauncher.launch(
-            ScanOptions()
-                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                .setCaptureActivity(ScanActivity::class.java)
-                .setPrompt(getString(R.string.scan_prompt))
-                .setBeepEnabled(false)
-                .setOrientationLocked(true)
-        )
-    }
-
-    /**
-     * 连接入口（扫码）：二维码带设备热点时先接入热点，再换取 session_id。
-     * 接入热点在 Android 13+ 需要 NEARBY_WIFI_DEVICES（旧版本为定位权限），故先申请权限。
-     */
-    private fun connect(endpoint: DeviceEndpoint) {
-        val missing = requiredWifiPermissions().filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isNotEmpty()) {
-            pendingEndpoint = endpoint
-            wifiPermissionLauncher.launch(missing.toTypedArray())
-            return
-        }
-        connectHotspot(endpoint)
-    }
-
-    private fun connectHotspot(endpoint: DeviceEndpoint) {
-        if (!endpoint.hasHotspot) {
-            // 旧版二维码没有热点信息，直接按设备地址鉴权
-            authenticate(endpoint)
-            return
-        }
-
-        // 手机已经在设备热点上就不再向系统请求接入：对着**已连接**的网络发 WifiNetworkSpecifier
-        // 请求，本平台（Android 16）实测会弹一次系统页、等满 60 秒才回 onUnavailable，
-        // 而这张网已经连上了，再请求一次不可能让链路变得更好——只会把用户白卡一分钟。
-        // 直接按当前链路鉴权，探不通也交给 authenticate 的失败提示走（比等 60 秒弹框有用）。
-        if (isOnWifi(endpoint.apSsid)) {
-            Log.i(TAG, "already on hotspot ${endpoint.apSsid}, skip requestNetwork")
-            lifecycleScope.launch {
-                if (!client.probe(endpoint)) {
-                    Log.w(TAG, "hotspot ${endpoint.apSsid} not reachable yet, authenticate anyway")
-                }
-                SessionStore.rememberWifiSsid(endpoint.apSsid)
-                SessionStore.rememberApCredentials(endpoint)
-                authenticate(endpoint)
-            }
-            return
-        }
-
-        requestHotspot(endpoint)
-    }
-
-    /** 请系统接入设备热点并换取会话（[connectHotspot] 的常规路径） */
-    private fun requestHotspot(endpoint: DeviceEndpoint) {
-        tvDevice.text = getString(R.string.state_joining_hotspot, endpoint.apSsid)
-        Log.i(TAG, "connectHotspot: ssid=${endpoint.apSsid}, device=${endpoint.baseUrl}")
-        hotspotConnector.connect(endpoint.apSsid, endpoint.apPassword) { result ->
-            result
-                .onSuccess {
-                    Log.i(TAG, "hotspot ok: ${endpoint.apSsid}")
-                    // 二维码带 ap_ssid 就说明设备此刻是自建热点形态，手机也刚接入这个热点，
-                    // 「设备已接入的网络」应记成热点名；否则会一直留着上一次下发过的局域网名
-                    SessionStore.rememberWifiSsid(endpoint.apSsid)
-                    // 记下热点凭据：之后设备若又回到热点形态，「刷新连接」可用它回连，无需重新扫码
-                    SessionStore.rememberApCredentials(endpoint)
-                    authenticate(endpoint)
-                }
-                .onFailure { error ->
-                    Log.e(TAG, "hotspot failed: ${endpoint.apSsid}", error)
-                    tvDevice.text = getString(R.string.state_disconnected)
-                    // 自动接入失败时给出退路：提示手动连热点后重试
-                    showConnectError(
-                        getString(
-                            R.string.toast_hotspot_failed,
-                            endpoint.apSsid,
-                            error.message.orEmpty(),
-                            endpoint.host
-                        ),
-                        endpoint
-                    )
-                }
-        }
-    }
-
-    /** 用 device_token 换取会话，保存角色/文件夹/参数，并立即心跳一次拿到准确剩余时间 */
-    private fun authenticate(endpoint: DeviceEndpoint) {
-        tvDevice.text = getString(R.string.state_connecting, endpoint.baseUrl)
-        lifecycleScope.launch {
-            // 门店模式（T-12）：本次选片会话独有的 token 随鉴权上传，
-            // 设备端据此建「年月日+流水号+token」文件夹，并在回执的 folder 里回传该文件夹名
-            val studioToken =
-                if (endpoint.mode == DeviceEndpoint.MODE_STUDIO) newStudioToken() else ""
-            val result = client.auth(endpoint, studioToken).getOrElse { error ->
-                Log.e(TAG, "auth failed: ${endpoint.baseUrl}", error)
-                connecting = false
-                tvSession.text = getString(R.string.state_no_session)
-                // 连接失败也要把按钮态交回统一规则，否则「连接中…」永远亮不回来
-                renderSession()
-                showConnectError(getString(R.string.toast_connect_failed, error.message.orEmpty()), endpoint)
-                return@launch
-            }
-            applyAuthResult(endpoint, result, announceStudioFolder = true)
-        }
-    }
-
-    /**
-     * 鉴权成功后的统一收尾：保存会话、对齐剩余时间、刷界面与列表。
-     * 扫码 / 刷新连接（[authenticate]）与断线自动重连（[scheduleAutoReconnect]）共用同一套落地逻辑。
-     *
-     * @param announceStudioFolder 门店模式下是否弹「请摄影师把照片放入此文件夹」（T-12）：
-     *        扫码与刷新连接时为 true；断线自动重连时为 false——那个文件夹名已经告知过用户了。
-     */
-    private suspend fun applyAuthResult(
-        endpoint: DeviceEndpoint,
-        result: AuthResult,
-        announceStudioFolder: Boolean
-    ) {
-        Log.i(TAG, "auth ok: ${endpoint.baseUrl}, session=${result.sessionId}, role=${result.role}")
-        // 以设备端回执为准对齐交互模式（真机验证补）：设备是模式的唯一权威（编译期常量），
-        // 手机侧记的值可能已过期（设备换过模式后，只认二维码里的旧值就必须重新扫码）。
-        // 回读后重连即可自愈；只在回执给了合法模式时才覆盖。
-        val effective = if (result.mode == DeviceEndpoint.MODE_PERSONAL ||
-            result.mode == DeviceEndpoint.MODE_STUDIO
-        ) {
-            endpoint.copy(mode = result.mode)
-        } else {
-            endpoint
-        }
-        SessionStore.save(
-            effective,
-            result.sessionId,
-            DEFAULT_SESSION_TTL_MS,
-            result.role,
-            result.folder,
-            result.params,
-            result.deviceVersion
-        )
-        client.heartbeat(effective, result.sessionId).onSuccess { heartbeat ->
-            SessionStore.touch(heartbeat.expiresInMs)
-            SessionStore.updateParams(heartbeat.params)
-        }
-        connecting = false
-        mediaAdapter.setSelectionMode(false)
-        updateSelectButton()
+    override fun onSessionChanged() {
         renderSession()
-        reloadMedia()
-        // 门店模式（T-12）：把设备端建好的文件夹名告诉用户，等摄影师放好照片再确认开始选片
-        if (announceStudioFolder && SessionStore.inStudioMode) promptStudioFolder(result.folder)
     }
 
-    /**
-     * 断线自动重连（需求 5.2 / T-5）。
-     *
-     * 会话已建立、但设备一时请求不通（设备重启 / 热点抖动 / 刚换网）时，在
-     * [AUTO_RECONNECT_WINDOW_MS] 内每隔 [AUTO_RECONNECT_RETRY_MS] 静默重试一次鉴权；
-     * 目标一旦可达就自动恢复会话，用户不必点「刷新连接」。
-     *
-     * 重连**不带门店会话 token**：接着用本次会话已建好的客户文件夹，否则每次重连都会在
-     * 设备上多建一个空文件夹（T-12）。
-     * 窗口结束仍不通就安静放手——设备可能真的下线了，留给用户手动刷新或重新扫码。
-     * 用户主动断开 / 手动刷新会取消本任务（见 [disconnect] / [refresh]），避免把刚结束的会话又拉起来。
-     */
-    private fun scheduleAutoReconnect() {
-        if (autoReconnectJob?.isActive == true) return
-        val endpoint = SessionStore.endpoint ?: return
-        autoReconnectJob = lifecycleScope.launch {
-            val deadline = System.currentTimeMillis() + AUTO_RECONNECT_WINDOW_MS
-            Log.i(TAG, "autoReconnect: 进入重连窗口，目标 ${endpoint.baseUrl}")
-            while (System.currentTimeMillis() < deadline) {
-                delay(AUTO_RECONNECT_RETRY_MS)
-                val result = client.auth(endpoint).getOrNull() ?: continue
-                applyAuthResult(endpoint, result, announceStudioFolder = false)
-                Log.i(TAG, "autoReconnect: 已自动恢复会话 ${result.sessionId}")
-                toast(getString(R.string.toast_auto_reconnected))
-                return@launch
-            }
-            Log.i(TAG, "autoReconnect: 重连窗口结束仍未连通，交回用户手动「刷新连接」")
-        }
-    }
-
-    /** 门店会话独有 token：取 UUID 前若干位，长度与设备端 DeviceConfig.STUDIO_TOKEN_MAX_LENGTH 对应 */
-    private fun newStudioToken(): String =
-        UUID.randomUUID().toString().replace("-", "").take(STUDIO_TOKEN_LENGTH)
-
-    /**
-     * 门店模式（T-12）：扫码建夹后提示「请摄影师把照片放入此文件夹：<文件夹名>」，
-     * 用户点「确认开始选片」才通知设备端进入选片（此前设备屏上一直显示同一个文件夹名）。
-     */
-    private fun promptStudioFolder(folder: String) {
-        if (folder.isEmpty()) return
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.dialog_studio_folder_title)
-            .setMessage(getString(R.string.dialog_studio_folder_message, folder))
-            .setCancelable(false)
-            .setPositiveButton(R.string.dialog_studio_folder_confirm) { _, _ -> confirmStudioSelection() }
-            .show()
-    }
-
-    /** 通知设备端「确认开始选片」，并落到空间页查看该文件夹的缩略图 */
-    private fun confirmStudioSelection() {
-        val endpoint = SessionStore.endpoint ?: return
-        val sessionId = SessionStore.sessionId ?: return
-        lifecycleScope.launch {
-            client.confirmStudioSelection(endpoint, sessionId)
-                .onFailure { toast(getString(R.string.toast_studio_confirm_failed, it.message.orEmpty())) }
-            reloadMedia()
-            findViewById<BottomNavigationView>(R.id.bottom_nav).selectedItemId = R.id.tab_space
-        }
-    }
-
-    /**
-     * 打开「添加边框」二级页面（F-6，取代原「边框预设」弹窗）。
-     *
-     * 参数读写都在页面里完成（读设备端当前值 → 改 → 下发）；这里只做会话检查与跳转。
-     * 背景（纯色 / 自定义图片）由该页的「背景色」行进入 [FrameStyleActivity] 配置，
-     * 空间页不再单独提供「风格」入口。
-     */
-    private fun openAddFrameEditor() {
-        if (!SessionStore.isActive) {
-            requireSession()
-            return
-        }
-        startActivity(Intent(this, AddFrameActivity::class.java))
-    }
-
-    /** 自动接入设备热点所需的权限：13+ 用「附近的设备」，10~12 用定位，更低版本无需权限 */    private fun requiredWifiPermissions(): List<String> = when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
-            listOf(Manifest.permission.NEARBY_WIFI_DEVICES)
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
-            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        else -> emptyList()
-    }
-
-    /**
-     * 刷新：先在局域网内重新发现设备（设备已接入手机下发的 Wi-Fi 时）；
-     * 若局域网里没有设备，说明设备仍在自建热点形态，用记下的热点凭据回连热点，
-     * 用户不必重新扫码。
-     */
-    private fun refresh() {
-        if (connecting) return
-
-        // 手动刷新接管：停掉正在跑的自动重连，避免两路同时鉴权各建一个会话（T-5）
-        autoReconnectJob?.cancel()
-
-        // 手机还挂在设备热点上：直接用记下的设备地址重建会话，不再请求系统连一次热点
-        // （避免重复弹确认框）
-        val apEndpoint = SessionStore.apEndpoint()
-        if (apEndpoint != null && hotspotConnector.isConnected) {
-            connecting = true
-            renderSession()
-            authenticate(apEndpoint)
-            return
-        }
-
-        connecting = true
-        tvDevice.text = getString(R.string.state_refreshing)
-        renderSession()
-
-        // 设备切到 STA 后原来的热点就不存在了，先解绑，避免请求仍绑在已失效的网络上
-        hotspotConnector.release()
-
-        lifecycleScope.launch {
-            val devices = probeLan(DISCOVER_TIMEOUT_MS)
-
-            // 同一局域网可能有多台设备：优先选上次连接过的那台
-            val device = devices.firstOrNull { it.deviceToken == SessionStore.lastDeviceToken }
-                ?: devices.firstOrNull()
-            if (device != null) {
-                // 设备能被局域网发现，才说明它真的接入了手机现在所在的这个 Wi‑Fi，此时才记录
-                currentSsid().takeIf { it.isNotEmpty() }?.let { SessionStore.rememberWifiSsid(it) }
-                // 找到设备就直接开始连接，按钮保持「连接中…」，成功后由 renderSession() 变为「已连接」
-                authenticate(device.toEndpoint())
-                return@launch
-            }
-
-            // 局域网里没有设备：设备没接入 Wi‑Fi，多半又回到了自建热点形态，回连设备热点
-            reconnectHotspot()
-        }
-    }
-
-    /**
-     * 自动把已失效的热点地址迁移到局域网地址。
-     *
-     * 设备接入手机下发的 Wi‑Fi 后会关掉自建热点并换到新网段，本地若仍记着热点地址，
-     * 主页信息框就会一直显示热点 IP 与热点名。这里在局域网里重新发现一次设备，
-     * 找到就把会话地址换成局域网地址并重新鉴权，信息框随之刷新。
-     *
-     * 找不到什么都不做（设备可能仍在热点形态、或不在同一网络），也不自动回连热点——
-     * 那会弹系统确认框打扰用户，留给用户点「刷新连接」决定。
-     */
-    private fun migrateToLan() {
-        if (connecting || migratingToLan) return
-
-        val endpoint = SessionStore.endpoint ?: return
-        // 已是局域网地址，无需迁移
-        if (!endpoint.hasHotspot) return
-        // 手机还挂在设备热点上说明设备仍是热点形态，不能当它换过网
-        if (hotspotConnector.isConnected) return
-
-        val now = System.currentTimeMillis()
-        if (now - lastLanMigrateAtMs < LAN_MIGRATE_COOLDOWN_MS) return
-        lastLanMigrateAtMs = now
-
-        migratingToLan = true
-        Log.i(TAG, "migrateToLan: 热点地址 ${endpoint.baseUrl} 可能已失效，尝试在局域网内重新发现设备")
-        lifecycleScope.launch {
-            // 设备热点已不存在，先解绑，否则对新网络的请求仍会绑在失效的热点上
-            hotspotConnector.release()
-            val devices = probeLan(DISCOVER_TIMEOUT_MS)
-            migratingToLan = false
-
-            val device = devices.firstOrNull { it.deviceToken == SessionStore.lastDeviceToken }
-                ?: devices.firstOrNull()
-            if (device == null) {
-                Log.i(TAG, "migrateToLan: 局域网内未发现设备，保留原地址 ${endpoint.baseUrl}")
-                return@launch
-            }
-
-            Log.i(TAG, "migrateToLan: 设备已在局域网 ${device.host}:${device.port}")
-            currentSsid().takeIf { it.isNotEmpty() }?.let { SessionStore.rememberWifiSsid(it) }
-            authenticate(device.toEndpoint())
-        }
-    }
-
-    /**
-     * 局域网内没发现设备时回连设备自建热点。
-     *
-     * 优先用记下的热点凭据（含设备地址）；旧记录只存了「设备已接入的网络」而没存热点凭据时，
-     * 只要这个名字就是设备热点名，就按默认热点密码回连，设备地址等连上热点后从热点网关解析，
-     * 用户仍然不必重新扫码。连热点名都没有才提示重新扫码。
-     */
-    private fun reconnectHotspot() {
-        val saved = SessionStore.apEndpoint()
-        val ssid = saved?.apSsid
-            ?: SessionStore.lastWifiSsid.takeIf { it.startsWith(AP_SSID_PREFIX) }.orEmpty()
-
-        if (ssid.isEmpty()) {
-            connecting = false
-            renderSession()
-            Log.i(TAG, "reconnectHotspot: 无可用热点名（lastWifiSsid=${SessionStore.lastWifiSsid}），需重新扫码")
-            toast(
-                if (SessionStore.lastWifiSsid.isEmpty()) {
-                    getString(R.string.toast_refresh_not_found_without_wifi)
-                } else {
-                    getString(R.string.toast_refresh_not_found, SessionStore.lastWifiSsid)
-                }
-            )
-            return
-        }
-
-        val password = saved?.apPassword?.takeIf { it.isNotEmpty() } ?: AP_PASSWORD
-        val knownHost = saved?.host.orEmpty()
-        tvDevice.text = getString(R.string.state_joining_hotspot, ssid)
-        Log.i(TAG, "reconnectHotspot: ssid=$ssid, knownHost=$knownHost")
-        hotspotConnector.connect(ssid, password) { result ->
-            result
-                .onSuccess {
-                    // 设备自己就是热点网关，因此**优先用当前网关**：Android 每次开机都会重新随机化
-                    // 热点网段（真机验证：上次记的是 192.168.23.167，重启后实际是 192.168.222.104），
-                    // 记下的旧地址必然失效，回连后照样连不上设备。
-                    // 只有在取不到网关时才退回记下的地址。
-                    val host = hotspotConnector.boundGateway() ?: knownHost.ifEmpty { null }
-                    if (host == null) {
-                        Log.e(TAG, "reconnectHotspot: 已接入热点 $ssid 但解析不到设备地址")
-                        connecting = false
-                        renderSession()
-                        showError(getString(R.string.toast_hotspot_gateway_unknown, ssid))
-                        return@onSuccess
-                    }
-                    val endpoint = DeviceEndpoint(
-                        host = host,
-                        port = DeviceEndpoint.DEFAULT_PORT,
-                        deviceToken = SessionStore.lastDeviceToken,
-                        mode = SessionStore.lastDeviceMode,
-                        apSsid = ssid,
-                        apPassword = password
-                    )
-                    Log.i(TAG, "reconnectHotspot ok: ssid=$ssid, device=${endpoint.baseUrl}")
-                    SessionStore.rememberApCredentials(endpoint)
-                    SessionStore.rememberWifiSsid(ssid)
-                    authenticate(endpoint)
-                }
-                .onFailure { error ->
-                    Log.e(TAG, "reconnectHotspot failed: $ssid", error)
-                    connecting = false
-                    renderSession()
-                    val endpoint = saved ?: DeviceEndpoint(
-                        host = knownHost,
-                        port = DeviceEndpoint.DEFAULT_PORT,
-                        deviceToken = SessionStore.lastDeviceToken,
-                        mode = SessionStore.lastDeviceMode,
-                        apSsid = ssid,
-                        apPassword = password
-                    )
-                    showConnectError(
-                        if (knownHost.isEmpty()) {
-                            getString(R.string.toast_hotspot_failed_brief, ssid, error.message.orEmpty())
-                        } else {
-                            getString(
-                                R.string.toast_hotspot_failed,
-                                ssid,
-                                error.message.orEmpty(),
-                                knownHost
-                            )
-                        },
-                        endpoint
-                    )
-                }
-        }
-    }
-
-    private fun handleSessionExpired() {
-        SessionStore.clear()
-        // 会话已结束，别再让自动重连把它拉起来（T-5）
-        autoReconnectJob?.cancel()
-        // 会话已结束，缩略图缓存属于上一次会话，必须一起清掉（需求 5.4 / T-6）
+    override fun onSessionCleared() {
+        // The cached thumbnails belong to the session that just ended
         thumbCache.evictAll()
         mediaAdapter.submit(emptyList())
         updateMediaEmpty()
-        renderSession()
-        toast(getString(R.string.toast_session_expired))
+        playbackState = null
+        nowPlayingPath = ""
     }
 
-    /**
-     * 「退出账号」＝移交管理权（需求 5.7.2 / T-7）：家庭、门店共用同一入口，仅管理员可见。
-     * 确认后走 [disconnect] 的移交分支，设备端会解除绑定并主动弹出二维码。
-     */
-    private fun confirmLogout() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.settings_logout)
-            .setMessage(R.string.toast_logout_confirm)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(android.R.string.ok) { _, _ -> disconnect(handover = true) }
-            .show()
+    override fun onSessionEstablished() {
+        mediaAdapter.setSelectionMode(false)
+        updateSelectButton()
+        reloadMedia()
     }
 
-    /**
-     * 用户主动断开：结束设备端会话，设备待机页据此回到出码态，手机可以交给下一个人重新扫码。
-     *
-     * @param handover 管理员「退出账号」（需求 5.7.2 / T-7）：走 `/session/handover`，
-     *        设备端除结束会话外还会解除绑定并主动弹出二维码，供其它人扫码接管管理员。
-     */
-    private fun disconnect(handover: Boolean = false) {
-        btnDisconnect.isEnabled = false
-        tvDevice.text = getString(R.string.state_disconnecting)
-
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-
-        lifecycleScope.launch {
-            val error = if (endpoint != null && sessionId != null) {
-                if (handover) {
-                    client.handoverSession(endpoint, sessionId).exceptionOrNull()
-                } else {
-                    client.endSession(endpoint, sessionId).exceptionOrNull()
-                }
-            } else {
-                null
-            }
-
-            hotspotConnector.release()
-            SessionStore.clear()
-            // 用户主动断开后不得再自动重连（T-5）
-            autoReconnectJob?.cancel()
-            // 主动断开同样是会话结束：清掉缩略图缓存（需求 5.4 / T-6）
-            thumbCache.evictAll()
-            mediaAdapter.submit(emptyList())
-            updateMediaEmpty()
-            renderSession()
-
-            // 401 说明设备端会话本就不存在（已超时或已结束），效果与断开一致，不必报错
-            toast(
-                when {
-                    endpoint == null || sessionId == null -> getString(R.string.toast_disconnected_local)
-                    error == null || error is SessionExpiredException ->
-                        getString(if (handover) R.string.toast_logout_done else R.string.toast_disconnected)
-                    else -> getString(R.string.toast_disconnect_failed, error.message.orEmpty())
-                }
-            )
-        }
+    override fun onStudioSelectionConfirmed() {
+        reloadMedia()
+        showPage(Page.SPACE)
     }
 
-    /**
-     * 心跳循环：刷新剩余时间与最新参数；设备端会话默认 12 小时。
-     *
-     * 心跳不能跟着主页的可见性停摆：配网页 [WifiConfigActivity] 会盖住主页，配网「下发 + 等设备入网」
-     * 全程可能接近一分钟，设备端 [disconnectTimeoutMs] 只有 60 秒，主页一旦非 RESUMED 就停心跳，
-     * 设备会主动把会话判为断开；等用户配完网回到主页，第一个心跳直接 401，界面被清成「未连接设备」，
-     * 于是局域网地址和网络名都刷不出来。故这里用 [lifecycleScope] 常驻跑心跳（Activity 销毁才取消），
-     * 只把「刷界面」和「自动迁移到局域网」这类会跟配网页抢网络/视图的动作限制在主页可见时执行。
-     */
-    private fun startHeartbeat() {
-        lifecycleScope.launch {
-            while (true) {
-                val endpoint = SessionStore.endpoint
-                val sessionId = SessionStore.sessionId
-                if (endpoint != null && sessionId != null) {
-                    client.heartbeat(endpoint, sessionId)
-                        .onSuccess {
-                            SessionStore.touch(it.expiresInMs)
-                            SessionStore.updateParams(it.params)
-                        }
-                        .onFailure {
-                            if (it is SessionExpiredException) {
-                                handleSessionExpired()
-                            } else {
-                                // 请求不通：设备可能重启 / 换网 / 抖动。仍在热点地址上时先按老逻辑
-                                // 尝试迁移到局域网；迁移没接手（地址已是局域网地址等）才走断线自动重连（T-5）
-                                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                                    migrateToLan()
-                                }
-                                if (!migratingToLan) scheduleAutoReconnect()
-                            }
-                        }
-                    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) renderSession()
-                }
-                delay(HEARTBEAT_INTERVAL_MS)
-            }
-        }
-    }
+    override fun canMigrateToLan(): Boolean = currentPage == Page.DASHBOARD
 
     private fun renderSession() {
+        renderDashboard()
+        renderSpaceAvailability()
+        renderSettingsRole()
+        controlPad.setPadEnabled(SessionStore.isActive)
+    }
+
+    /** Dashboard network card: state word, dot, network name and device address (real values only). */
+    private fun renderDashboard() {
         val endpoint = SessionStore.endpoint
         val active = endpoint != null && SessionStore.isActive
 
-        if (!active) {
-            tvDevice.text = getString(R.string.state_disconnected)
-            tvSession.text = getString(R.string.state_no_session)
-        } else {
-            tvDevice.text = getString(
-                R.string.state_connected,
-                endpoint!!.baseUrl,
-                getString(endpoint.modeNameRes)
+        tvDashboardConnection.setText(
+            when {
+                connecting -> R.string.network_state_connecting
+                active -> R.string.network_state_connected
+                else -> R.string.dashboard_not_connected
+            }
+        )
+        viewDashboardDot.backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(
+                this,
+                when {
+                    connecting -> R.color.primary_blue
+                    active -> R.color.status_connected
+                    else -> R.color.status_destructive
+                }
             )
-            tvSession.text = getString(
-                R.string.state_session_ready,
-                getString(endpoint.modeNameRes),
-                formatRemaining(SessionStore.remainingMs)
-            )
-        }
-
-        // 标题旁的状态点：会话断开为红、已连接为绿
-        viewSessionDot.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, if (active) R.color.success else R.color.error)
         )
 
-        btnWifi.isEnabled = active
-        btnPick.isEnabled = active && uploadJob?.isActive != true
-        btnStudioFolder.isVisible = active && SessionStore.inStudioMode && SessionStore.isAdmin
-        renderRefreshButton(active)
-        // 「断开连接」要随时能把本地状态收拾干净：会话已失效、手机还原地挂在设备热点上都算
-        btnDisconnect.isEnabled = active || hotspotConnector.isConnected ||
-            SessionStore.lastDeviceToken.isNotEmpty()
+        val ssid = SessionStore.lastWifiSsid
+        tvDashboardNetwork.text = when {
+            active -> listOfNotNull(
+                ssid.takeIf { it.isNotEmpty() },
+                endpoint?.let { "${it.host}:${it.port}" }
+            ).joinToString(" · ")
 
-        // 空间栏
+            else -> getString(R.string.dashboard_connect_hint)
+        }
+
+        btnStudioFolder.isVisible = active && SessionStore.inStudioMode && SessionStore.isAdmin
+    }
+
+    private fun renderSpaceAvailability() {
+        val active = SessionStore.isActive
         btnSpaceRefresh.isEnabled = active
         btnSpaceExportFav.isEnabled = active
-        // 门店模式不提供删除入口（服务端亦按模式返回 403，见 T-15）
+        // Store mode has no delete entry, and the service refuses it as well
         btnSpaceDelete.isVisible = active && !SessionStore.inStudioMode
-        // 「添加边框」只有管理员能下发（写接口 requireAdmin），非管理员不显示入口；
-        // 自定义背景图（原「风格」入口）已并入该页的「背景色」下级页，故不再有第二个入口
-        btnAddFrame.isVisible = active && SessionStore.isAdmin
-        spaceControlIds.forEach { findViewById<MaterialButton>(it).isEnabled = active }
+    }
 
-        // 设置栏的角色权限
-        applySettingsRole()
-        renderAbout()
+    // -----------------------------------------------------------------------
+    // Space: browse modes and media
+    // -----------------------------------------------------------------------
 
-        // 提醒设备接入的是哪个网络：手机不在同一 Wi-Fi 时「刷新连接」找不到设备
-        val ssid = SessionStore.lastWifiSsid
-        tvWifiHint.isVisible = ssid.isNotEmpty()
-        if (ssid.isNotEmpty()) {
-            tvWifiHint.text = getString(R.string.state_wifi_hint, ssid)
+    private fun selectBrowseMode(mode: Int) {
+        if (currentBrowseMode == mode) return
+        currentBrowseMode = mode
+        renderFilterPills(mode)
+        applyMediaLayout(mode)
+        reloadMedia()
+        sendBrowseMode(mode)
+    }
+
+    /** Filter pills: the selected one is filled *and* bolder, so colour is not the only cue. */
+    private fun renderFilterPills(selectedMode: Int) {
+        listOf(
+            pillImmersive to BROWSER_MODE_IMMERSIVE,
+            pillDate to BROWSER_MODE_DATE,
+            pillFavourite to BROWSER_MODE_FAVOURITE
+        ).forEach { (pill, mode) ->
+            val selected = mode == selectedMode
+            pill.setBackgroundResource(
+                if (selected) R.drawable.bg_pill_primary else R.drawable.bg_pill_outline
+            )
+            pill.setTextColor(
+                ContextCompat.getColor(this, if (selected) R.color.on_primary else R.color.text_secondary)
+            )
+            pill.typeface = if (selected) {
+                android.graphics.Typeface.DEFAULT_BOLD
+            } else {
+                android.graphics.Typeface.DEFAULT
+            }
         }
     }
 
     /**
-     * 「刷新连接」按钮三态：已连接 / 连接中 / 空闲。
-     *
-     * 空闲时只有存在可回连的目标才可点：手机还挂在设备热点上、记过设备热点凭据、
-     * 或曾连接过设备（可借局域网发现找回来）。全新安装、未绑定过、或两端信息都被清空时，
-     * 没有任何回连依据，刷新只会白跑一次发现，直接置灰。
+     * Local arrangement per browse mode: the date view is a single-column list with date headers,
+     * the immersive / favourite views are three-column grids (matching the device).
      */
-    private fun renderRefreshButton(active: Boolean) {
-        when {
-            active -> {
-                btnRefresh.setText(R.string.action_refresh_connected)
-                btnRefresh.isEnabled = false
-            }
-
-            connecting -> {
-                btnRefresh.setText(R.string.action_refresh_connecting)
-                btnRefresh.isEnabled = false
-            }
-
-            else -> {
-                btnRefresh.setText(R.string.action_refresh)
-                btnRefresh.isEnabled = hasReconnectTarget()
-            }
+    private fun applyMediaLayout(mode: Int) {
+        val dateMode = mode == BROWSER_MODE_DATE
+        mediaAdapter.setGroupByDate(dateMode)
+        recyclerMedia.layoutManager = if (dateMode) {
+            LinearLayoutManager(this)
+        } else {
+            GridLayoutManager(this, MEDIA_SPAN_COUNT)
         }
     }
-
-    /** 是否存在可回连设备的目标：挂着设备热点、记过热点凭据、或曾连接过设备 */
-    private fun hasReconnectTarget(): Boolean =
-        hotspotConnector.isConnected ||
-            SessionStore.apEndpoint() != null ||
-            SessionStore.lastDeviceToken.isNotEmpty()
-
-    /** 手机当前连接的 Wi‑Fi 名；未连 Wi‑Fi 或读不到（无权限）返回空串 */
-    private fun currentSsid(): String {
-        val manager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-        val raw = runCatching { manager?.connectionInfo?.ssid }.getOrNull() ?: return ""
-        return raw.trim('"').takeIf { it.isNotEmpty() && it != UNKNOWN_SSID }.orEmpty()
-    }
-
-    /**
-     * 手机是否已经连在 [ssid] 上。
-     *
-     * 用来避免「对着已连接的网络再发一次 WifiNetworkSpecifier 请求」——本平台实测会弹系统页
-     * 并等满 60 秒才回 onUnavailable，用户被白卡一分钟（[connectHotspot] 与配网页共用这个判据）。
-     */
-    private fun isOnWifi(ssid: String): Boolean = ssid.isNotEmpty() && currentSsid() == ssid
-
-    /** 跑一次局域网发现（最多等 [timeoutMs]），由用户点「刷新连接」触发，不在后台周期扫描 */
-    private suspend fun probeLan(timeoutMs: Long): List<DiscoveredDevice> =
-        suspendCancellableCoroutine { continuation ->
-            nsdDiscoverer.discover(timeoutMs) { devices ->
-                if (continuation.isActive) continuation.resume(devices)
-            }
-            continuation.invokeOnCancellation { nsdDiscoverer.cancel() }
-        }
-
-    // -----------------------------------------------------------------------
-    // 空间：媒体网格 / 控制 / 喜爱 / 删除
-    // -----------------------------------------------------------------------
 
     private fun reloadMedia() {
         val endpoint = SessionStore.endpoint
@@ -1142,7 +552,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         mediaJob?.cancel()
-        val favouriteOnly = currentBrowseMode() == BROWSER_MODE_FAVOURITE
+        val favouriteOnly = currentBrowseMode == BROWSER_MODE_FAVOURITE
         mediaJob = lifecycleScope.launch {
             client.listMedia(endpoint, sessionId, favouriteOnly)
                 .onSuccess {
@@ -1159,30 +569,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 浏览模式切换：把三视图标签的选择下发设备端同步切换浏览视图（需求 3.1.2.1 / 5.3 / 6.1）。
-     * 移动端本地列表随之刷新：沉浸 / 日期视图拉全量，喜爱视图只拉已标记喜爱的媒体。
-     */
     private fun sendBrowseMode(mode: Int) {
         if (!SessionStore.isActive) return
         sendControl(CTRL_SWITCH_VIEW, JSONObject().put("mode", mode))
     }
 
-    /** 标签下标 → 协议取值；下标越界（尚未选中）时回退到沉浸视图 */
-    private fun browseModeOf(tabPosition: Int): Int =
-        BROWSER_MODES.getOrElse(tabPosition) { BROWSER_MODE_IMMERSIVE }
-
-    /** 当前选中的浏览视图取值 */
-    private fun currentBrowseMode(): Int = browseModeOf(tabsBrowseMode.selectedTabPosition)
-
     private fun updateMediaEmpty() {
-        tvMediaEmpty.isVisible = mediaAdapter.itemCount == 0
+        val empty = mediaAdapter.itemCount == 0
+        spaceEmptyState.isVisible = empty && !nowPlaying.isVisible
     }
 
     private fun updateSelectButton() {
+        val selecting = mediaAdapter.selectionMode
         btnSpaceSelect.setText(
-            if (mediaAdapter.selectionMode) R.string.space_select_done else R.string.space_select
+            if (selecting) R.string.space_select_done else R.string.space_select
         )
+        // The favourite / delete pair only makes sense once something can be selected
+        rowSpaceSelection.isVisible = selecting
     }
 
     private fun toggleSelectionMode() {
@@ -1190,25 +593,84 @@ class MainActivity : AppCompatActivity() {
         updateSelectButton()
     }
 
-    /**
-     * 喜爱按钮文案随选中项状态切换：选中的文件已全部带喜爱标记时显示「取消喜爱」，
-     * 否则显示「喜爱」（需求 6.1）。
-     */
     private fun updateFavouriteButton() {
-        btnCtrlFavourite.setText(
+        btnSpaceFavourite.setText(
             if (mediaAdapter.selectedAllFavourite()) {
-                R.string.space_favourite_cancel
+                R.string.space_menu_favourite_cancel
             } else {
-                R.string.space_favourite
+                R.string.space_menu_favourite
             }
         )
     }
 
     /**
-     * 喜爱标记：对已选中的文件批量切换喜爱状态（需求 6.1）。
-     * 选中项已全部为喜爱时本次为「取消喜爱」，否则为「标记喜爱」，
-     * 结果以设备端为准并经 [reloadMedia] 回读同步。
+     * Long-press menu (UI PRD §3.6 F): Play / Rotate / Favourite for one item. Multi-select is the
+     * job of the Select button, so a long press never turns into a selection.
      */
+    private fun showItemMenu(item: MediaItem) {
+        val actions = mutableListOf<String>()
+        val actionIds = mutableListOf<Int>()
+        actions.add(getString(R.string.space_menu_play)); actionIds.add(ACTION_PLAY_ITEM)
+        actions.add(getString(R.string.space_menu_rotate)); actionIds.add(ACTION_ROTATE_ITEM)
+        actions.add(
+            getString(
+                if (item.favourite) R.string.space_menu_favourite_cancel
+                else R.string.space_menu_favourite
+            )
+        )
+        actionIds.add(ACTION_FAVOURITE_ITEM)
+
+        if (actions.isEmpty()) return
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.space_menu_title)
+            .setItems(actions.toTypedArray()) { _, which ->
+                when (actionIds[which]) {
+                    ACTION_PLAY_ITEM -> {
+                        // Enter playback and stop there, exactly like the control pad centre key
+                        sendControl(CTRL_PLAY)
+                        startPlaybackPolling(refreshSoon = true)
+                    }
+
+                    ACTION_ROTATE_ITEM -> sendControl(
+                        CTRL_ROTATE,
+                        JSONObject().put("degree", ROTATE_DEGREE)
+                    )
+
+                    ACTION_FAVOURITE_ITEM -> setFavourite(item, !item.favourite)
+                }
+            }
+            .show()
+    }
+
+    private fun setFavourite(item: MediaItem, favourite: Boolean) {
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            requireSession()
+            return
+        }
+        lifecycleScope.launch {
+            client.favourite(endpoint, sessionId, item.path, favourite)
+                .onSuccess {
+                    toast(
+                        getString(
+                            if (favourite) R.string.toast_favourite_added
+                            else R.string.toast_favourite_removed
+                        )
+                    )
+                    reloadMedia()
+                }
+                .onFailure { error ->
+                    if (error is SessionExpiredException) {
+                        handleSessionExpired()
+                    } else {
+                        toast(getString(R.string.toast_favourite_failed, error.message.orEmpty()))
+                    }
+                }
+        }
+    }
+
+    /** Favourite the selected items (batch, via the Select button flow). */
     private fun favouriteSelected() {
         val paths = mediaAdapter.selectedPaths()
         if (paths.isEmpty()) {
@@ -1247,7 +709,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 多选删除：仅个人模式支持（需求 6.1 / 7.2） */
+    /** Multi-select delete; personal mode only (the service refuses it in store mode). */
     private fun deleteSelected() {
         val paths = mediaAdapter.selectedPaths()
         if (paths.isEmpty()) {
@@ -1291,10 +753,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 导出 Fav：把设备端当前带心形标记的图片 / 视频同步到独立 Fav 文件夹
-     * （个人模式 `ALL_Fav`，门店模式「选片文件夹_Fav」），需求 6.3。
-     *
-     * 每次以设备端当前的喜爱标记为准：新加标记的导出进去，取消标记的从 Fav 文件夹内移除。
+     * Export the favourites into their own Fav folder. Always driven by the device's current
+     * markers: newly marked items are copied in, unmarked leftovers are removed.
      */
     private fun exportFavourite() {
         val endpoint = SessionStore.endpoint
@@ -1327,7 +787,237 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendControl(action: String, params: JSONObject? = null) {
+    // -----------------------------------------------------------------------
+    // Space: playback state, now playing and the control pad
+    // -----------------------------------------------------------------------
+
+    /**
+     * Poll the device playback state while the gallery is visible. The state is what the device
+     * reports, so the capsule and the editing rules never contradict the physical frame.
+     */
+    private fun startPlaybackPolling(refreshSoon: Boolean = false) {
+        playbackJob?.cancel()
+        playbackJob = lifecycleScope.launch {
+            if (refreshSoon) delay(PLAYBACK_REFRESH_DELAY_MS)
+            while (true) {
+                refreshPlaybackState()
+                delay(PLAYBACK_POLL_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun stopPlaybackPolling() {
+        playbackJob?.cancel()
+        playbackJob = null
+    }
+
+    private suspend fun refreshPlaybackState() {
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            playbackState = null
+            renderPlaybackState()
+            return
+        }
+        client.playback(endpoint, sessionId)
+            .onSuccess { playbackState = it }
+            .onFailure { error ->
+                if (error is SessionExpiredException) {
+                    handleSessionExpired()
+                    return
+                }
+                // Unreachable device: report "unknown" instead of keeping a stale state
+                playbackState = null
+            }
+        renderPlaybackState()
+    }
+
+    private fun renderPlaybackState() {
+        val state = playbackState
+        val mode = state?.mode
+
+        val (iconRes, labelRes, colorRes) = when (mode) {
+            PlaybackMode.BROWSE -> Triple(
+                R.drawable.ic_grid, R.string.playback_state_browse, R.color.text_secondary
+            )
+
+            PlaybackMode.STATIC -> Triple(
+                R.drawable.ic_play, R.string.playback_state_static, R.color.primary_blue
+            )
+
+            PlaybackMode.AUTO -> Triple(
+                R.drawable.ic_pause, R.string.playback_state_auto, R.color.status_connected
+            )
+
+            null -> Triple(
+                R.drawable.ic_warning, R.string.playback_state_unknown, R.color.text_disabled
+            )
+        }
+        spaceTopBar.showTrailingPill(iconRes, getString(labelRes), colorRes)
+
+        controlPad.setCenterState(
+            when (mode) {
+                PlaybackMode.BROWSE, null -> DeviceControlPadView.CenterState.OK
+                PlaybackMode.STATIC -> DeviceControlPadView.CenterState.PLAY
+                PlaybackMode.AUTO -> DeviceControlPadView.CenterState.PAUSE
+            }
+        )
+
+        // Editing the frame / wallpaper is only allowed while the device sits on a paused photo
+        renderEditAvailability(mode)
+        renderNowPlaying(state)
+    }
+
+    /**
+     * Frame Design and Backgrounds are only usable in static playback (UI PRD §3.6 D).
+     *
+     * The entries are dimmed but stay clickable on purpose: tapping a dimmed entry explains why it
+     * is unavailable instead of failing silently. Only administrators may edit at all.
+     */
+    private fun renderEditAvailability(mode: PlaybackMode?) {
+        val editable = mode == PlaybackMode.STATIC && SessionStore.isActive && SessionStore.isAdmin
+        listOf(toolbarDesign, toolbarBackgrounds).forEach { view ->
+            view.alpha = if (editable) 1f else DISABLED_ALPHA
+        }
+    }
+
+    /**
+     * While the device plays full screen the gallery shows that one frame, scaled to fit the area
+     * the grid used to occupy. A single tap toggles between auto play and pause.
+     */
+    private fun renderNowPlaying(state: PlaybackState?) {
+        val playing = state != null && state.mode != PlaybackMode.BROWSE
+        nowPlaying.isVisible = playing
+        if (!playing) {
+            nowPlayingPath = ""
+            ivNowPlaying.setImageDrawable(null)
+            updateMediaEmpty()
+            return
+        }
+
+        updateMediaEmpty()
+        val path = state?.lastFile.orEmpty()
+        if (path.isEmpty()) {
+            showNowPlayingPlaceholder(getString(R.string.space_now_playing_loading))
+            return
+        }
+        if (path == nowPlayingPath && ivNowPlaying.drawable != null) return
+
+        nowPlayingPath = path
+        showNowPlayingPlaceholder(getString(R.string.space_now_playing_loading))
+        lifecycleScope.launch {
+            val endpoint = SessionStore.endpoint
+            val sessionId = SessionStore.sessionId
+            if (endpoint == null || sessionId == null) {
+                showNowPlayingPlaceholder(getString(R.string.space_now_playing_failed))
+                return@launch
+            }
+            val bitmap = loadNowPlaying(endpoint, sessionId, path)
+            // The device may have moved on while the frame was being fetched
+            if (nowPlayingPath != path) return@launch
+            if (bitmap == null) {
+                showNowPlayingPlaceholder(getString(R.string.space_now_playing_failed))
+            } else {
+                progressNowPlaying.isVisible = false
+                tvNowPlayingStatus.isVisible = false
+                ivNowPlaying.setImageBitmap(bitmap)
+            }
+        }
+    }
+
+    private fun showNowPlayingPlaceholder(message: String) {
+        ivNowPlaying.setImageDrawable(null)
+        progressNowPlaying.isVisible = message == getString(R.string.space_now_playing_loading)
+        tvNowPlayingStatus.isVisible = !progressNowPlaying.isVisible
+        tvNowPlayingStatus.text = message
+    }
+
+    private suspend fun loadNowPlaying(
+        endpoint: DeviceEndpoint,
+        sessionId: String,
+        path: String
+    ): Bitmap? {
+        thumbCache.get(path)?.let { return it }
+        val bytes = client.mediaRaw(endpoint, sessionId, path) ?: return null
+        val bitmap = withContext(Dispatchers.Default) {
+            runCatching { decodeSampled(bytes, NOW_PLAYING_MAX_PX) }.getOrNull()
+        }
+        if (bitmap != null) thumbCache.put(path, bitmap)
+        return bitmap
+    }
+
+    /** Centre key / tap on the current frame: one meaning per real state (UI PRD §3.6 E). */
+    private fun onControlPadCenter() {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return
+        }
+        when (playbackState?.mode) {
+            // Enter playback and stop on the first frame
+            PlaybackMode.BROWSE, null -> sendControl(CTRL_PLAY)
+            // Paused: start the auto play timer
+            PlaybackMode.STATIC -> sendControl(CTRL_AUTO_PLAY)
+            // Auto play: pause, keeping the frame
+            PlaybackMode.AUTO -> sendControl(CTRL_AUTO_PAUSE)
+        }
+        startPlaybackPolling(refreshSoon = true)
+    }
+
+    private fun openFrameDesign(): Boolean {
+        if (!requireEditable()) return false
+        startActivity(Intent(this, FrameDesignActivity::class.java))
+        return true
+    }
+
+    private fun openBackgrounds(): Boolean {
+        if (!requireEditable()) return false
+        startActivity(Intent(this, BackgroundsActivity::class.java))
+        return true
+    }
+
+    /** Editing requires an administrator session inside static playback; otherwise say why. */
+    private fun requireEditable(): Boolean {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return false
+        }
+        if (!SessionStore.isAdmin) {
+            toast(getString(R.string.toast_admin_only))
+            return false
+        }
+        when (playbackState?.mode) {
+            PlaybackMode.STATIC -> return true
+            PlaybackMode.AUTO -> {
+                toast(getString(R.string.space_edit_need_pause_auto))
+                return false
+            }
+
+            else -> {
+                toast(getString(R.string.space_edit_need_enter_playback))
+                return false
+            }
+        }
+    }
+
+    /** Reset to the device defaults: frame off and no custom wallpaper, i.e. back to blur. */
+    private fun confirmResetDesign() {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return
+        }
+        if (!SessionStore.isAdmin) {
+            toast(getString(R.string.toast_admin_only))
+            return
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.space_reset_confirm_title)
+            .setMessage(R.string.space_reset_confirm_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.space_toolbar_reset) { _, _ -> resetDesign() }
+            .show()
+    }
+
+    private fun resetDesign() {
         val endpoint = SessionStore.endpoint
         val sessionId = SessionStore.sessionId
         if (endpoint == null || sessionId == null) {
@@ -1335,18 +1025,24 @@ class MainActivity : AppCompatActivity() {
             return
         }
         lifecycleScope.launch {
-            client.control(endpoint, sessionId, action, params).onFailure { error ->
-                if (error is SessionExpiredException) {
-                    handleSessionExpired()
-                } else {
-                    toast(getString(R.string.toast_control_failed, error.message.orEmpty()))
+            client.writeFrame(
+                endpoint,
+                sessionId,
+                FramePatch(frameEnabled = false, backgroundImage = false, paperEnabled = true)
+            )
+                .onSuccess { toast(getString(R.string.space_reset_done)) }
+                .onFailure { error ->
+                    if (error is SessionExpiredException) {
+                        handleSessionExpired()
+                    } else {
+                        toast(getString(R.string.space_reset_failed, error.message.orEmpty()))
+                    }
                 }
-            }
         }
     }
 
     // -----------------------------------------------------------------------
-    // 上传
+    // Upload
     // -----------------------------------------------------------------------
 
     private fun pickMedia() {
@@ -1355,7 +1051,7 @@ class MainActivity : AppCompatActivity() {
             toast(getString(R.string.toast_upload_busy))
             return
         }
-        // 选文件前先探测设备剩余空间：不足时提示用户释放，确认后再继续（需求 4.5 / T-3）
+        // Probe free space before opening the picker so a full device is reported before uploading
         lifecycleScope.launch {
             val endpoint = SessionStore.endpoint
             val sessionId = SessionStore.sessionId
@@ -1383,11 +1079,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 单文件超过 4G 上限的提醒框（需求 4.5 / T-4）。
-     *
-     * 原先只用 Toast：一闪而过，用户容易漏看甚至以为「点了没反应」。
-     * 拦截本身两端都已生效（移动端按 sizeBytes 预检不发请求；设备端超限删半成品回 413），
-     * 这里把提醒升级成必须确认的弹框。
+     * A file over the 4G limit needs a blocking notice: the previous toast flashed by and users
+     * thought the tap had done nothing. Both ends already refuse the file.
      */
     private fun showFileTooLargeDialog() {
         MaterialAlertDialogBuilder(this)
@@ -1397,14 +1090,13 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /** 逐个上传，进度按位置回写到列表项 */
     private fun startUpload(uris: List<Uri>) {
         val baseIndex = uploadAdapter.itemCount
         val items = uris.map { UploadItem(contentResolver.toUploadSource(it)) }
         uploadAdapter.addAll(items)
         updateUploadSummary()
 
-        // 预检：单文件超过 4G 上限的直接拦截，不发起上传，避免白传一遍再被服务端拒绝（需求 4.5 / T-4）
+        // Pre-check: a file over the 4G limit is refused locally, so it is never sent in full
         var tooLarge = false
         items.forEachIndexed { index, item ->
             if (item.source.sizeBytes > AppConfig.MAX_UPLOAD_FILE_BYTES) {
@@ -1416,7 +1108,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (tooLarge) showFileTooLargeDialog()
 
-        btnPick.isEnabled = false
+        cardUpload.isEnabled = false
         uploadJob = lifecycleScope.launch {
             var success = 0
             var failed = 0
@@ -1428,7 +1120,6 @@ class MainActivity : AppCompatActivity() {
                 val sessionId = SessionStore.sessionId
 
                 if (item.status == UploadStatus.FAILED) {
-                    // 预检已判定为超限，无需上传
                     failed++
                     return@forEachIndexed
                 }
@@ -1476,13 +1167,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             tvUploadSummary.text = getString(R.string.upload_summary_done, success, failed)
+            cardUpload.isEnabled = true
             renderSession()
         }
     }
 
     private fun updateUploadSummary() {
         val hasItems = uploadAdapter.itemCount > 0
-        tvUploadEmpty.isVisible = !hasItems
+        cardUploads.isVisible = hasItems
         tvUploadSummary.text = if (hasItems) {
             getString(R.string.upload_summary_running, 0, uploadAdapter.itemCount)
         } else {
@@ -1491,56 +1183,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     // -----------------------------------------------------------------------
-    // 主页：Wi-Fi 下发 / 门店文件夹
-    // -----------------------------------------------------------------------
-
-    private fun openWifiConfig() {
-        if (!requireSession()) return
-        startActivity(Intent(this, WifiConfigActivity::class.java))
-    }
-
-    /** 门店模式：管理员创建下一个客户文件夹（需求 7.2） */
-    private fun createStudioFolder() {
-        when {
-            !SessionStore.inStudioMode -> {
-                toast(getString(R.string.toast_studio_folder_personal))
-                return
-            }
-
-            !SessionStore.isAdmin -> {
-                toast(getString(R.string.toast_admin_only))
-                return
-            }
-        }
-        if (!requireSession()) return
-        val endpoint = SessionStore.endpoint!!
-        val sessionId = SessionStore.sessionId!!
-
-        btnStudioFolder.isEnabled = false
-        lifecycleScope.launch {
-            client.createStudioFolder(endpoint, sessionId)
-                .onSuccess {
-                    toast(getString(R.string.toast_studio_folder_created, it))
-                    renderSession()
-                }
-                .onFailure { error ->
-                    if (error is SessionExpiredException) {
-                        handleSessionExpired()
-                    } else {
-                        toast(getString(R.string.toast_studio_folder_failed, error.message.orEmpty()))
-                    }
-                }
-            btnStudioFolder.isEnabled = true
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // 设置：参数读写（需求 6.3）
+    // Settings: parameters and session actions
     // -----------------------------------------------------------------------
 
     private fun loadSettings() {
         applyParams(SessionStore.params)
-        applySettingsRole()
+        renderSettingsRole()
 
         val endpoint = SessionStore.endpoint
         val sessionId = SessionStore.sessionId
@@ -1559,7 +1207,7 @@ class MainActivity : AppCompatActivity() {
                         toast(getString(R.string.settings_load_failed, error.message.orEmpty()))
                     }
                 }
-            applySettingsRole()
+            renderSettingsRole()
         }
     }
 
@@ -1574,8 +1222,8 @@ class MainActivity : AppCompatActivity() {
             toast(getString(R.string.settings_invalid))
             return
         }
-        val endpoint = SessionStore.endpoint!!
-        val sessionId = SessionStore.sessionId!!
+        val endpoint = SessionStore.endpoint ?: return
+        val sessionId = SessionStore.sessionId ?: return
 
         btnSettingsSave.isEnabled = false
         btnSettingsSave.setText(R.string.settings_saving)
@@ -1594,11 +1242,11 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             btnSettingsSave.setText(R.string.settings_save)
-            applySettingsRole()
+            renderSettingsRole()
         }
     }
 
-    /** 输入框按「秒 / 分钟」展示，写回设备端时换算为毫秒 */
+    /** The fields show seconds / minutes; the device takes milliseconds. */
     private fun applyParams(params: DeviceParams) {
         etHeartbeat.setText((params.heartbeatIntervalMs / 1_000L).toString())
         etSessionTimeout.setText((params.sessionTimeoutMs / 60_000L).toString())
@@ -1622,8 +1270,11 @@ class MainActivity : AppCompatActivity() {
     private fun readPositive(edit: EditText): Long? =
         edit.text?.toString()?.trim()?.toLongOrNull()?.takeIf { it > 0L }
 
-    /** 设置栏可用性：未连接提示先连接，选片用户只读，管理员可配；参数行按交互模式显隐 */
-    private fun applySettingsRole() {
+    /**
+     * Settings availability: administrators can edit, everybody else reads. Parameter rows follow
+     * the device interaction mode (session timeout / countdown are store mode, auto play is home mode).
+     */
+    private fun renderSettingsRole() {
         val active = SessionStore.isActive
         val admin = active && SessionStore.isAdmin
         applySettingsParamsVisibility()
@@ -1632,7 +1283,6 @@ class MainActivity : AppCompatActivity() {
         etNoOpCountdown.isEnabled = admin
         etAutoPlay.isEnabled = admin
         btnSettingsSave.isEnabled = admin
-        // 「退出账号」＝移交管理权：非管理员（家庭共享用户 / 门店选片用户）不显示该入口（需求 5.7.2 / T-7）
         btnSettingsLogout.isVisible = admin
         tvSettingsHint.text = when {
             !active -> getString(R.string.settings_need_session)
@@ -1644,9 +1294,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 参数行按设备交互模式显隐（T-20）：会话超时 / 无操作倒计时只在门店模式生效，自动播放间隔只在家庭模式生效，
-     * 心跳两者都用。未连接时不隐藏任何一行——模式由设备端 `/auth` 回执带来，无从判断模式时保持四行可见，
-     * 免得刚进设置页就先藏掉一半控件；连上后按真实模式收敛。
+     * Parameter rows by device mode: the mode arrives in the auth receipt, so until something is
+     * known all four rows stay visible rather than hiding half the page on entry.
      */
     private fun applySettingsParamsVisibility() {
         val modeKnown = SessionStore.endpoint != null
@@ -1658,30 +1307,14 @@ class MainActivity : AppCompatActivity() {
         setRowVisible(rowSettingsAutoPlay, dividerSettingsAutoPlay, home)
     }
 
-    /** 行与它的分隔线保持同显同隐，避免隐藏一行后留下悬空分隔线 */
     private fun setRowVisible(row: View, divider: View, visible: Boolean) {
         row.isVisible = visible
         divider.isVisible = visible
     }
 
-    /**
-     * 中英文切换（需求 5.7.3 / T-8）：把所选语言交给 AppCompat 应用。
-     *
-     * Manifest 里给 `AppLocalesMetadataHolderService` 打开了 `autoStoreLocales`，
-     * 因此选择会被自动持久化（重启后保持），语言变化时 AppCompat 会重建 Activity，
-     * 界面文案随之全部切换。
-     */
-    // 语言选择的 UI 已移到二级页面 LanguageActivity（F-3），原弹窗实现已删除；
-    // 持久化仍由 Manifest 里 AppLocalesMetadataHolderService 的 autoStoreLocales 负责。
-
-    /**
-     * 当前界面实际使用的语言。
-     * 取自资源配置而不是 AppCompat 里存的值：用户没手动选过时应用跟随系统语言，
-     * 此时只有资源配置能反映真正在显示的是哪一套文案。
-     */
+    /** The language actually in use: with no manual choice the app follows the system language. */
     private fun currentLanguageTag(): String = resources.configuration.locales[0].language
 
-    /** 「语言」行右侧显示当前语言 */
     private fun renderLanguage() {
         tvSettingsLanguageValue.text = getString(
             if (currentLanguageTag() == LANGUAGE_ZH) R.string.language_zh else R.string.language_en
@@ -1689,10 +1322,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 身份类型：家庭模式恒为管理员、门店模式区分管理员 / 选片用户，小号灰字；未连接时隐藏。
-     *
-     * F-5（用户口径）：家庭模式没有「共享用户」，家里其他人要用设备就通过「退出账号」移交，
-     * 因此这里不再有「家庭模式 × 非管理员」这一分支（设备端也不再发放该角色）。
+     * Identity line. Home mode has no shared users (F-5): the only role there is administrator, and
+     * other people take over through "sign out".
      */
     private fun renderSettingsIdentity() {
         val active = SessionStore.isActive
@@ -1709,216 +1340,88 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** 关于页：移动端与设备端版本号以及开发公司（ShowSeen）版权信息 */
-    private fun renderAbout() {
-        tvAboutMobileVersion.text = AppConfig.VERSION
-        tvAboutDeviceVersion.text = SessionStore.deviceVersion
-            .ifEmpty { getString(R.string.about_device_version_unknown) }
-        tvAboutCopyright.text = getString(R.string.about_copyright, AppConfig.COMPANY)
+    /** "Sign out" = hand over the administrator role, so the device shows its QR code again. */
+    private fun confirmLogout() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.settings_logout)
+            .setMessage(R.string.toast_logout_confirm)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ -> disconnect(handover = true) }
+            .show()
     }
 
     // -----------------------------------------------------------------------
-    // 工具
+    // Scan hand-off
     // -----------------------------------------------------------------------
 
-    private fun requireSession(): Boolean {
-        if (SessionStore.isActive) return true
-        toast(getString(R.string.toast_need_session))
-        return false
+    /** A payload coming back from the bind page: parse it and connect right away. */
+    private fun handleScannedEndpoint(intent: Intent?) {
+        val payload = intent?.getStringExtra(EXTRA_SCANNED_ENDPOINT).orEmpty()
+        if (payload.isEmpty()) return
+        intent?.removeExtra(EXTRA_SCANNED_ENDPOINT)
+        QrPayloadParser.parse(payload)
+            .onSuccess { connect(it) }
+            .onFailure { toast(it.message ?: getString(R.string.scan_invalid_qr)) }
     }
 
-    /** 剩余时长文案（需求 5.7.3 / T-8：必须走字符串资源，否则切到英文后仍显示「小时 / 分」） */
-    private fun formatRemaining(ms: Long): String {
-        val totalMinutes = ms / 60_000
-        val hours = totalMinutes / 60
-        val minutes = totalMinutes % 60
-        return if (hours > 0) {
-            getString(R.string.duration_hours_minutes, hours, minutes)
-        } else {
-            getString(R.string.duration_minutes, minutes)
+    // -----------------------------------------------------------------------
+    // Device control
+    // -----------------------------------------------------------------------
+
+    private fun sendControl(action: String, params: JSONObject? = null) {
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            requireSession()
+            return
         }
-    }
-
-    private fun toast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            client.control(endpoint, sessionId, action, params).onFailure { error ->
+                if (error is SessionExpiredException) {
+                    handleSessionExpired()
+                } else {
+                    toast(getString(R.string.toast_control_failed, error.message.orEmpty()))
+                }
+            }
+        }
     }
 
     /**
-     * 连接类错误信息较长（OkHttp 会带上目标地址、来源地址与超时时间），Toast 只能显示一两行会被截断，
-     * 改用可滚动、可复制的对话框完整展示，便于用户看清并反馈。
+     * Downsample while decoding: the device frame is a full-size photo and decoding it as-is would
+     * risk an out-of-memory crash for nothing (the view is at most screen sized).
      */
-    private fun showError(message: String) {
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.dialog_error_title)
-            .setMessage(message)
-            .setPositiveButton(android.R.string.ok, null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.findViewById<TextView>(android.R.id.message)?.apply {
-                setTextIsSelectable(true)
-                movementMethod = ScrollingMovementMethod()
-            }
+    private fun decodeSampled(bytes: ByteArray, maxPx: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= maxPx && bounds.outHeight / (sample * 2) >= maxPx) {
+            sample *= 2
         }
-        dialog.show()
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     }
 
-    /** 失败弹窗统一附上网络诊断，用户截图这一张图即可定位问题，不必连 adb 抓日志 */
-    private fun showConnectError(message: String, endpoint: DeviceEndpoint) {
-        showError("$message\n\n${diagnostics(endpoint)}")
-    }
-
-    /**
-     * 诊断信息：把默认网络、进程绑定网络、VPN 与热点接入结论一并列出。
-     */
-    private fun diagnostics(endpoint: DeviceEndpoint): String {
-        val manager = getSystemService(ConnectivityManager::class.java)
-
-        return buildString {
-            appendLine(getString(R.string.diag_title))
-            appendLine(
-                getString(
-                    R.string.diag_default_network,
-                    describeNetwork(manager, manager?.activeNetwork, getString(R.string.diag_no_network))
-                )
-            )
-            appendLine(
-                getString(
-                    R.string.diag_bound_network,
-                    describeNetwork(manager, manager?.boundNetworkForProcess, getString(R.string.diag_not_bound))
-                )
-            )
-            appendLine(
-                getString(
-                    R.string.diag_vpn,
-                    getString(
-                        if (hasVpn(manager)) R.string.diag_vpn_on else R.string.diag_vpn_off
-                    )
-                )
-            )
-            appendLine(getString(R.string.diag_hotspot, describeHotspot()))
-            append(getString(R.string.diag_device, "${endpoint.host}:${endpoint.port}"))
-        }
-    }
-
-    /** 「Wi‑Fi / 192.168.8.126」；网络不可用时返回调用方给的占位文案 */
-    private fun describeNetwork(
-        manager: ConnectivityManager?,
-        network: Network?,
-        unavailable: String
-    ): String {
-        val capabilities = network?.let { manager?.getNetworkCapabilities(it) }
-        if (network == null || capabilities == null) return unavailable
-
-        val ipv4 = manager?.getLinkProperties(network)?.linkAddresses
-            ?.firstOrNull { it.address is Inet4Address }
-            ?.address
-            ?.hostAddress
-        return (transportNames(capabilities) + listOfNotNull(ipv4)).joinToString(" / ")
-    }
-
-    private fun transportNames(capabilities: NetworkCapabilities): List<String> = buildList {
-        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-            add(getString(R.string.diag_transport_wifi))
-        }
-        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-            add(getString(R.string.diag_transport_cellular))
-        }
-        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-            add(getString(R.string.diag_transport_vpn))
-        }
-        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-            add(getString(R.string.diag_transport_ethernet))
-        }
-    }.ifEmpty { listOf(getString(R.string.diag_transport_unknown)) }
-
-    private fun hasVpn(manager: ConnectivityManager?): Boolean =
-        manager?.getNetworkCapabilities(manager.activeNetwork)
-            ?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
-
-    /** 「LightShadowArt-0051B8 · 已连接，但随后被系统断开 · 192.168.230.193」 */
-    private fun describeHotspot(): String {
-        val ssid = hotspotConnector.lastAttemptSsid ?: return getString(R.string.diag_hotspot_not_attempted)
-        val outcome = getString(
-            when (hotspotConnector.lastOutcome) {
-                HotspotConnector.Outcome.NOT_ATTEMPTED -> R.string.diag_hotspot_not_attempted
-                HotspotConnector.Outcome.REQUESTING -> R.string.diag_hotspot_requesting
-                HotspotConnector.Outcome.CONNECTED -> R.string.diag_hotspot_connected
-                HotspotConnector.Outcome.LOST -> R.string.diag_hotspot_lost
-                HotspotConnector.Outcome.UNAVAILABLE -> R.string.diag_hotspot_unavailable
-                HotspotConnector.Outcome.ERROR -> R.string.diag_hotspot_error
-            }
-        )
-        return listOfNotNull(ssid, outcome, hotspotConnector.hotspotIpv4).joinToString(" · ")
-    }
-
-    private companion object {
+    companion object {
         const val TAG = "MainActivity"
-        const val HEARTBEAT_INTERVAL_MS = 5_000L
-        const val DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000L
-        const val MAX_PICK_COUNT = 10
-
-        /** 手动「刷新连接」的发现窗口，与 NsdDiscoverer 默认值一致 */
-        const val DISCOVER_TIMEOUT_MS = 5_000L
-
-        /** 断线自动重连窗口：会话请求不通后 30 秒内若目标可达就自动恢复（需求 5.2 / T-5） */
-        const val AUTO_RECONNECT_WINDOW_MS = 30_000L
-
-        /** 自动重连的重试间隔：5 秒一次，与心跳周期一致 */
-        const val AUTO_RECONNECT_RETRY_MS = 5_000L
-
-        /** 自动迁移到局域网地址的最小间隔，避免心跳失败时反复空跑发现 */
-        const val LAN_MIGRATE_COOLDOWN_MS = 20_000L
-
-        /** 没有权限读取 Wi-Fi 名时系统返回的占位值 */
-        const val UNKNOWN_SSID = "<unknown ssid>"
-
-        /** 设备自建热点名前缀，与设备端 ServerConfig.AP_SSID_PREFIX 一致，用于识别记下的网络名是不是热点 */
-        const val AP_SSID_PREFIX = "LightShadowArt-"
-
-        /** 设备自建热点的默认密码，与设备端 ServerConfig.AP_PASSWORD 一致；旧记录没存密码时用它兜底 */
-        const val AP_PASSWORD = "lightshadowart"
-
-        /** 空间媒体网格每行个数 */
-        const val MEDIA_SPAN_COUNT = 3
-
-        /** 门店会话 token 长度，与设备端 DeviceConfig.STUDIO_TOKEN_MAX_LENGTH 保持一致 */
-        const val STUDIO_TOKEN_LENGTH = 6
-
-        /** 中英文切换（需求 5.7.3 / T-8）：与 values/、values-en/ 两套资源对应 */
         const val LANGUAGE_ZH = "zh"
-        const val LANGUAGE_EN = "en"
 
-        /** 语言选项顺序，与 showLanguageDialog() 的下标一一对应 */
-        val LANGUAGE_TAGS = arrayOf(LANGUAGE_ZH, LANGUAGE_EN)
+        /** Extra sent by the bind page with the scanned QR payload */
+        const val EXTRA_SCANNED_ENDPOINT = "extra_scanned_endpoint"
 
-        /** 缩略图缓存条目数 */
-        const val THUMB_CACHE_ITEMS = 60
+        /** Playback polling: quick enough to follow the device, slow enough to stay cheap */
+        const val PLAYBACK_POLL_INTERVAL_MS = 3_000L
+        const val PLAYBACK_REFRESH_DELAY_MS = 900L
 
-        /** 旋转一次的角度（正值右旋，负值左旋，与设备端 MtkPlayerBridge 一致） */
-        const val ROTATE_DEGREE = 90
+        /** Longest edge used when decoding the device frame for the Now Playing area */
+        const val NOW_PLAYING_MAX_PX = 1280
 
-        // 设备端 /control 动作名，与 MtkPlayerBridge 常量保持一致
-        const val CTRL_PLAY = "PLAY"
-        const val CTRL_ROTATE = "ROTATE"
-        const val CTRL_SWITCH_VIEW = "SWITCH_VIEW"
-        const val CTRL_UP = "UP"
-        const val CTRL_DOWN = "DOWN"
-        const val CTRL_LEFT = "LEFT"
-        const val CTRL_RIGHT = "RIGHT"
-        const val CTRL_CONFIRM = "CONFIRM"
-        const val CTRL_EXIT = "EXIT"
+        const val DISABLED_ALPHA = 0.4f
 
-        /** 浏览视图取值，与设备端 PlayStateStore.BROWSER_MODE_* 一致 */
-        const val BROWSER_MODE_DATE = 0
-        const val BROWSER_MODE_IMMERSIVE = 1
-        const val BROWSER_MODE_FAVOURITE = 2
-
-        /** 三视图标签的下标顺序（沉浸 / 日期 / 喜爱），与 view_space.xml 的 TabLayout 顺序一致 */
-        val BROWSER_MODES = intArrayOf(BROWSER_MODE_IMMERSIVE, BROWSER_MODE_DATE, BROWSER_MODE_FAVOURITE)
-
-        // 设置栏二级页面
-        const val SETTINGS_PAGE_MENU = 0
-        const val SETTINGS_PAGE_PARAMS = 1
-        const val SETTINGS_PAGE_ABOUT = 2
+        // Long-press menu item ids
+        const val ACTION_PLAY_ITEM = 0
+        const val ACTION_ROTATE_ITEM = 1
+        const val ACTION_FAVOURITE_ITEM = 2
     }
 }

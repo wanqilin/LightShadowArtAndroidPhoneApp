@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selected filter pill: solid primary blue, white label -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/primary_blue" />
+    <corners android:radius="@dimen/corner_pill" />
+</shape>

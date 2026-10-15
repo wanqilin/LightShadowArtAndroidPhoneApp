@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
@@ -99,6 +100,13 @@ class WifiConfigActivity : AppCompatActivity() {
         btnSubmit = findViewById(R.id.btn_submit)
         progress = findViewById(R.id.progress)
         tvResult = findViewById(R.id.tv_result)
+
+        findViewById<PageTopBarView>(R.id.wifi_top_bar).apply {
+            setTitle(getString(R.string.wifi_title))
+            setOnBackClickListener { finish() }
+        }
+        // Activate Frame has no device endpoint yet; the switch stays disabled and says so
+        findViewById<MaterialSwitch>(R.id.switch_activate_frame).isEnabled = false
 
         client = DeviceClient(contentResolver)
         hotspotConnector = HotspotConnector.get(this)

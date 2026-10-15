@@ -589,6 +589,36 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
+     * GET /api/v1/playback —— read-only device playback state.
+     *
+     * Feeds the playback capsule and the "now playing" preview, so the values must come from the
+     * device; a failed call means "unknown", never a locally guessed state.
+     */
+    suspend fun playback(endpoint: DeviceEndpoint, sessionId: String): Result<PlaybackState> = call {
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/playback"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            PlaybackState(
+                playbackActive = json?.optBoolean("playback_active", false) ?: false,
+                autoLoop = json?.optBoolean("auto_loop", false) ?: false,
+                screenMode = json?.optInt("screen_mode", PlaybackState.DEFAULT_SCREEN_MODE_AUTO)
+                    ?: PlaybackState.DEFAULT_SCREEN_MODE_AUTO,
+                browserMode = json?.optInt(
+                    "browser_mode",
+                    PlaybackState.DEFAULT_BROWSER_MODE_IMMERSIVE
+                ) ?: PlaybackState.DEFAULT_BROWSER_MODE_IMMERSIVE,
+                lastFile = json?.optString("last_file").orEmpty()
+            )
+        }
+    }
+
+    /**
      * 探测设备是否可达：只做一次 TCP 连接，不走完整 HTTP。
      *
      * 下发 Wi-Fi 前用它确认手机确实处在设备热点链路上——设备热点每次重启都会换一个网段，

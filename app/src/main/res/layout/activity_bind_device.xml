@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Bind Your Device (UI PRD §3.2): guide card with the connection illustration, the explanation
+    and the button that opens the real scanner. The camera itself lives on the scan page.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_gradient"
+    android:orientation="vertical">
+
+    <com.ShowSeen.lightshadowart.mobile.PageTopBarView
+        android:id="@+id/bind_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="8dp"
+        android:paddingEnd="@dimen/card_padding" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/page_horizontal_padding"
+            android:paddingTop="@dimen/item_gap"
+            android:paddingEnd="@dimen/page_horizontal_padding"
+            android:paddingBottom="@dimen/page_vertical_padding">
+
+            <include
+                android:id="@+id/bind_steps"
+                layout="@layout/view_step_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/scan_bind_step" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/page_vertical_padding">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:padding="@dimen/page_vertical_padding">
+
+                    <ImageView
+                        android:layout_width="180dp"
+                        android:layout_height="108dp"
+                        android:contentDescription="@string/scan_bind_illustration_desc"
+                        android:src="@drawable/ic_frame_connection" />
+
+                    <TextView
+                        style="@style/Text.TitleLarge"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/page_vertical_padding"
+                        android:fontFamily="serif"
+                        android:gravity="center"
+                        android:text="@string/scan_bind_title" />
+
+                    <TextView
+                        style="@style/Text.Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:text="@string/scan_bind_message"
+                        android:textColor="@color/text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_bind_scan"
+                style="@style/PillButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/page_vertical_padding"
+                android:text="@string/scan_bind_action"
+                app:icon="@drawable/ic_scan"
+                app:iconGravity="textStart"
+                app:iconTint="@color/on_primary" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
