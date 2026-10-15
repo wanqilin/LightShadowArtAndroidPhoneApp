@@ -68,6 +68,7 @@
             android:layout_marginTop="@dimen/section_gap"
             android:background="@drawable/bg_card_outline"
             android:clickable="true"
+            android:contentDescription="@string/language_en"
             android:focusable="true"
             android:gravity="center_vertical"
             android:minHeight="60dp"
@@ -81,6 +82,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:importantForAccessibility="no"
                 android:text="@string/language_en" />
 
             <ImageView
@@ -88,6 +90,7 @@
                 android:layout_width="22dp"
                 android:layout_height="22dp"
                 android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_check_circle"
                 android:visibility="invisible"
                 app:tint="@color/primary_blue" />
@@ -100,6 +103,7 @@
             android:layout_marginTop="@dimen/item_gap"
             android:background="@drawable/bg_card_outline"
             android:clickable="true"
+            android:contentDescription="@string/language_zh"
             android:focusable="true"
             android:gravity="center_vertical"
             android:minHeight="60dp"
@@ -113,6 +117,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:importantForAccessibility="no"
                 android:text="@string/language_zh" />
 
             <ImageView
@@ -120,6 +125,7 @@
                 android:layout_width="22dp"
                 android:layout_height="22dp"
                 android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_check_circle"
                 android:visibility="invisible"
                 app:tint="@color/primary_blue" />
