@@ -47,16 +47,18 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- 心形标志与视频角标同在右上角：角标贴角（4dp），心形让开 40dp 以免二者重叠 -->
     <ImageView
         android:id="@+id/iv_favourite"
         android:layout_width="18dp"
         android:layout_height="18dp"
-        android:layout_margin="4dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="40dp"
         android:contentDescription="@string/space_favourite"
         android:src="@drawable/ic_favourite"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:tint="@color/favourite" />
 
     <ImageView
