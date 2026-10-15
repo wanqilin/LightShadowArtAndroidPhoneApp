@@ -110,6 +110,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etAutoPlay: EditText
     private lateinit var btnSettingsSave: MaterialButton
 
+    /** 参数行及其紧随的分隔线：按模式整行显隐（T-20），隐藏时连同分隔线一起隐藏 */
+    private lateinit var rowSettingsHeartbeat: View
+    private lateinit var rowSettingsSessionTimeout: View
+    private lateinit var rowSettingsNoOpCountdown: View
+    private lateinit var rowSettingsAutoPlay: View
+    private lateinit var dividerSettingsHeartbeat: View
+    private lateinit var dividerSettingsSessionTimeout: View
+    private lateinit var dividerSettingsNoOpCountdown: View
+    private lateinit var dividerSettingsAutoPlay: View
+
     /** 「退出账号」＝移交管理权（需求 5.7.2 / T-7），仅管理员可见 */
     private lateinit var btnSettingsLogout: View
 
@@ -312,6 +322,14 @@ class MainActivity : AppCompatActivity() {
         etSessionTimeout = findViewById(R.id.et_session_timeout)
         etNoOpCountdown = findViewById(R.id.et_no_op_countdown)
         etAutoPlay = findViewById(R.id.et_auto_play)
+        rowSettingsHeartbeat = findViewById(R.id.row_settings_heartbeat)
+        rowSettingsSessionTimeout = findViewById(R.id.row_settings_session_timeout)
+        rowSettingsNoOpCountdown = findViewById(R.id.row_settings_no_op_countdown)
+        rowSettingsAutoPlay = findViewById(R.id.row_settings_auto_play)
+        dividerSettingsHeartbeat = findViewById(R.id.divider_settings_heartbeat)
+        dividerSettingsSessionTimeout = findViewById(R.id.divider_settings_session_timeout)
+        dividerSettingsNoOpCountdown = findViewById(R.id.divider_settings_no_op_countdown)
+        dividerSettingsAutoPlay = findViewById(R.id.divider_settings_auto_play)
         btnSettingsSave = findViewById(R.id.btn_settings_save)
         btnSettingsLogout = findViewById(R.id.btn_settings_logout)
         btnAddFrame = findViewById(R.id.btn_add_frame)
@@ -1604,10 +1622,11 @@ class MainActivity : AppCompatActivity() {
     private fun readPositive(edit: EditText): Long? =
         edit.text?.toString()?.trim()?.toLongOrNull()?.takeIf { it > 0L }
 
-    /** 设置栏可用性：未连接提示先连接，选片用户只读，管理员可配 */
+    /** 设置栏可用性：未连接提示先连接，选片用户只读，管理员可配；参数行按交互模式显隐 */
     private fun applySettingsRole() {
         val active = SessionStore.isActive
         val admin = active && SessionStore.isAdmin
+        applySettingsParamsVisibility()
         etHeartbeat.isEnabled = admin
         etSessionTimeout.isEnabled = admin
         etNoOpCountdown.isEnabled = admin
@@ -1622,6 +1641,27 @@ class MainActivity : AppCompatActivity() {
         }
         renderSettingsIdentity()
         renderLanguage()
+    }
+
+    /**
+     * 参数行按设备交互模式显隐（T-20）：会话超时 / 无操作倒计时只在门店模式生效，自动播放间隔只在家庭模式生效，
+     * 心跳两者都用。未连接时不隐藏任何一行——模式由设备端 `/auth` 回执带来，无从判断模式时保持四行可见，
+     * 免得刚进设置页就先藏掉一半控件；连上后按真实模式收敛。
+     */
+    private fun applySettingsParamsVisibility() {
+        val modeKnown = SessionStore.endpoint != null
+        val studio = modeKnown && SessionStore.inStudioMode
+        val home = modeKnown && !SessionStore.inStudioMode
+        setRowVisible(rowSettingsHeartbeat, dividerSettingsHeartbeat, true)
+        setRowVisible(rowSettingsSessionTimeout, dividerSettingsSessionTimeout, studio)
+        setRowVisible(rowSettingsNoOpCountdown, dividerSettingsNoOpCountdown, studio)
+        setRowVisible(rowSettingsAutoPlay, dividerSettingsAutoPlay, home)
+    }
+
+    /** 行与它的分隔线保持同显同隐，避免隐藏一行后留下悬空分隔线 */
+    private fun setRowVisible(row: View, divider: View, visible: Boolean) {
+        row.isVisible = visible
+        divider.isVisible = visible
     }
 
     /**

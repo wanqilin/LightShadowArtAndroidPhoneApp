@@ -181,7 +181,9 @@
                 android:layout_marginTop="6dp"
                 android:text="@string/settings_admin_hint" />
 
-            <!-- 参数分组卡片：右侧就地编辑 -->
+            <!-- 参数分组卡片：右侧就地编辑。每行带一个紧随其后的分隔线，
+                 两行按设备交互模式显隐（会话超时 / 倒计时仅门店、自动播放仅家庭），
+                 隐藏某行时连同它的分隔线一起隐藏，避免留下悬空分隔线。 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -189,7 +191,9 @@
                 android:background="@drawable/bg_card"
                 android:orientation="vertical">
 
-                <LinearLayout style="@style/Settings.Row">
+                <LinearLayout
+                    android:id="@+id/row_settings_heartbeat"
+                    style="@style/Settings.Row">
 
                     <TextView
                         style="@style/Text.RowTitle"
@@ -211,12 +215,15 @@
                 </LinearLayout>
 
                 <View
+                    android:id="@+id/divider_settings_heartbeat"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginStart="16dp"
                     android:background="@color/divider" />
 
-                <LinearLayout style="@style/Settings.Row">
+                <LinearLayout
+                    android:id="@+id/row_settings_session_timeout"
+                    style="@style/Settings.Row">
 
                     <TextView
                         style="@style/Text.RowTitle"
@@ -238,12 +245,15 @@
                 </LinearLayout>
 
                 <View
+                    android:id="@+id/divider_settings_session_timeout"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginStart="16dp"
                     android:background="@color/divider" />
 
-                <LinearLayout style="@style/Settings.Row">
+                <LinearLayout
+                    android:id="@+id/row_settings_no_op_countdown"
+                    style="@style/Settings.Row">
 
                     <TextView
                         style="@style/Text.RowTitle"
@@ -265,12 +275,15 @@
                 </LinearLayout>
 
                 <View
+                    android:id="@+id/divider_settings_no_op_countdown"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginStart="16dp"
                     android:background="@color/divider" />
 
-                <LinearLayout style="@style/Settings.Row">
+                <LinearLayout
+                    android:id="@+id/row_settings_auto_play"
+                    style="@style/Settings.Row">
 
                     <TextView
                         style="@style/Text.RowTitle"
@@ -290,6 +303,13 @@
                         android:textColor="@color/text_primary"
                         android:textSize="16sp" />
                 </LinearLayout>
+
+                <View
+                    android:id="@+id/divider_settings_auto_play"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@color/divider" />
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
