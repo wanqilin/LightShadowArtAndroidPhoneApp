@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Bind Your Device (UI PRD §3.2): guide card with the connection illustration, the explanation
-    and the button that opens the real scanner. The camera itself lives on the scan page.
+    Bind Your Device (UI PRD §3.2), laid out like the reference: the step dots and the illustration
+    sit straight on the page gradient (no white card), the copy follows right under the artwork, and
+    the two actions close the page — an outlined "Scan QR Code" for the paired flow, the connection
+    hint below it, and a filled Continue.
+
+    The two weighted spacers keep the artwork under the step dots and the action block flush with the
+    bottom on tall screens, while the column still scrolls when the screen is short or the system
+    font is large.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -47,55 +53,69 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/scan_bind_step" />
 
-            <com.google.android.material.card.MaterialCardView
-                style="@style/SurfaceCard"
+            <!-- Small gap so the artwork sits just below the step dots -->
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="0.4" />
+
+            <ImageView
+                android:layout_width="280dp"
+                android:layout_height="182dp"
+                android:layout_marginTop="@dimen/section_gap"
+                android:contentDescription="@string/scan_bind_illustration_desc"
+                android:src="@drawable/ic_frame_connection" />
+
+            <TextView
+                style="@style/Text.TitleLarge"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/page_vertical_padding">
+                android:layout_marginTop="@dimen/card_padding"
+                android:fontFamily="serif"
+                android:gravity="center"
+                android:text="@string/scan_bind_title" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
-                    android:padding="@dimen/page_vertical_padding">
+            <TextView
+                style="@style/Text.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/scan_bind_message"
+                android:textColor="@color/text_secondary" />
 
-                    <ImageView
-                        android:layout_width="180dp"
-                        android:layout_height="108dp"
-                        android:contentDescription="@string/scan_bind_illustration_desc"
-                        android:src="@drawable/ic_frame_connection" />
-
-                    <TextView
-                        style="@style/Text.TitleLarge"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/page_vertical_padding"
-                        android:fontFamily="serif"
-                        android:gravity="center"
-                        android:text="@string/scan_bind_title" />
-
-                    <TextView
-                        style="@style/Text.Body"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:text="@string/scan_bind_message"
-                        android:textColor="@color/text_secondary" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            <!-- Absorbs the leftover height so the action block stays at the bottom -->
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_bind_scan"
-                style="@style/PillButton"
+                style="@style/PillButton.Outlined"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/page_vertical_padding"
+                android:layout_marginTop="@dimen/section_gap"
                 android:text="@string/scan_bind_action"
                 app:icon="@drawable/ic_scan"
                 app:iconGravity="textStart"
-                app:iconTint="@color/on_primary" />
+                app:iconTint="@color/primary_blue" />
+
+            <TextView
+                style="@style/Text.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap"
+                android:gravity="center"
+                android:text="@string/scan_bind_connection_hint" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_bind_continue"
+                style="@style/PillButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/section_gap"
+                android:text="@string/scan_bind_continue" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

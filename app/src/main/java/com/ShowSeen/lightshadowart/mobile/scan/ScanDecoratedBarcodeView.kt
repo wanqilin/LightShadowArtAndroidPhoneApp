@@ -9,11 +9,11 @@ import com.journeyapps.barcodescanner.CameraPreview
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 
 /**
- * 自定义扫码取景视图：把「扫描二维码」标题贴在取景框顶部，
- * 把底部提示文字挪到取景框下方。
+ * 自定义扫码取景视图：把「扫描二维码」标题贴在页面顶部，
+ * 把提示文字放在取景框下方。
  *
- * 取景框位置由相机预览尺寸决定，故这里监听 previewSized 回调，
- * 拿到 framingRect 后再把两个文字视图定位到框的上/下方。
+ * 取景框沿用 ZXing 默认的垂直居中位置，于是标题在顶、取景框居中、提示紧随其下，
+ * 三者自上而下铺开，不会全部挤在页面上半部。
  */
 class ScanDecoratedBarcodeView @JvmOverloads constructor(
     context: Context,
@@ -30,14 +30,6 @@ class ScanDecoratedBarcodeView @JvmOverloads constructor(
     private val titleTopPx: Int = statusBarHeightPx() + (12 * resources.displayMetrics.density).toInt()
 
     init {
-        // 取景框顶部贴到「扫描二维码」标题下方，先测量标题高度再设定目标位置
-        titleView?.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        val titleHeight = titleView?.measuredHeight ?: 0
-        (getBarcodeView() as? ScanBarcodeView)?.framingRectTop = titleTopPx + titleHeight + gapPx
-
         getBarcodeView().addStateListener(object : CameraPreview.StateListener {
             override fun previewSized() = positionOverlays()
             override fun previewStarted() {}

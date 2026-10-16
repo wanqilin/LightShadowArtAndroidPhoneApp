@@ -26,6 +26,9 @@ import com.ShowSeen.lightshadowart.mobile.scan.ScanActivity
  */
 class BindDeviceActivity : AppCompatActivity() {
 
+    /** The payload of the last successful scan, or null while the frame has not been paired yet. */
+    private var scannedPayload: String? = null
+
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         val contents = result.contents
         if (contents.isNullOrBlank()) {
@@ -35,11 +38,10 @@ class BindDeviceActivity : AppCompatActivity() {
         }
         QrPayloadParser.parse(contents)
             .onSuccess { endpoint ->
-                startActivity(
-                    Intent(this, MainActivity::class.java)
-                        .putExtra(MainActivity.EXTRA_SCANNED_ENDPOINT, contents)
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
+                // Pairing done: unlock Continue instead of jumping straight to the Dashboard, so the
+                // page keeps the reference flow (scan, then continue) and the step reads as finished
+                scannedPayload = contents
+                findViewById<MaterialButton>(R.id.btn_bind_continue).isEnabled = true
                 Log.i(TAG, "scan ok: ${endpoint.baseUrl}")
             }
             .onFailure {
@@ -76,6 +78,20 @@ class BindDeviceActivity : AppCompatActivity() {
                 openScanner()
             } else {
                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+
+        // Continue is gated on a successful scan: the frame has to be paired before the Dashboard can
+        // show it, so the button stays disabled until the scan above has handed over a payload.
+        findViewById<MaterialButton>(R.id.btn_bind_continue).apply {
+            isEnabled = false
+            setOnClickListener {
+                val payload = scannedPayload ?: return@setOnClickListener
+                startActivity(
+                    Intent(this@BindDeviceActivity, MainActivity::class.java)
+                        .putExtra(MainActivity.EXTRA_SCANNED_ENDPOINT, payload)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
             }
         }
     }

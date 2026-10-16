@@ -259,6 +259,8 @@
     <string name="scan_bind_message">扫描相框上的二维码完成连接。</string>
     <string name="scan_bind_action">扫描二维码</string>
     <string name="scan_bind_illustration_desc">手机通过 Wi-Fi 连接相框</string>
+    <string name="scan_bind_connection_hint">通过蓝牙或 Wi-Fi 连接</string>
+    <string name="scan_bind_continue">继续</string>
     <string name="scan_permission_title">需要相机权限</string>
     <string name="scan_permission_message">扫码需要相机权限，请在系统设置中允许后重试。</string>
     <string name="scan_open_settings">打开系统设置</string>

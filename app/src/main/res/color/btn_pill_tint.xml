@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Primary pill container: a plain colour cannot show a disabled state, so disabled buttons drop to
+    the neutral divider tone instead of staying blue while ignoring taps.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:color="@color/divider_stroke"
+        android:state_enabled="false" />
+    <item android:color="@color/primary_blue" />
+</selector>

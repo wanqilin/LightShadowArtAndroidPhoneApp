@@ -1,58 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Bind-device illustration: a phone, the wireless link between them and the photo frame.
-    Purely decorative, so callers mark it as such for accessibility.
+    Bind-device illustration (UI PRD §3.2): a phone standing next to the photo frame, with the QR
+    code printed on the frame's mat — the thing the phone is about to scan. Purely decorative, so
+    callers mark it as such for accessibility.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="180dp"
-    android:height="108dp"
-    android:viewportWidth="120"
-    android:viewportHeight="72">
+    android:width="280dp"
+    android:height="182dp"
+    android:viewportWidth="200"
+    android:viewportHeight="130">
 
-    <!-- Phone -->
+    <!-- Soft ground shadow so the two devices read as standing on a surface -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M9 16a3 3 0 0 1 3-3h18a3 3 0 0 1 3 3v40a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3z"
-        android:strokeColor="@color/primary_blue"
-        android:strokeWidth="2.4" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M17 51h8"
-        android:strokeColor="@color/primary_blue"
-        android:strokeLineCap="round"
-        android:strokeWidth="2.4" />
+        android:fillAlpha="0.45"
+        android:fillColor="@color/divider_stroke"
+        android:pathData="M52 122a66 7 0 1 0 132 0a66 7 0 1 0 -132 0z" />
 
-    <!-- Wireless link -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M54 40a7 7 0 0 1 12 0"
-        android:strokeColor="@color/accent_teal"
-        android:strokeLineCap="round"
-        android:strokeWidth="2.4" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M49 33a13 13 0 0 1 22 0"
-        android:strokeColor="@color/accent_teal"
-        android:strokeLineCap="round"
-        android:strokeWidth="2.4" />
-    <path
-        android:fillColor="@color/accent_teal"
-        android:pathData="M60 44.5a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2z" />
+    <!-- Phone, tilted a little as in the reference -->
+    <group
+        android:pivotX="42"
+        android:pivotY="68"
+        android:rotation="-8">
 
-    <!-- Photo frame -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M87 15h28v44H87z"
-        android:strokeColor="@color/primary_blue"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2.4" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M93 21h16v32H93z"
-        android:strokeColor="@color/divider_stroke"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2" />
-    <path
-        android:fillColor="@color/accent_sky"
-        android:pathData="M95 45l5-7 3.5 4.5L107 38l2 7z" />
+        <path
+            android:fillColor="@color/card_bg"
+            android:pathData="M20 16h44a12 12 0 0 1 12 12v80a12 12 0 0 1 -12 12H20a12 12 0 0 1 -12 -12V28a12 12 0 0 1 12 -12z"
+            android:strokeColor="@color/primary_blue"
+            android:strokeWidth="3" />
+
+        <path
+            android:fillColor="@color/accent_sky"
+            android:pathData="M22 22h40a8 8 0 0 1 8 8v76a8 8 0 0 1 -8 8H22a8 8 0 0 1 -8 -8V30a8 8 0 0 1 8 -8z" />
+
+        <path
+            android:fillColor="@color/primary_blue"
+            android:pathData="M36 24h12a2 2 0 0 1 0 4H36a2 2 0 0 1 0 -4z" />
+
+        <path
+            android:fillColor="@color/primary_blue"
+            android:pathData="M35.5 108h13a2.5 2.5 0 0 1 0 5h-13a2.5 2.5 0 0 1 0 -5z" />
+    </group>
+
+    <!-- Photo frame with the QR code on its mat -->
+    <group
+        android:pivotX="135"
+        android:pivotY="72"
+        android:rotation="3">
+
+        <path
+            android:fillColor="@color/card_bg"
+            android:pathData="M101 22h68a7 7 0 0 1 7 7v86a7 7 0 0 1 -7 7h-68a7 7 0 0 1 -7 -7V29a7 7 0 0 1 7 -7z"
+            android:strokeColor="@color/primary_blue"
+            android:strokeWidth="3" />
+
+        <path
+            android:fillColor="@color/card_tint"
+            android:pathData="M107 31h56a4 4 0 0 1 4 4v74a4 4 0 0 1 -4 4h-56a4 4 0 0 1 -4 -4V35a4 4 0 0 1 4 -4z" />
+
+        <!-- QR finder patterns -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M109 37h14v14h-14z M147 37h14v14h-14z M109 93h14v14h-14z"
+            android:strokeColor="@color/text_primary"
+            android:strokeLineJoin="miter"
+            android:strokeWidth="3.5" />
+
+        <path
+            android:fillColor="@color/text_primary"
+            android:pathData="M113.5 41.5h5v5h-5z M151.5 41.5h5v5h-5z M113.5 97.5h5v5h-5z" />
+
+        <!-- QR data modules -->
+        <path
+            android:fillColor="@color/text_primary"
+            android:pathData="M131 39h4v4h-4z M137 39h4v4h-4z M143 39h4v4h-4z M131 45h4v4h-4z M141 45h4v4h-4z M111 57h4v4h-4z M123 57h4v4h-4z M135 57h4v4h-4z M147 57h4v4h-4z M155 57h4v4h-4z M109 63h4v4h-4z M121 63h4v4h-4z M133 63h4v4h-4z M145 63h4v4h-4z M157 63h4v4h-4z M115 69h4v4h-4z M127 69h4v4h-4z M139 69h4v4h-4z M151 69h4v4h-4z M109 75h4v4h-4z M119 75h4v4h-4z M131 75h4v4h-4z M143 75h4v4h-4z M155 75h4v4h-4z M113 81h4v4h-4z M125 81h4v4h-4z M137 81h4v4h-4z M149 81h4v4h-4z M159 81h4v4h-4z M109 87h4v4h-4z M121 87h4v4h-4z M133 87h4v4h-4z M145 87h4v4h-4z M157 87h4v4h-4z M127 99h4v4h-4z M139 99h4v4h-4z M151 99h4v4h-4z M159 99h4v4h-4z" />
+    </group>
 </vector>
