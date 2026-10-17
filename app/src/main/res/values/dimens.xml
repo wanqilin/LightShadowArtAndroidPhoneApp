@@ -25,6 +25,9 @@
     <dimen name="divider_width">1dp</dimen>
     <!-- Dashboard 2x2 entry cards: fixed so both columns and both rows stay equal -->
     <dimen name="dashboard_card_height">156dp</dimen>
+    <!-- Dashboard brand disc and its mark, kept proportional at 2x the previous 72dp / 24sp -->
+    <dimen name="dashboard_logo_size">144dp</dimen>
+    <dimen name="text_dashboard_logo">48sp</dimen>
 
     <!-- Controls: 48dp is the minimum touch target (UI PRD §5) -->
     <dimen name="touch_min_height">48dp</dimen>

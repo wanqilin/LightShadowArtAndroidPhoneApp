@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Main Dashboard (UI PRD §3.3, v3.0 two-part layout): the upper half is a read-only brand block —
-    logo, brand name and one line of real connection state — and the lower half is the fixed 2x2 card
-    group: Space Art Gallery / Network Connection on top, Upload Media / Frame Settings below.
+    logo, brand name with the live connection state beside it, and the brand subtitle — and the lower
+    half is the 2x2 card group anchored to the bottom: Space Art Gallery / Network Connection on top,
+    Upload Media / Settings below.
 
     No bottom tab bar: the four cards are the whole navigation surface. The brand block is not
     clickable and carries no chevron, so it cannot be mistaken for a fifth entry.
@@ -39,34 +40,34 @@
 
                 <TextView
                     android:id="@+id/tv_dashboard_logo"
-                    android:layout_width="72dp"
-                    android:layout_height="72dp"
+                    android:layout_width="@dimen/dashboard_logo_size"
+                    android:layout_height="@dimen/dashboard_logo_size"
                     android:background="@drawable/bg_logo_disc"
                     android:gravity="center"
                     android:text="@string/welcome_logo_mark"
                     android:textColor="@color/on_primary"
-                    android:textSize="@dimen/text_title_large"
+                    android:textSize="@dimen/text_dashboard_logo"
                     android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_dashboard_brand"
-                    style="@style/Text.Title"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/item_gap"
-                    android:text="@string/app_name" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="@dimen/item_gap"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_dashboard_brand"
+                        style="@style/Text.Title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name" />
 
                     <View
                         android:id="@+id/view_dashboard_dot"
                         android:layout_width="8dp"
                         android:layout_height="8dp"
+                        android:layout_marginStart="8dp"
                         android:background="@drawable/dot_session" />
 
                     <TextView
@@ -81,14 +82,20 @@
                 </LinearLayout>
 
                 <TextView
-                    android:id="@+id/tv_dashboard_network"
-                    style="@style/Text.Hint"
+                    android:id="@+id/tv_dashboard_subtitle"
+                    style="@style/Text.Body"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:maxLines="1" />
+                    android:layout_marginTop="8dp"
+                    android:text="@string/welcome_subtitle"
+                    android:textColor="@color/text_secondary" />
             </LinearLayout>
+
+            <!-- Flexible gap: keeps the 2x2 card group anchored to the bottom of the page -->
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
 
             <!-- ===== Lower half: fixed 2x2 card group ===== -->
             <LinearLayout

@@ -235,9 +235,7 @@
          Scan / Space / Settings / About / Frame Design / Line Color / Backgrounds pages. -->
     <string name="dashboard_not_connected">Not connected</string>
     <string name="dashboard_upload_media">Upload Media</string>
-    <string name="dashboard_frame_settings">Frame Settings</string>
-    <!-- Status line: connection state · network name, both from the live session -->
-    <string name="dashboard_status_with_network">%1$s · %2$s</string>
+    <string name="dashboard_frame_settings">Settings</string>
     <string name="network_title">Network Connection</string>
     <string name="network_state_connecting">Connecting…</string>
     <string name="network_state_connected">Connected</string>

@@ -62,7 +62,6 @@ class MainActivity : DeviceActivity() {
     private lateinit var cardGallery: View
     private lateinit var cardUploads: View
     private lateinit var tvDashboardConnection: TextView
-    private lateinit var tvDashboardNetwork: TextView
     private lateinit var viewDashboardDot: View
     private lateinit var btnStudioFolder: MaterialButton
     private lateinit var tvUploadSummary: TextView
@@ -133,6 +132,9 @@ class MainActivity : DeviceActivity() {
 
     private var uploadJob: Job? = null
     private var mediaJob: Job? = null
+
+    /** Hides the finished upload summary a few seconds after the last file settles. */
+    private var uploadSummaryHideJob: Job? = null
 
     /** Polls the device playback state while the gallery is on screen (U-11 / U-14). */
     private var playbackJob: Job? = null
@@ -249,7 +251,6 @@ class MainActivity : DeviceActivity() {
         cardGallery = findViewById(R.id.card_gallery)
         cardUploads = findViewById(R.id.card_uploads)
         tvDashboardConnection = findViewById(R.id.tv_dashboard_connection)
-        tvDashboardNetwork = findViewById(R.id.tv_dashboard_network)
         viewDashboardDot = findViewById(R.id.view_dashboard_dot)
         btnStudioFolder = findViewById(R.id.btn_studio_folder)
         tvUploadSummary = findViewById(R.id.tv_upload_summary)
@@ -570,26 +571,20 @@ class MainActivity : DeviceActivity() {
     }
 
     /**
-     * Dashboard brand block (UI PRD §3.3 A): one line of real state plus the network the device is
-     * on, with the device address underneath. Nothing here is fabricated — offline says so.
+     * Dashboard brand block (UI PRD §3.3 A): the live state sits beside the brand name; the network
+     * name and device address stay on the Network Connection page instead of the dashboard.
      */
     private fun renderDashboard() {
         val endpoint = SessionStore.endpoint
         val active = endpoint != null && SessionStore.isActive
 
-        val state = getString(
+        tvDashboardConnection.text = getString(
             when {
                 connecting -> R.string.network_state_connecting
                 active -> R.string.network_state_connected
                 else -> R.string.dashboard_not_connected
             }
         )
-        val ssid = SessionStore.lastWifiSsid
-        tvDashboardConnection.text = if (active && ssid.isNotEmpty()) {
-            getString(R.string.dashboard_status_with_network, state, ssid)
-        } else {
-            state
-        }
 
         viewDashboardDot.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(
@@ -601,10 +596,6 @@ class MainActivity : DeviceActivity() {
                 }
             )
         )
-
-        // The address is extra detail, so it lives on its own smaller line and only while connected.
-        tvDashboardNetwork.isVisible = active
-        tvDashboardNetwork.text = endpoint?.let { "${it.host}:${it.port}" }.orEmpty()
 
         btnStudioFolder.isVisible = active && SessionStore.inStudioMode && SessionStore.isAdmin
     }
@@ -1107,6 +1098,7 @@ class MainActivity : DeviceActivity() {
     }
 
     private fun startUpload(uris: List<Uri>) {
+        uploadSummaryHideJob?.cancel()
         val baseIndex = uploadAdapter.itemCount
         val items = uris.map { UploadItem(contentResolver.toUploadSource(it)) }
         uploadAdapter.addAll(items)
@@ -1185,6 +1177,12 @@ class MainActivity : DeviceActivity() {
             tvUploadSummary.text = getString(R.string.upload_summary_done, success, failed)
             cardUpload.isEnabled = true
             renderSession()
+
+            uploadSummaryHideJob = lifecycleScope.launch {
+                delay(UPLOAD_SUMMARY_AUTO_HIDE_MS)
+                uploadAdapter.clear()
+                updateUploadSummary()
+            }
         }
     }
 
@@ -1429,6 +1427,9 @@ class MainActivity : DeviceActivity() {
         /** Playback polling: quick enough to follow the device, slow enough to stay cheap */
         const val PLAYBACK_POLL_INTERVAL_MS = 3_000L
         const val PLAYBACK_REFRESH_DELAY_MS = 900L
+
+        /** How long the finished upload summary stays on the dashboard before it hides itself */
+        const val UPLOAD_SUMMARY_AUTO_HIDE_MS = 5_000L
 
         /** Longest edge used when decoding the device frame for the Now Playing area */
         const val NOW_PLAYING_MAX_PX = 1280

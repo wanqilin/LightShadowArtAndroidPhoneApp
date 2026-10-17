@@ -33,6 +33,12 @@ class UploadAdapter : RecyclerView.Adapter<UploadAdapter.UploadViewHolder>() {
         notifyItemRangeInserted(start, newItems.size)
     }
 
+    fun clear() {
+        val count = items.size
+        items.clear()
+        notifyItemRangeRemoved(0, count)
+    }
+
     fun refresh(position: Int) {
         if (position in items.indices) notifyItemChanged(position)
     }

@@ -230,9 +230,7 @@
          Scan / Space / Settings / About / Frame Design / Line Color / Backgrounds pages. -->
     <string name="dashboard_not_connected">未连接设备</string>
     <string name="dashboard_upload_media">上传媒体</string>
-    <string name="dashboard_frame_settings">相框设置</string>
-    <!-- 状态行：连接状态 · 网络名（两者都来自真实会话） -->
-    <string name="dashboard_status_with_network">%1$s · %2$s</string>
+    <string name="dashboard_frame_settings">设置</string>
     <string name="network_title">网络连接</string>
     <string name="network_state_connecting">连接中…</string>
     <string name="network_state_connected">已连接</string>
