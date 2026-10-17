@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Main Dashboard (UI PRD §3.3, v3.0 two-part layout): the upper half is a read-only brand block —
-    logo, brand name with the live connection state beside it, and the brand subtitle — and the lower
-    half is the 2x2 card group anchored to the bottom: Space Art Gallery / Network Connection on top,
+    logo, brand name with a live state dot beside it, and the brand subtitle — and the lower half is
+    the 2x2 card group anchored to the bottom: Space Art Gallery / Network Connection on top,
     Upload Media / Settings below.
 
     No bottom tab bar: the four cards are the whole navigation surface. The brand block is not
@@ -49,37 +49,28 @@
                     android:textSize="@dimen/text_dashboard_logo"
                     android:textStyle="bold" />
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <RelativeLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/item_gap"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_marginTop="@dimen/item_gap">
 
                     <TextView
                         android:id="@+id/tv_dashboard_brand"
                         style="@style/Text.Title"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_centerHorizontal="true"
                         android:text="@string/app_name" />
 
                     <View
                         android:id="@+id/view_dashboard_dot"
                         android:layout_width="8dp"
                         android:layout_height="8dp"
+                        android:layout_centerVertical="true"
                         android:layout_marginStart="8dp"
+                        android:layout_toEndOf="@id/tv_dashboard_brand"
                         android:background="@drawable/dot_session" />
-
-                    <TextView
-                        android:id="@+id/tv_dashboard_connection"
-                        style="@style/Text.Hint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:text="@string/dashboard_not_connected" />
-                </LinearLayout>
+                </RelativeLayout>
 
                 <TextView
                     android:id="@+id/tv_dashboard_subtitle"

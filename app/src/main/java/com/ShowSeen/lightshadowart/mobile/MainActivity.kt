@@ -61,7 +61,6 @@ class MainActivity : DeviceActivity() {
     private lateinit var cardSettings: View
     private lateinit var cardGallery: View
     private lateinit var cardUploads: View
-    private lateinit var tvDashboardConnection: TextView
     private lateinit var viewDashboardDot: View
     private lateinit var btnStudioFolder: MaterialButton
     private lateinit var tvUploadSummary: TextView
@@ -250,7 +249,6 @@ class MainActivity : DeviceActivity() {
         cardSettings = findViewById(R.id.card_settings)
         cardGallery = findViewById(R.id.card_gallery)
         cardUploads = findViewById(R.id.card_uploads)
-        tvDashboardConnection = findViewById(R.id.tv_dashboard_connection)
         viewDashboardDot = findViewById(R.id.view_dashboard_dot)
         btnStudioFolder = findViewById(R.id.btn_studio_folder)
         tvUploadSummary = findViewById(R.id.tv_upload_summary)
@@ -571,20 +569,20 @@ class MainActivity : DeviceActivity() {
     }
 
     /**
-     * Dashboard brand block (UI PRD §3.3 A): the live state sits beside the brand name; the network
-     * name and device address stay on the Network Connection page instead of the dashboard.
+     * Dashboard brand block (UI PRD §3.3 A): the state dot sits beside the brand name; its state is
+     * also exposed as content description so the meaning never relies on color alone. Network name
+     * and device address stay on the Network Connection page instead of the dashboard.
      */
     private fun renderDashboard() {
         val endpoint = SessionStore.endpoint
         val active = endpoint != null && SessionStore.isActive
 
-        tvDashboardConnection.text = getString(
-            when {
-                connecting -> R.string.network_state_connecting
-                active -> R.string.network_state_connected
-                else -> R.string.dashboard_not_connected
-            }
-        )
+        val stateRes = when {
+            connecting -> R.string.network_state_connecting
+            active -> R.string.network_state_connected
+            else -> R.string.dashboard_not_connected
+        }
+        viewDashboardDot.contentDescription = getString(stateRes)
 
         viewDashboardDot.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(
@@ -1429,7 +1427,7 @@ class MainActivity : DeviceActivity() {
         const val PLAYBACK_REFRESH_DELAY_MS = 900L
 
         /** How long the finished upload summary stays on the dashboard before it hides itself */
-        const val UPLOAD_SUMMARY_AUTO_HIDE_MS = 5_000L
+        const val UPLOAD_SUMMARY_AUTO_HIDE_MS = 3_000L
 
         /** Longest edge used when decoding the device frame for the Now Playing area */
         const val NOW_PLAYING_MAX_PX = 1280
