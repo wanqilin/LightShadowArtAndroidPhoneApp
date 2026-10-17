@@ -2,15 +2,15 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        App theme (UI PRD v2.0 §2.1 / §2.3): warm light cyan-blue background, soft lake blue as
-        the only primary action colour, white content cards with a thin cyan-grey stroke.
+        App theme (UI PRD v3.0 §2.1 / §2.3): light cool grey background, white content cards with a
+        thin grey stroke and tech blue as the only primary action colour.
     -->
     <style name="Theme.LightShadowArtPhone" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/primary_blue</item>
         <item name="colorOnPrimary">@color/on_primary</item>
-        <item name="colorPrimaryContainer">@color/accent_sky</item>
+        <item name="colorPrimaryContainer">@color/primary_soft</item>
         <item name="colorOnPrimaryContainer">@color/text_primary</item>
-        <item name="colorSecondary">@color/accent_teal</item>
+        <item name="colorSecondary">@color/primary_blue</item>
         <item name="colorOnSecondary">@color/on_primary</item>
         <item name="colorSurface">@color/card_bg</item>
         <item name="colorOnSurface">@color/text_primary</item>
@@ -27,6 +27,13 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@color/app_bg</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <!--
+            Material 3 tints elevated surfaces with colorPrimary (the "surface tint"), which turns a
+            pure white card light blue. The spec wants cards to stay card white (UI PRD §2.1), so the
+            elevation overlay is off for the whole app. The switch has to live on the theme: the
+            overlay is initialised from the theme, not from a per-card style.
+        -->
+        <item name="elevationOverlayEnabled">false</item>
     </style>
 
     <!-- ================= Text styles (UI PRD §2.2) ================= -->
@@ -43,15 +50,18 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- Secondary-page header title -->
+    <!-- Secondary-page header title: 18sp Normal, never bold (UI PRD v3.0 §2.2) -->
     <style name="Text.PageTitle" parent="">
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textSize">@dimen/text_page_title</item>
-        <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- Legacy alias for existing screens -->
-    <style name="Text.Title" parent="Text.PageTitle" />
+    <!-- Page / brand title: 20sp Bold, one step below title_large -->
+    <style name="Text.Title" parent="">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/text_title</item>
+        <item name="android:textStyle">bold</item>
+    </style>
 
     <style name="Text.Body" parent="">
         <item name="android:textColor">@color/text_primary</item>
@@ -154,7 +164,7 @@
         <item name="cornerSize">@dimen/corner_image</item>
     </style>
 
-    <!-- White content card: 22dp corners, thin cyan-grey stroke, very light shadow -->
+    <!-- White content card: 22dp corners, thin grey stroke, very light shadow -->
     <style name="SurfaceCard" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/card_bg</item>
         <item name="cardCornerRadius">@dimen/corner_large</item>

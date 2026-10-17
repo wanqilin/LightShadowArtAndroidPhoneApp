@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Legibility scrim under the copy layered over the live camera preview. This sits on top of video
+    rather than behind page content, so the "no page gradients" rule (UI PRD §2.4) does not apply.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:endColor="@android:color/transparent"
+        android:startColor="@color/scan_scrim" />
+</shape>

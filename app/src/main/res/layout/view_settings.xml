@@ -8,7 +8,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_app_gradient">
+    android:background="@color/app_bg">
 
     <!-- Level 1: the settings menu -->
     <LinearLayout
@@ -227,7 +227,7 @@
         android:id="@+id/settings_params_page"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_app_gradient"
+        android:background="@color/app_bg"
         android:orientation="vertical"
         android:visibility="gone">
 

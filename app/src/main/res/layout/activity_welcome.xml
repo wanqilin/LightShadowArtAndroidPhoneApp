@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    First-run guide, step 1 (UI PRD §3.1): the brand mark, the greeting and the language choice,
-    matching the reference layout. The brand disc sits in the upper third with a generous size, the
-    greeting lands around the middle of the page, the language cards sit just below it and Get
-    Started hugs the bottom.
+    First-run guide, step 1 (UI PRD §3.1): the brand mark, the greeting and the language choice.
+    The 80dp brand disc, the greeting and the two language cards form one block in the upper part
+    of the page; Get Started stays above the bottom safe area with flexible space in between.
 
-    The vertical gaps are weighted spacers, so on a tall screen the page spreads out instead of the
-    copy clustering in the middle; the whole column scrolls when the screen is short or the system
-    font is large.
+    The trailing spacer takes the remaining height, so the page keeps the "compact on top, airy at
+    the bottom" balance on tall screens; the whole column scrolls when the screen is short or the
+    system font is large.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_app_gradient"
+    android:background="@color/app_bg"
     android:orientation="vertical">
 
     <ScrollView
@@ -36,33 +35,27 @@
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1.1" />
+                android:layout_weight="0.4" />
 
-            <!-- Brand mark: a light cyan disc with the LS monogram -->
+            <!-- Brand mark: an 80dp primary disc with the LS monogram (UI PRD §3.1) -->
             <TextView
                 android:id="@+id/tv_welcome_logo"
-                android:layout_width="128dp"
-                android:layout_height="128dp"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
                 android:layout_gravity="center_horizontal"
                 android:background="@drawable/bg_logo_disc"
                 android:gravity="center"
                 android:text="@string/welcome_logo_mark"
-                android:textColor="@color/primary_blue"
-                android:textSize="44sp"
+                android:textColor="@color/on_primary"
+                android:textSize="28sp"
                 android:textStyle="bold" />
-
-            <!-- Wide gap so the greeting lands around the middle, as in the reference -->
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1.4" />
 
             <TextView
                 android:id="@+id/tv_welcome_title"
                 style="@style/Text.TitleLarge"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="serif"
+                android:layout_marginTop="24dp"
                 android:gravity="center"
                 android:text="@string/welcome_title" />
 
@@ -76,16 +69,12 @@
                 android:text="@string/welcome_subtitle"
                 android:textColor="@color/text_secondary" />
 
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.3" />
-
             <!-- The language prompt sits directly above the language cards, as in the reference -->
             <TextView
                 style="@style/Text.Hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
                 android:layout_marginBottom="@dimen/item_gap"
                 android:gravity="center"
                 android:text="@string/welcome_choose_language" />
@@ -159,10 +148,11 @@
                     app:tint="@color/primary_blue" />
             </LinearLayout>
 
+            <!-- Flexible space keeps Get Started above the bottom safe area -->
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="0.5" />
+                android:layout_weight="1.0" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_welcome_start"

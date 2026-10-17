@@ -29,7 +29,7 @@
             android:strokeWidth="3" />
 
         <path
-            android:fillColor="@color/accent_sky"
+            android:fillColor="@color/primary_soft"
             android:pathData="M22 22h40a8 8 0 0 1 8 8v76a8 8 0 0 1 -8 8H22a8 8 0 0 1 -8 -8V30a8 8 0 0 1 8 -8z" />
 
         <path

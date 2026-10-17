@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Brand disc on the welcome page: light cyan circle with a soft edge -->
+<!-- Brand disc on the welcome page: solid primary circle (UI PRD v3.0 §3.1) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <gradient
-        android:angle="270"
-        android:endColor="@color/accent_sky"
-        android:startColor="@color/card_bg"
-        android:type="linear" />
-    <stroke
-        android:width="@dimen/divider_width"
-        android:color="@color/divider_stroke" />
+    <solid android:color="@color/primary_blue" />
 </shape>

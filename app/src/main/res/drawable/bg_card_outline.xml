@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Language choice card background: white with a thin cyan-grey stroke -->
+<!-- Language choice card background: white with a thin grey stroke -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@color/card_bg" />
