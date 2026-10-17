@@ -173,6 +173,7 @@
                             android:text="@string/wifi_activate_title" />
 
                         <com.google.android.material.materialswitch.MaterialSwitch
+        style="@style/Widget.LightShadowArtPhone.Switch"
                             android:id="@+id/switch_activate_frame"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"

@@ -97,9 +97,9 @@
     <string name="tab_settings">设置</string>
 
     <!-- 左栏：空间 -->
-    <string name="space_mode_immersive">沉浸视图</string>
-    <string name="space_mode_date">日期视图</string>
-    <string name="space_mode_favourite">喜爱视图</string>
+    <string name="space_mode_immersive">沉浸</string>
+    <string name="space_mode_date">日期</string>
+    <string name="space_mode_favourite">喜爱</string>
     <string name="space_empty">暂无照片或视频</string>
     <string name="space_control_up">上</string>
     <string name="space_control_down">下</string>

@@ -103,7 +103,7 @@
 
     <!-- Left tab: Space -->
     <string name="space_mode_immersive">Immersive</string>
-    <string name="space_mode_date">By date</string>
+    <string name="space_mode_date">By Date</string>
     <string name="space_mode_favourite">Favs</string>
     <string name="space_empty">No photos or videos yet</string>
     <string name="space_control_up">Up</string>

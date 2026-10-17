@@ -164,6 +164,16 @@
         <item name="cornerSize">@dimen/corner_image</item>
     </style>
 
+    <!--
+        Switch: the Material 3 defaults take the off-state track and thumb from colorSurfaceVariant /
+        colorOutline, which are near-white in this theme, so the switch vanished on a white card.
+    -->
+    <style name="Widget.LightShadowArtPhone.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="trackTint">@color/switch_track</item>
+        <item name="thumbTint">@color/switch_thumb</item>
+        <item name="trackDecorationTint">@color/switch_track_decoration</item>
+    </style>
+
     <!-- White content card: 22dp corners, thin grey stroke, very light shadow -->
     <style name="SurfaceCard" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/card_bg</item>

@@ -57,6 +57,7 @@
                         android:text="@string/add_frame_enabled" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
+        style="@style/Widget.LightShadowArtPhone.Switch"
                         android:id="@+id/switch_frame_design_enabled"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

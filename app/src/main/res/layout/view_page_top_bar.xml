@@ -4,6 +4,7 @@
     top bar adds no extra nesting; every secondary page uses it for back arrow + title.
 -->
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:parentTag="android.widget.LinearLayout">
 
@@ -17,15 +18,24 @@
         android:scaleType="centerInside"
         android:src="@drawable/ic_arrow_back" />
 
-    <TextView
+    <!--
+        The title shrinks instead of being cut off: on a narrow screen or with a large system font the
+        status pill leaves too little room, and an ellipsised page title reads as broken.
+    -->
+    <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/top_bar_title"
         style="@style/Text.PageTitle"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/icon_touch_size"
         android:layout_marginStart="4dp"
         android:layout_weight="1"
         android:ellipsize="end"
-        android:maxLines="1" />
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        app:autoSizeMaxTextSize="18sp"
+        app:autoSizeMinTextSize="10sp"
+        app:autoSizeStepGranularity="1sp"
+        app:autoSizeTextType="uniform" />
 
     <TextView
         android:id="@+id/top_bar_trailing"

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Switch track: primary when on, the standard divider grey when off. The Material defaults take the
+    off-state colour from colorSurfaceVariant, which is almost white in this theme, so the switch
+    disappeared against a white card.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/primary_blue" android:state_checked="true" />
+    <item android:color="@color/divider_stroke" />
+</selector>
