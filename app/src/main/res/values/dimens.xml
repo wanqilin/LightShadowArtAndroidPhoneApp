@@ -28,8 +28,8 @@
     <!-- Dashboard brand disc, its mark, and the spacing around the brand block -->
     <dimen name="dashboard_logo_size">116dp</dimen>
     <dimen name="text_dashboard_logo">36sp</dimen>
-    <dimen name="text_dashboard_brand">22sp</dimen>
-    <dimen name="dashboard_brand_gap">24dp</dimen>
+    <dimen name="text_dashboard_brand">26sp</dimen>
+    <dimen name="dashboard_brand_gap">32dp</dimen>
     <dimen name="dashboard_brand_top_offset">3dp</dimen>
 
     <!-- Controls: 48dp is the minimum touch target (UI PRD §5) -->
