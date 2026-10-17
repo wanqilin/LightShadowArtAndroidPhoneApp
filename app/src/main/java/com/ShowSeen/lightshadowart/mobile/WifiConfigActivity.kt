@@ -245,6 +245,29 @@ class WifiConfigActivity : AppCompatActivity() {
             .mapNotNull { cleanSsid(it.SSID) }
             .distinct()
 
+    /**
+     * Frequency of the scanned access point named [ssid], or null when it is unknown (no scan result, or no
+     * location permission so the scan list is empty).
+     */
+    private fun scannedFrequency(ssid: String): Int? =
+        runCatching { wifiManager?.scanResults.orEmpty() }
+            .getOrDefault(emptyList())
+            .firstOrNull { cleanSsid(it.SSID) == ssid }
+            ?.frequency
+
+    /**
+     * Extra hint when the target network turned out to be 5GHz: some frame models only do 2.4GHz (verified on
+     * the MT9681 unit of this project: the soft-AP capability lists 2.4GHz channels only), and there the device
+     * accepts the config but never gets an address, which otherwise looks like "the phone cannot find it".
+     *
+     * Advisory only, and phrased conditionally: the app cannot read the frame's radio capabilities.
+     */
+    private fun bandHint(ssid: String): String {
+        val frequency = scannedFrequency(ssid) ?: return ""
+        if (frequency < FIVE_GHZ_MIN_MHZ) return ""
+        return "\n" + getString(R.string.wifi_switch_band_hint)
+    }
+
     /** The system returns the SSID quoted, and returns "<unknown ssid>" without permission */
     private fun cleanSsid(raw: String?): String? =
         raw?.trim('"')?.takeIf { it.isNotEmpty() && it != UNKNOWN_SSID }
@@ -376,12 +399,26 @@ class WifiConfigActivity : AppCompatActivity() {
             val device = awaitDeviceOnLan()
             waitingForLan = false
             if (device == null) {
+                // Nothing answered mDNS, but the session may still be perfectly usable — for instance while the
+                // device hotspot is still up and the phone is still on it. Reporting a failure there would be a
+                // false alarm (T-22 / F-7), so the known address is probed before giving up: a plain TCP connect
+                // proves the device is reachable, and the session simply stays where it is.
+                val known = SessionStore.endpoint
+                if (known != null && client.probe(known)) {
+                    Log.i(
+                        TAG,
+                        "no mDNS answer but device still reachable at ${known.host}:${known.port}, keep the session"
+                    )
+                    toast(getString(R.string.wifi_switch_kept_link))
+                    finish()
+                    return@launch
+                }
                 // Failing only now means everything on the phone side was done (it is on that Wi-Fi), so log a
                 // snapshot: if it fails again, the log alone shows whether the phone's network or the device is
                 // the blocker, with no guessing
                 Log.w(TAG, "device not found on lan after wifi-config: $ssid, ${diagSummary()}")
                 tvResult.setTextColor(ContextCompat.getColor(this@WifiConfigActivity, R.color.text_secondary))
-                tvResult.text = getString(R.string.wifi_switch_timeout, ssid)
+                tvResult.text = getString(R.string.wifi_switch_timeout, ssid) + bandHint(ssid)
                 return@launch
             }
 
@@ -490,8 +527,11 @@ class WifiConfigActivity : AppCompatActivity() {
 
     /** Look for the device on the LAN repeatedly, returning it as soon as it is found; null after [LAN_WAIT_ATTEMPTS] rounds */
     private suspend fun awaitDeviceOnLan(): DiscoveredDevice? {
+        // Pin the search to the network this process is bound to: after a WifiNetworkSpecifier join that network is
+        // local-only and never becomes the system default, so an unpinned search would look at the wrong link
+        val bound = hotspotConnector.boundNetworkOrNull
         repeat(LAN_WAIT_ATTEMPTS) { attempt ->
-            val devices = probeLan()
+            val devices = probeLan(bound)
             val device = devices.firstOrNull { it.deviceToken == SessionStore.lastDeviceToken }
                 ?: devices.firstOrNull()
             if (device != null) return device
@@ -500,10 +540,10 @@ class WifiConfigActivity : AppCompatActivity() {
         return null
     }
 
-    /** Run one LAN discovery pass (waits at most [LAN_PROBE_TIMEOUT_MS]) */
-    private suspend fun probeLan(): List<DiscoveredDevice> =
+    /** Run one LAN discovery pass on [network] (default network when null); waits at most [LAN_PROBE_TIMEOUT_MS] */
+    private suspend fun probeLan(network: Network?): List<DiscoveredDevice> =
         suspendCancellableCoroutine { continuation ->
-            nsdDiscoverer.discover(LAN_PROBE_TIMEOUT_MS) { devices ->
+            nsdDiscoverer.discover(LAN_PROBE_TIMEOUT_MS, network) { devices ->
                 if (continuation.isActive) continuation.resume(devices)
             }
             continuation.invokeOnCancellation { nsdDiscoverer.cancel() }
@@ -578,5 +618,8 @@ class WifiConfigActivity : AppCompatActivity() {
         const val LAN_PROBE_TIMEOUT_MS = 3_000L
         const val LAN_WAIT_INTERVAL_MS = 1_000L
         const val LAN_WAIT_ATTEMPTS = 12
+
+        /** Scan results at or above this frequency are 5GHz channels (2.4GHz tops out around 2.5GHz) */
+        const val FIVE_GHZ_MIN_MHZ = 4_000
     }
 }

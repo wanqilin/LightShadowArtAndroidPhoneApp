@@ -71,6 +71,15 @@ class HotspotConnector private constructor(context: Context) {
     var lastOutcome: Outcome = Outcome.NOT_ATTEMPTED
         private set
 
+    /**
+     * The network this process is bound to, or null when not bound.
+     *
+     * `NsdManager` searches the system's default network unless it is told otherwise, and a
+     * `WifiNetworkSpecifier` network is local-only, so it never becomes the default. Discovery must be
+     * pointed at this network explicitly, otherwise it searches the wrong link and reports nothing.
+     */
+    val boundNetworkOrNull: Network? get() = boundNetwork
+
     /** IPv4 address assigned on the hotspot network; null if not obtained */
     var hotspotIpv4: String? = null
         private set

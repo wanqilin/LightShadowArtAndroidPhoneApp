@@ -34,6 +34,8 @@
     <string name="wifi_success">Sent: %1$s. Waiting for the device to join this network; you will return to Home once it succeeds.</string>
     <string name="wifi_joining">Connecting your phone to “%1$s” …</string>
     <string name="wifi_switch_timeout">The device was not found on the local network. Make sure your phone is connected to “%1$s”, then go back to Home and tap “Refresh connection” to retry.</string>
+    <string name="wifi_switch_kept_link">The device was not found on the local network, but the existing connection still works, so it was kept — no need to retry.</string>
+    <string name="wifi_switch_band_hint">Note: this network is 5GHz. If the frame does not support 5GHz (some models only do 2.4GHz), pick a 2.4GHz network and try again.</string>
     <string name="wifi_join_unavailable">Could not connect your phone to “%1$s”: the system cannot join this Wi-Fi. Check the password in system settings and retry.</string>
     <string name="wifi_join_lost">Your phone joined “%1$s” but the system dropped it right away. Make sure the Wi-Fi signal is good, then retry.</string>
     <string name="wifi_join_error">Could not connect your phone to “%1$s”: the join request failed. Retry, or connect to that network manually in system Wi-Fi first.</string>

@@ -1,12 +1,15 @@
 package com.ShowSeen.lightshadowart.mobile.net
 
 import android.content.Context
+import android.net.Network
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import java.util.concurrent.Executor
 
 /** Device discovered on the LAN (result of NSD service resolution) */
 data class DiscoveredDevice(
@@ -77,11 +80,21 @@ class NsdDiscoverer(context: Context) {
     /**
      * Starts discovery and reports the result on the main thread after [timeoutMs] (may be empty).
      *
+     * [network] pins the search to that network. It matters after the phone was moved onto the target
+     * Wi-Fi through a `WifiNetworkSpecifier`: that network is local-only, so it never becomes the system
+     * default and an unpinned `NsdManager` searches the wrong link, finds nothing and the caller reports a
+     * false failure even though the device is reachable (T-22 / F-7). Passing null searches the default
+     * network, which is the right thing while the session already lives on the LAN.
+     *
+     * The pinned variant needs the API 34 overload; on older releases the default network is used, which is
+     * still correct whenever the phone joined the target Wi-Fi as its normal network.
+     *
      * Only one discovery is kept at a time: a repeated call first ends the previous one, whose
      * callback will not fire.
      */
     fun discover(
         timeoutMs: Long = DISCOVER_TIMEOUT_MS,
+        network: Network? = null,
         onResult: (List<DiscoveredDevice>) -> Unit
     ) {
         val manager = nsdManager
@@ -102,7 +115,7 @@ class NsdDiscoverer(context: Context) {
         val listener = object : NsdManager.DiscoveryListener {
 
             override fun onDiscoveryStarted(serviceType: String) {
-                Log.i(TAG, "discovery started: $serviceType")
+                Log.i(TAG, "discovery started: $serviceType, network=${network ?: "default"}")
             }
 
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
@@ -132,7 +145,22 @@ class NsdDiscoverer(context: Context) {
 
         discoveryListener = listener
         try {
-            manager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
+            if (network != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // API 34 can pin the search to one network; the callbacks stay on the main thread
+                val executor = Executor { command -> mainHandler.post(command) }
+                manager.discoverServices(
+                    SERVICE_TYPE,
+                    NsdManager.PROTOCOL_DNS_SD,
+                    network,
+                    executor,
+                    listener
+                )
+            } else {
+                if (network != null) {
+                    Log.w(TAG, "network pinning needs API 34, searching the default network instead")
+                }
+                manager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
+            }
         } catch (t: Throwable) {
             Log.e(TAG, "discoverServices failed", t)
             finish()

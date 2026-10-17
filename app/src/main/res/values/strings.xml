@@ -29,6 +29,8 @@
     <string name="wifi_success">已下发：%1$s。正在等待设备接入该网络，成功后会回到首页。</string>
     <string name="wifi_joining">正在把手机接入「%1$s」…</string>
     <string name="wifi_switch_timeout">未能在局域网内发现设备。请确认手机已连接「%1$s」，返回首页点「刷新连接」重试。</string>
+    <string name="wifi_switch_kept_link">未能在局域网内发现设备，但原有连接仍然可用，已保留当前连接，无需重试。</string>
+    <string name="wifi_switch_band_hint">另外：这个网络是 5GHz。若设备端不支持 5GHz（有的机型 Wi-Fi 仅支持 2.4GHz），请改选 2.4GHz 网络后重试。</string>
     <string name="wifi_join_unavailable">手机接入「%1$s」失败：系统无法接入该 Wi-Fi。请在系统设置里确认密码正确后重试。</string>
     <string name="wifi_join_lost">手机接入「%1$s」后随即被系统断开。请确认该 Wi-Fi 信号正常后重试。</string>
     <string name="wifi_join_error">手机接入「%1$s」失败：接入请求异常。请重试，或先在系统 Wi-Fi 里手动连接该网络。</string>
