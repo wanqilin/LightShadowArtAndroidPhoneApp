@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Main Dashboard (UI PRD v2.0 §3.3): brand header, a Network Connection card that merges the
-    old device-status block, one prominent Upload Media card and two side-by-side entry cards.
-    No bottom tab bar: the four modules are the whole navigation surface.
+    Main Dashboard (UI PRD §3.3, v3.0 two-part layout): the upper half is a read-only brand block —
+    logo, brand name and one line of real connection state — and the lower half is the fixed 2x2 card
+    group: Space Art Gallery / Network Connection on top, Upload Media / Frame Settings below.
+
+    No bottom tab bar: the four cards are the whole navigation surface. The brand block is not
+    clickable and carries no chevron, so it cannot be mistaken for a fifth entry.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_app_gradient"
+    android:background="@color/app_bg"
     android:orientation="vertical">
 
     <ScrollView
@@ -27,145 +30,197 @@
             android:paddingEnd="@dimen/page_horizontal_padding"
             android:paddingBottom="@dimen/page_vertical_padding">
 
-            <TextView
-                style="@style/Text.TitleLarge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/app_name" />
-
-            <!-- Network Connection: whole card is the tap target, no reconnect button in here -->
+            <!-- ===== Upper half: brand block, display only ===== -->
             <LinearLayout
-                android:id="@+id/card_network"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
-                android:background="@drawable/bg_card_highlight"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                android:gravity="center_vertical"
-                android:minHeight="84dp"
-                android:orientation="horizontal"
-                android:paddingStart="@dimen/card_padding"
-                android:paddingEnd="@dimen/item_gap"
-                android:paddingTop="@dimen/card_padding"
-                android:paddingBottom="@dimen/card_padding">
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
 
-                <ImageView
-                    android:layout_width="@dimen/icon_badge_box"
-                    android:layout_height="@dimen/icon_badge_box"
-                    android:background="@drawable/bg_icon_plate"
-                    android:contentDescription="@null"
-                    android:padding="9dp"
-                    android:src="@drawable/ic_network"
-                    app:tint="@color/primary_blue" />
+                <TextView
+                    android:id="@+id/tv_dashboard_logo"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:background="@drawable/bg_logo_disc"
+                    android:gravity="center"
+                    android:text="@string/welcome_logo_mark"
+                    android:textColor="@color/on_primary"
+                    android:textSize="@dimen/text_title_large"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_dashboard_brand"
+                    style="@style/Text.Title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/item_gap"
+                    android:text="@string/app_name" />
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/item_gap"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/view_dashboard_dot"
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:background="@drawable/dot_session" />
+
+                    <TextView
+                        android:id="@+id/tv_dashboard_connection"
+                        style="@style/Text.Hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/dashboard_not_connected" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_dashboard_network"
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <!-- ===== Lower half: fixed 2x2 card group ===== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:baselineAligned="false"
+                android:orientation="horizontal">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_gallery"
+                    style="@style/SurfaceCard.Clickable"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/dashboard_card_height"
+                    android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="@dimen/card_padding">
 
-                        <View
-                            android:id="@+id/view_dashboard_dot"
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
-                            android:background="@drawable/dot_session" />
+                        <ImageView
+                            android:layout_width="@dimen/icon_badge_box"
+                            android:layout_height="@dimen/icon_badge_box"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_palette"
+                            app:tint="@color/primary_blue" />
 
                         <TextView
-                            android:id="@+id/tv_dashboard_connection"
                             style="@style/Text.RowTitle"
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:layout_weight="1"
-                            android:ellipsize="end"
+                            android:layout_marginTop="@dimen/item_gap"
+                            android:gravity="center"
                             android:maxLines="2"
-                            android:text="@string/dashboard_not_connected" />
+                            android:text="@string/space_title" />
                     </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                    <TextView
-                        android:id="@+id/tv_dashboard_network"
-                        style="@style/Text.Hint"
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_network"
+                    style="@style/SurfaceCard.Clickable"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/dashboard_card_height"
+                    android:layout_marginStart="@dimen/item_gap"
+                    android:layout_weight="1">
+
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:ellipsize="end"
-                        android:maxLines="2" />
-                </LinearLayout>
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="@dimen/card_padding">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron_right" />
+                        <ImageView
+                            android:layout_width="@dimen/icon_badge_box"
+                            android:layout_height="@dimen/icon_badge_box"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_network"
+                            app:tint="@color/primary_blue" />
+
+                        <TextView
+                            style="@style/Text.RowTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/item_gap"
+                            android:gravity="center"
+                            android:maxLines="2"
+                            android:text="@string/network_title" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
-            <!-- Upload Media: the most prominent action on the page -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_upload"
-                style="@style/SurfaceCard.Clickable"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
-                android:minHeight="150dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="@dimen/page_vertical_padding">
-
-                    <ImageView
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_upload_cloud"
-                        app:tint="@color/primary_blue" />
-
-                    <TextView
-                        style="@style/Text.TitleMedium"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/item_gap"
-                        android:text="@string/dashboard_upload_media" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Two side-by-side entries: device parameters and the art gallery -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
+                android:layout_marginTop="@dimen/item_gap"
                 android:baselineAligned="false"
                 android:orientation="horizontal">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_upload"
+                    style="@style/SurfaceCard.Clickable"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/dashboard_card_height"
+                    android:layout_weight="1">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="@dimen/card_padding">
+
+                        <ImageView
+                            android:layout_width="@dimen/icon_badge_box"
+                            android:layout_height="@dimen/icon_badge_box"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_upload_cloud"
+                            app:tint="@color/primary_blue" />
+
+                        <TextView
+                            style="@style/Text.RowTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/item_gap"
+                            android:gravity="center"
+                            android:maxLines="2"
+                            android:text="@string/dashboard_upload_media" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_settings"
                     style="@style/SurfaceCard.Clickable"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="@dimen/dashboard_card_height"
+                    android:layout_marginStart="@dimen/item_gap"
                     android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="match_parent"
                         android:gravity="center"
-                        android:minHeight="132dp"
                         android:orientation="vertical"
                         android:padding="@dimen/card_padding">
 
                         <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
+                            android:layout_width="@dimen/icon_badge_box"
+                            android:layout_height="@dimen/icon_badge_box"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_settings_gear"
                             app:tint="@color/primary_blue" />
@@ -176,40 +231,8 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="@dimen/item_gap"
                             android:gravity="center"
+                            android:maxLines="2"
                             android:text="@string/dashboard_frame_settings" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_gallery"
-                    style="@style/SurfaceCard.Clickable"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/item_gap"
-                    android:layout_weight="1">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:minHeight="132dp"
-                        android:orientation="vertical"
-                        android:padding="@dimen/card_padding">
-
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_palette"
-                            app:tint="@color/accent_teal" />
-
-                        <TextView
-                            style="@style/Text.RowTitle"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/item_gap"
-                            android:gravity="center"
-                            android:text="@string/dashboard_browse_art" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>

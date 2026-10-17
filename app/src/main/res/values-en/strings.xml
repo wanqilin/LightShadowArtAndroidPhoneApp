@@ -238,7 +238,8 @@
     <string name="dashboard_not_connected">Not connected</string>
     <string name="dashboard_upload_media">Upload Media</string>
     <string name="dashboard_frame_settings">Frame Settings</string>
-    <string name="dashboard_browse_art">Browse Art</string>
+    <!-- Status line: connection state · network name, both from the live session -->
+    <string name="dashboard_status_with_network">%1$s · %2$s</string>
     <string name="network_title">Network Connection</string>
     <string name="network_state_connecting">Connecting…</string>
     <string name="network_state_connected">Connected</string>
@@ -324,7 +325,4 @@
     <string name="wifi_network_title">Wi-Fi network</string>
     <string name="wifi_activate_title">Activate Frame</string>
     <string name="wifi_activate_unsupported">The device does not expose this switch yet, so it is unavailable.</string>
-
-    <!-- 2026-10-15 mobile UI refactor: dashboard hint. -->
-    <string name="dashboard_connect_hint">Scan the QR code to bind and connect</string>
 </resources>

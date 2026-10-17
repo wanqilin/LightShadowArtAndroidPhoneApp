@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    自定义取景布局：与 ZXing 内置 zxing_barcode_scanner 同构，
-    额外加入顶部标题（scan_title），并沿用底部提示（zxing_status_view）。
-    两个文字视图由 ScanDecoratedBarcodeView 定位到取景框的上/下方。
+    Scanner layout plugged into DecoratedBarcodeView (UI PRD §3.2 B). Only the preview surface and
+    the viewfinder are declared: the library inflates this in place of its stock layout and requires
+    both ids to exist. The viewfinder is kept but never shown — the page has no centered framing
+    box, and the copy lives in activity_scan.xml instead.
 -->
 <merge xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -14,25 +15,6 @@
     <com.journeyapps.barcodescanner.ViewfinderView
         android:id="@+id/zxing_viewfinder_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <TextView
-        android:id="@+id/scan_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:text="@string/scan_title"
-        android:textColor="@android:color/white"
-        android:textSize="18sp"
-        android:visibility="invisible" />
-
-    <TextView
-        android:id="@+id/zxing_status_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:text="@string/scan_prompt"
-        android:textColor="@android:color/white"
-        android:textSize="16sp"
-        android:visibility="invisible" />
+        android:layout_height="match_parent"
+        android:visibility="gone" />
 </merge>

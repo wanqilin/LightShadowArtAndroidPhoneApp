@@ -2,19 +2,20 @@ package com.ShowSeen.lightshadowart.mobile.scan
 
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Bundle
 import android.os.LocaleList
+import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatDelegate
 import com.ShowSeen.lightshadowart.mobile.R
 import com.journeyapps.barcodescanner.CaptureActivity
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 
 /**
- * 自定义扫码页：竖屏取景，取景框顶部显示「扫描二维码」，
- * 取景框下方显示操作提示。
+ * Full-screen scanner page (UI PRD §3.2 B): portrait camera preview with the guide layer on top.
  *
- * [CaptureActivity] 继承自系统 Activity，不会自动套用 AppCompat 的应用级语言，
- * 于是页面内的字符串会跟随系统语言，与入口页（Bind Your Device）不一致。
- * 这里在 attachBaseContext 时用当前 App 语言包装 Context，使二者语言统一。
+ * [CaptureActivity] extends the framework Activity, so it does not inherit the AppCompat
+ * per-app language and would follow the system locale instead of the one picked on the Welcome
+ * page. [attachBaseContext] wraps the base context with the current app locale to keep them equal.
  */
 class ScanActivity : CaptureActivity() {
 
@@ -33,5 +34,11 @@ class ScanActivity : CaptureActivity() {
     override fun initializeContent(): DecoratedBarcodeView {
         setContentView(R.layout.activity_scan)
         return findViewById(R.id.zxing_barcode_scanner)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // The guide layer sits in the activity layout, which already exists once super.onCreate ran.
+        findViewById<ImageButton>(R.id.btn_scan_back).setOnClickListener { finish() }
     }
 }

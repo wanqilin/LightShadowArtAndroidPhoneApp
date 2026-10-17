@@ -6,10 +6,11 @@ import android.util.AttributeSet
 import com.journeyapps.barcodescanner.BarcodeView
 
 /**
- * 扫码取景用的 BarcodeView。
+ * Scanner surface for the full-screen page (UI PRD §3.2 B).
  *
- * ZXing 默认把取景框在容器内垂直居中；这里允许外部指定取景框顶部的目标 Y，
- * 使其紧贴「扫描二维码」标题下方。
+ * [BarcodeView] decodes only inside its framing rectangle, and the default one is a centered square
+ * that is shorter than the preview. Returning the whole preview area makes the recognisable region
+ * cover the screen, which is what the spec asks for; the page draws no framing box either.
  */
 class ScanBarcodeView @JvmOverloads constructor(
     context: Context,
@@ -17,15 +18,9 @@ class ScanBarcodeView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : BarcodeView(context, attrs, defStyleAttr) {
 
-    /** 取景框顶部目标 Y（相对本 View）；小于 0 时回退到默认居中位置。 */
-    var framingRectTop: Int = -1
-
-    override fun calculateFramingRect(container: Rect, surface: Rect): Rect {
-        val rect = super.calculateFramingRect(container, surface)
-        if (framingRectTop >= 0) {
-            val maxTop = (container.bottom - rect.height()).coerceAtLeast(container.top)
-            rect.offsetTo(rect.left, framingRectTop.coerceIn(container.top, maxTop))
+    override fun calculateFramingRect(container: Rect, surface: Rect): Rect =
+        Rect(container).also { full ->
+            // When the preview surface does not overlap the container yet, keep the container.
+            if (!full.intersect(surface)) return Rect(container)
         }
-        return rect
-    }
 }

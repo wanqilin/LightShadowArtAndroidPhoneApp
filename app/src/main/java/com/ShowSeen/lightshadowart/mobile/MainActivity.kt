@@ -449,18 +449,28 @@ class MainActivity : DeviceActivity() {
         controlPad.setPadEnabled(SessionStore.isActive)
     }
 
-    /** Dashboard network card: state word, dot, network name and device address (real values only). */
+    /**
+     * Dashboard brand block (UI PRD §3.3 A): one line of real state plus the network the device is
+     * on, with the device address underneath. Nothing here is fabricated — offline says so.
+     */
     private fun renderDashboard() {
         val endpoint = SessionStore.endpoint
         val active = endpoint != null && SessionStore.isActive
 
-        tvDashboardConnection.setText(
+        val state = getString(
             when {
                 connecting -> R.string.network_state_connecting
                 active -> R.string.network_state_connected
                 else -> R.string.dashboard_not_connected
             }
         )
+        val ssid = SessionStore.lastWifiSsid
+        tvDashboardConnection.text = if (active && ssid.isNotEmpty()) {
+            getString(R.string.dashboard_status_with_network, state, ssid)
+        } else {
+            state
+        }
+
         viewDashboardDot.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(
                 this,
@@ -472,15 +482,9 @@ class MainActivity : DeviceActivity() {
             )
         )
 
-        val ssid = SessionStore.lastWifiSsid
-        tvDashboardNetwork.text = when {
-            active -> listOfNotNull(
-                ssid.takeIf { it.isNotEmpty() },
-                endpoint?.let { "${it.host}:${it.port}" }
-            ).joinToString(" · ")
-
-            else -> getString(R.string.dashboard_connect_hint)
-        }
+        // The address is extra detail, so it lives on its own smaller line and only while connected.
+        tvDashboardNetwork.isVisible = active
+        tvDashboardNetwork.text = endpoint?.let { "${it.host}:${it.port}" }.orEmpty()
 
         btnStudioFolder.isVisible = active && SessionStore.inStudioMode && SessionStore.isAdmin
     }
