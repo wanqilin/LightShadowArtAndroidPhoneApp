@@ -7,15 +7,15 @@ import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
 import org.json.JSONObject
 
 /**
- * 进程内会话状态：主界面扫码/手动连接后写入，Wi-Fi 配置页直接复用。
+ * In-process session state: written after scanning/manual connect on the main screen, reused by the Wi-Fi config screen.
  *
- * 设备端会话 TTL 为 12 小时，每次心跳都会刷新剩余时间；手机端退到后台不再心跳，
- * 设备端会在空闲 5 分钟后自动结束会话，因此本地会话失效后点击「刷新连接」即可重建。
+ * Device-side sessions have a 12-hour TTL, refreshed by every heartbeat; the phone stops heartbeating once backgrounded,
+ * and the device ends the session after 5 idle minutes, so tapping "Refresh connection" rebuilds an expired session.
  *
- * 另外持久化「上次下发 Wi-Fi 时用的 SSID」、「最近连接的设备标识」与「设备热点凭据」：
- * 前者用于手机与设备不在同一网络时提醒用户该连哪个 Wi-Fi，
- * 中者用于局域网内发现到多台设备时优先选中上次那台，
- * 后者用于局域网内找不到设备时（设备仍在热点形态）回连设备热点，无需重新扫码。
+ * Also persists the SSID last pushed via Wi-Fi, the most recently connected device token, and the device hotspot credentials:
+ * the first warns which Wi-Fi to join when phone and device are on different networks,
+ * the second prefers the previous device when several are discovered on the LAN,
+ * the third reconnects to the device hotspot (while the device is still a hotspot) when no device is found on the LAN, without rescanning.
  */
 object SessionStore {
 
@@ -41,64 +41,64 @@ object SessionStore {
     @Volatile
     private var expiresAtMs: Long = 0L
 
-    /** 上一次成功下发 Wi-Fi 时使用的 SSID；为空表示还没下发过 */
+    /** SSID used for the last successful Wi-Fi push; empty if never pushed */
     @Volatile
     var lastWifiSsid: String = ""
         private set
 
-    /** 本 App 曾成功下发过的 SSID→密码；安卓读不到系统保存的密码，只能用这份自有缓存自动带入 */
+    /** SSID→password pairs this app pushed successfully; Android can't read system-saved passwords, so only this own cache can auto-fill them */
     private val wifiPasswords = mutableMapOf<String, String>()
 
-    /** 最近一次连接过的设备 Token */
+    /** Token of the most recently connected device */
     @Volatile
     var lastDeviceToken: String = ""
         private set
 
-    /** 最近一次连接过的设备交互模式 */
+    /** Interaction mode of the most recently connected device */
     @Volatile
     var lastDeviceMode: Int = DeviceEndpoint.MODE_STUDIO
         private set
 
-    /** 上次成功接入的设备热点名；为空表示还没通过热点连接过 */
+    /** Hotspot SSID of the last successful connection; empty if never connected via hotspot */
     @Volatile
     var lastApSsid: String = ""
         private set
 
-    /** 上次成功接入的设备热点密码 */
+    /** Hotspot password of the last successful connection */
     @Volatile
     var lastApPassword: String = ""
         private set
 
-    /** 上次通过设备热点连接时用的设备地址（热点网段里的 IP） */
+    /** Device address used for the last hotspot connection (IP on the hotspot subnet) */
     @Volatile
     var lastApHost: String = ""
         private set
 
-    /** 本次会话角色：admin（管理员）/ viewer（选片用户），由设备端 /auth 返回 */
+    /** Role of this session: admin or viewer, returned by the device-side /auth */
     @Volatile
     var role: String = ""
         private set
 
-    /** 本次会话授权文件夹：个人模式 ALL，门店模式为摄影师指定文件夹 */
+    /** Folder authorized for this session: ALL in personal mode, the photographer's folder in studio mode */
     @Volatile
     var folder: String = ""
         private set
 
-    /** 设备端当前运行参数（心跳 / 会话超时 / 无操作倒计时 / 自动播放间隔） */
+    /** Current device-side parameters (heartbeat / session timeout / idle countdown / autoplay interval) */
     @Volatile
     var params: DeviceParams = DeviceParams.DEFAULT
         private set
 
-    /** 设备端 App 版本号，由设备端 /auth 返回；供「关于」页展示 */
+    /** Device app version, returned by the device-side /auth; shown on the About screen */
     @Volatile
     var deviceVersion: String = ""
         private set
 
-    /** 管理员可配置参数、可移交控制权；选片用户只读 */
+    /** Admins can configure parameters and hand over control; viewers are read-only */
     val isAdmin: Boolean
         get() = role.equals(DeviceEndpoint.ROLE_ADMIN, ignoreCase = true)
 
-    /** 当前是否处于门店选片模式 */
+    /** Whether the studio selection mode is currently active */
     val inStudioMode: Boolean
         get() = (endpoint?.mode ?: lastDeviceMode) == DeviceEndpoint.MODE_STUDIO
 
@@ -108,7 +108,7 @@ object SessionStore {
     val remainingMs: Long
         get() = (expiresAtMs - System.currentTimeMillis()).coerceAtLeast(0L)
 
-    /** 读取历史记录，App 启动时调用一次即可 */
+    /** Loads persisted history; call once at app startup */
     fun init(context: Context) {
         if (appContext != null) return
         val appCtx = context.applicationContext
@@ -150,34 +150,34 @@ object SessionStore {
             ?.apply()
     }
 
-    /** 心跳 / 读取配置返回最新参数后刷新本地缓存 */
+    /** Refreshes the local cache after a heartbeat or config read returns the latest parameters */
     fun updateParams(params: DeviceParams) {
         this.params = params
     }
 
-    /** 心跳返回 expires_in_ms 后刷新本地剩余时间 */
+    /** Refreshes the local remaining time after a heartbeat returns expires_in_ms */
     fun touch(remaining: Long) {
         expiresAtMs = System.currentTimeMillis() + remaining
     }
 
     /**
-     * 设备换网后地址会变（热点网段 → 路由器网段），但会话存在设备端、不受换网影响，
-     * 所以只把本地记的地址换成局域网里的新地址，会话本身保持不变。
+     * The device address changes after a network switch (hotspot subnet → router subnet), but the session lives on
+     * the device side and survives the switch, so only the local address is replaced with the new LAN one.
      */
     fun updateEndpoint(endpoint: DeviceEndpoint) {
         this.endpoint = endpoint
     }
 
-    /** 记录一次成功的 Wi-Fi 下发：设备接下来会接入这个网络 */
+    /** Records a successful Wi-Fi push: the device will join this network next */
     fun rememberWifiSsid(ssid: String) {
         lastWifiSsid = ssid
         prefs()?.edit()?.putString(KEY_LAST_WIFI_SSID, ssid)?.apply()
     }
 
-    /** 本 App 曾为 [ssid] 成功下发过的密码；没记录过返回空串 */
+    /** Password this app once pushed successfully for [ssid]; empty string if never recorded */
     fun wifiPasswordFor(ssid: String): String = wifiPasswords[ssid].orEmpty()
 
-    /** 记录一次成功下发的 Wi-Fi 密码，下次选到同一 SSID 时自动带入 */
+    /** Records a successfully pushed Wi-Fi password so it auto-fills when the same SSID is picked again */
     fun rememberWifiPassword(ssid: String, password: String) {
         if (ssid.isEmpty() || password.isEmpty()) return
         if (wifiPasswords[ssid] == password) return
@@ -202,8 +202,8 @@ object SessionStore {
     }
 
     /**
-     * 记录一次成功的设备热点接入：设备之后若又回到热点形态（没接入 Wi-Fi 或重开热点），
-     * 「刷新连接」用这份凭据回连，用户不必重新扫码。
+     * Records a successful device hotspot connection: if the device returns to hotspot mode later (no Wi-Fi joined
+     * or hotspot reopened), "Refresh connection" reconnects with these credentials instead of rescanning the code.
      */
     fun rememberApCredentials(endpoint: DeviceEndpoint) {
         if (!endpoint.hasHotspot) return
@@ -217,7 +217,7 @@ object SessionStore {
             ?.apply()
     }
 
-    /** 上次通过设备热点连接时用的设备端点；没记录过热点信息时返回 null */
+    /** Device endpoint used for the last hotspot connection; null if no hotspot info was recorded */
     fun apEndpoint(): DeviceEndpoint? {
         if (lastApSsid.isEmpty() || lastApHost.isEmpty()) return null
         return DeviceEndpoint(
@@ -230,7 +230,7 @@ object SessionStore {
         )
     }
 
-    /** 清空当前会话；历史记录（上次 Wi-Fi、最近设备、设备热点凭据）保留 */
+    /** Clears the current session; history (last Wi-Fi, recent device, hotspot credentials) is kept */
     fun clear() {
         endpoint = null
         sessionId = null

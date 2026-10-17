@@ -12,14 +12,14 @@ import com.ShowSeen.lightshadowart.mobile.net.UploadSource
 
 enum class UploadStatus { WAITING, UPLOADING, DONE, FAILED }
 
-/** 上传列表项：不是 data class，保留默认的引用相等语义，便于按位置更新 */
+/** Upload list item: not a data class, keeps identity equality so it can be updated by position */
 class UploadItem(val source: UploadSource) {
     var status: UploadStatus = UploadStatus.WAITING
 
-    /** -1 表示总长度未知，进度条走不确定态 */
+    /** -1 means unknown total size, so the progress bar runs indeterminate */
     var progress: Int = -1
 
-    /** 成功后为媒体类型，失败后为错误信息 */
+    /** Media type after success, error message after failure */
     var detail: String? = null
 }
 

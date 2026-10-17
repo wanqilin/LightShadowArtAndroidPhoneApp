@@ -1,74 +1,76 @@
 package com.ShowSeen.lightshadowart.mobile.net
 
 /**
- * 边框参数（需求 3.3.1 / T-13，几何按 F-6 扩展），与设备端 `network/FrameParams.kt` 一一对应。
+ * Frame parameters (requirement 3.3.1 / T-13, geometry extended per F-6), mirroring the device-side
+ * `network/FrameParams.kt` one-to-one.
  *
- * 真值以设备端 `GET /frame` 回执为准；这里的默认值只用于解析兜底，
- * 需与设备端 `DeviceConfig.FRAME_*` 保持一致（Constitution 第 9.5 节：两端默认参数同值）。
+ * The device-side `GET /frame` response is authoritative; the defaults here are only a parsing fallback
+ * and must match the device-side `DeviceConfig.FRAME_*` (Constitution §9.5: same default values on both ends).
  */
 data class FrameParams(
-    /** 当前相框样式 id；空串表示沿用设备端默认样式 */
+    /** Current frame style id; an empty string means the device-side default style */
     val styleId: String = "",
     /**
-     * 边框总开关（F-6 第三轮）：关 = 设备端不画边框且照片外回到黑边高斯模糊。
-     * 设备端用独立字段而不是 `style_id = "none"` 表达它，因为「关」还要求背景跟着回退。
+     * Frame master switch (F-6, third round): off = the device draws no frame and black-bar gaussian blur returns outside the photo.
+     * The device uses a dedicated field rather than `style_id = "none"` because "off" also requires the background to fall back.
      */
     val frameEnabled: Boolean = DEFAULT_FRAME_ENABLED,
-    /** 边框线条颜色，0xAARRGGBB */
+    /** Frame line color, 0xAARRGGBB */
     val lineColor: Int = DEFAULT_LINE_COLOR,
-    /** 单根线条宽度（dp） */
+    /** Width of a single line (dp) */
     val lineWidthDp: Float = DEFAULT_LINE_WIDTH_DP,
-    /** 背景纯色，0xAARRGGBB（照片外铺满整屏的底色） */
+    /** Background solid color, 0xAARRGGBB (base color filling the screen outside the photo) */
     val paperColor: Int = DEFAULT_PAPER_COLOR,
-    /** 背景纯色开关：关 = 设备端该层回退到黑边高斯模糊 */
+    /** Background solid color switch: off = this layer falls back to black-bar gaussian blur on the device */
     val paperEnabled: Boolean = DEFAULT_PAPER_ENABLED,
-    /** 背景是否用用户自定义图片（F-6 第三轮）：图片优先于纯色 */
+    /** Whether the background uses a user-defined image (F-6, third round): image takes precedence over solid color */
     val backgroundImage: Boolean = DEFAULT_BACKGROUND_IMAGE,
-    /** 设备端是否已存有用户自定义背景图（只读，用于背景色行的呈现与预览） */
+    /** Whether the device already stores a user-defined background image (read-only; used to render and preview the background color row) */
     val hasBackground: Boolean = false,
     /**
-     * 内边框与照片的距离（dp），F-6 ①。
-     * `null` = 本次不下发该字段、设备端沿用当前值（`POST /frame` 本来就支持部分更新）；
-     * 从 `GET /frame` 解析出来的值一定非空。
+     * Distance between the inner border and the photo (dp), F-6 ①.
+     * `null` = the field is not sent this time and the device keeps its current value (`POST /frame` supports partial updates);
+     * a value parsed from `GET /frame` is always non-null.
      */
     val paddingDp: Float? = null,
     /**
-     * 内边框与外边框之间的间距（dp），F-6 ⑤；语义同 [paddingDp]。
-     * 它合并了设备端原有的 `line_gap_dp`（双框间距，同一个量），协议里不再有旧字段。
+     * Gap between the inner and outer border (dp), F-6 ⑤; same semantics as [paddingDp].
+     * It merges the device's former `line_gap_dp` (double-frame gap, the same quantity); the old field is gone from the protocol.
      */
     val borderGapDp: Float? = null,
-    /** 外边框到屏幕边缘的距离（dp），F-6 ②；语义同 [paddingDp] */
+    /** Distance from the outer border to the screen edge (dp), F-6 ②; same semantics as [paddingDp] */
     val insetDp: Float? = null
 ) {
     companion object {
-        /** 与设备端 `DeviceConfig.FRAME_ENABLED` 一致（编译期默认关） */
+        /** Matches the device-side `DeviceConfig.FRAME_ENABLED` (off by default at compile time) */
         const val DEFAULT_FRAME_ENABLED: Boolean = false
-        /** 与设备端 `DeviceConfig.FRAME_LINE_COLOR` 一致（红） */
+        /** Matches the device-side `DeviceConfig.FRAME_LINE_COLOR` (red) */
         const val DEFAULT_LINE_COLOR: Int = 0xFFD32F2F.toInt()
-        /** 与设备端 `DeviceConfig.FRAME_LINE_WIDTH_DP` 一致 */
+        /** Matches the device-side `DeviceConfig.FRAME_LINE_WIDTH_DP` */
         const val DEFAULT_LINE_WIDTH_DP: Float = 2f
-        /** 与设备端 `DeviceConfig.FRAME_PAPER_COLOR` 一致（纯黑，2026-10-15 起） */
+        /** Matches the device-side `DeviceConfig.FRAME_PAPER_COLOR` (pure black, since 2026-10-15) */
         const val DEFAULT_PAPER_COLOR: Int = 0xFF000000.toInt()
-        /** 与设备端 `DeviceConfig.FRAME_PAPER_ENABLED` 一致 */
+        /** Matches the device-side `DeviceConfig.FRAME_PAPER_ENABLED` */
         const val DEFAULT_PAPER_ENABLED: Boolean = true
-        /** 与设备端 `DeviceConfig.FRAME_BACKGROUND_IMAGE` 一致 */
+        /** Matches the device-side `DeviceConfig.FRAME_BACKGROUND_IMAGE` */
         const val DEFAULT_BACKGROUND_IMAGE: Boolean = false
-        /** 与设备端 `DeviceConfig.FRAME_PADDING_DP` 一致（F-6 ①） */
+        /** Matches the device-side `DeviceConfig.FRAME_PADDING_DP` (F-6 ①) */
         const val DEFAULT_PADDING_DP: Float = 24f
-        /** 与设备端 `DeviceConfig.FRAME_BORDER_GAP_DP` 一致（F-6 ⑤） */
+        /** Matches the device-side `DeviceConfig.FRAME_BORDER_GAP_DP` (F-6 ⑤) */
         const val DEFAULT_BORDER_GAP_DP: Float = 8f
-        /** 与设备端 `DeviceConfig.FRAME_INSET_DP` 一致（F-6 ②） */
+        /** Matches the device-side `DeviceConfig.FRAME_INSET_DP` (F-6 ②) */
         const val DEFAULT_INSET_DP: Float = 24f
     }
 }
 
 /**
- * `POST /frame` 的**部分更新**载荷：字段为 `null` 表示本次不下发、设备端沿用当前值。
+ * **Partial update** payload for `POST /frame`: a `null` field is not sent this time and the device keeps its current value.
  *
- * 为什么单独一个类而不是复用 [FrameParams]：`FrameParams` 是「一份完整的设备端状态」，
- * 每个字段都有值；而下发时**只该带用户真正改过的字段**——上一版「风格」页用
- * `FrameParams(styleId = "custom")` 下发，把没碰过的线条颜色 / 线宽 / 背景纸一起按默认值
- * 覆盖了设备端（真实缺陷）。类型上区分「完整状态」与「增量补丁」，这类错误就不可能再写出来。
+ * Why a separate class instead of reusing [FrameParams]: `FrameParams` is "a complete device-side state"
+ * with every field set, while a patch must carry **only the fields the user really changed** — the previous
+ * "style" page sent `FrameParams(styleId = "custom")`, overwriting the untouched line color / line width /
+ * background paper on the device with defaults (a real defect). Distinguishing "complete state" from
+ * "incremental patch" in the type system makes this class of mistake unwritable.
  */
 data class FramePatch(
     val styleId: String? = null,
@@ -84,17 +86,17 @@ data class FramePatch(
 )
 
 /**
- * 相框样式条目（id + 展示名）。
+ * Frame style entry (id + display name).
  *
- * 由设备端下发，移动端只负责展示——样式集合是设备端的事实，
- * 客户端硬编码样式名会在设备端新增样式时立刻过期。
+ * Sent by the device; the mobile side only displays it — the style set is a device-side fact, and
+ * hard-coded style names on the client go stale as soon as the device adds a style.
  */
 data class FrameStyleInfo(
     val id: String,
     val name: String
 )
 
-/** `GET /frame` 与 `POST /frame` 的回执：当前参数 + 设备端可选样式列表 */
+/** `GET /frame` and `POST /frame` response: current parameters + optional device-side style list */
 data class FrameConfig(
     val params: FrameParams,
     val styles: List<FrameStyleInfo>

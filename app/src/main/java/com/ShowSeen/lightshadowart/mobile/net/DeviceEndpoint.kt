@@ -4,50 +4,50 @@ import androidx.annotation.StringRes
 import com.ShowSeen.lightshadowart.mobile.R
 
 /**
- * 设备端二维码解析结果：设备地址 + 鉴权 Token + 交互模式 + 授权文件夹 + 角色 + 设备热点。
+ * Parsed device QR code: device address + auth token + interaction mode + authorized folder + role + device hotspot.
  *
- * 与设备端 `ServerConfig` / `QrPayload` 一一对应：
- * `http://<Device_IP>:<Port>/api/v1/auth?token=<DEVICE_TOKEN>&mode=<1|2>&role=<admin|viewer>&folder=<授权文件夹>`
- * 设备开热点时再带 `&ap_ssid=<SSID>&ap_pwd=<PASSWORD>`。
+ * Maps one-to-one to the device-side `ServerConfig` / `QrPayload`:
+ * `http://<Device_IP>:<Port>/api/v1/auth?token=<DEVICE_TOKEN>&mode=<1|2>&role=<admin|viewer>&folder=<authorized folder>`
+ * When the device runs a hotspot, `&ap_ssid=<SSID>&ap_pwd=<PASSWORD>` is appended as well.
  */
 data class DeviceEndpoint(
     val host: String,
     val port: Int,
     val deviceToken: String,
     val mode: Int,
-    /** 设备热点 SSID；为空表示二维码里没带热点信息（需手动连接） */
+    /** Device hotspot SSID; empty means the QR code carried no hotspot info (connect manually) */
     val apSsid: String = "",
-    /** 设备热点密码 */
+    /** Device hotspot password */
     val apPassword: String = "",
-    /** 二维码声明的角色：admin / viewer；为空表示由设备端判定（首次绑定者为管理员） */
+    /** Role declared by the QR code: admin / viewer; empty means the device decides (the first binder becomes admin) */
     val role: String = "",
-    /** 授权文件夹：个人模式为 ALL，门店模式为摄影师指定文件夹 */
+    /** Authorized folder: ALL in personal mode, the folder chosen by the photographer in studio mode */
     val folder: String = ""
 ) {
 
-    /** 二维码里带了设备热点，可直接自动接入 */
+    /** The QR code contains a device hotspot, so auto-connect is possible */
     val hasHotspot: Boolean get() = apSsid.isNotEmpty()
 
-    /** 形如 http://192.168.1.20:39217 */
+    /** Like http://192.168.1.20:39217 */
     val baseUrl: String get() = "http://$host:$port"
 
-    /** 形如 http://192.168.1.20:39217/api/v1 */
+    /** Like http://192.168.1.20:39217/api/v1 */
     val apiBaseUrl: String get() = "$baseUrl/api/v1"
 
-    /** 拼接接口地址，例如 urlOf("/upload") */
+    /** Builds an API URL, e.g. urlOf("/upload") */
     fun urlOf(path: String): String = apiBaseUrl + path
 
     /**
-     * 模式名对应的字符串资源（T-8）。
+     * String resource for the mode name (T-8).
      *
-     * 必须交给资源、不能在这里写死中文：真机切到英文后发现状态行仍显示「家庭模式」，
-     * 就是本属性原先硬编码中文字面量导致的（真机验证发现）。
+     * Must come from resources, never a hardcoded Chinese literal: on a real device switched to English the status
+     * line still showed the Chinese family-mode text, which this property's hardcoded literal caused (found on device).
      */
     @get:StringRes
     val modeNameRes: Int
         get() = if (mode == MODE_PERSONAL) R.string.mode_personal else R.string.mode_studio
 
-    /** 二维码是否声明了管理员角色（选片用户不可配置参数） */
+    /** Whether the QR code declares the admin role (selection users cannot configure parameters) */
     val isAdmin: Boolean get() = role.equals(ROLE_ADMIN, ignoreCase = true)
 
     companion object {
@@ -55,7 +55,7 @@ data class DeviceEndpoint(
         const val MODE_STUDIO = 2
         const val DEFAULT_PORT = 39217
 
-        /** 与设备端 ServerConfig.ROLE_ADMIN / ROLE_VIEWER 保持一致 */
+        /** Must stay consistent with the device-side ServerConfig.ROLE_ADMIN / ROLE_VIEWER */
         const val ROLE_ADMIN = "admin"
         const val ROLE_VIEWER = "viewer"
     }

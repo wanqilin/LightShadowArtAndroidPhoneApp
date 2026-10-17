@@ -14,14 +14,16 @@ import android.util.Log
 import java.net.Inet4Address
 
 /**
- * 接入设备自建热点。
+ * Join the hotspot hosted by the device itself.
  *
- * 设备本身不接入任何局域网，手机只有连上它的热点才能访问设备上的 HTTP 服务；
- * 二维码里带了热点的 SSID / 密码，扫码后由本类请求系统连接该热点。
+ * The device joins no LAN of its own, so the phone can reach its HTTP service only
+ * while connected to that hotspot; the QR code carries the hotspot SSID / password,
+ * and after scanning this class asks the system to join it.
  *
- * 连接走 [WifiNetworkSpecifier]：普通应用无法静默连网，系统会弹一次确认框。
- * 连上后把本进程的网络绑定到热点——热点没有外网，不绑定的话请求仍会走移动数据，
- * 从而访问不到设备。
+ * Joining goes through [WifiNetworkSpecifier]: ordinary apps cannot connect
+ * silently, so the system shows a one-time confirmation dialog. Once connected, the
+ * process network is bound to the hotspot — the hotspot has no internet access, and
+ * without binding the requests still go over mobile data and never reach the device.
  */
 class HotspotConnector private constructor(context: Context) {
 
@@ -33,16 +35,18 @@ class HotspotConnector private constructor(context: Context) {
     private var callback: ConnectivityManager.NetworkCallback? = null
     private var boundNetwork: Network? = null
 
-    /** 是否已绑定到设备热点 */
+    /** Whether the process is currently bound to the device hotspot */
     val isConnected: Boolean get() = boundNetwork != null
 
     /**
-     * 进程当前绑定网络的只读描述，形如 `net=102 iface=wlan0 ipv4=192.168.8.126`；未绑定返回 null。
+     * Read-only description of the network the process is bound to, like
+     * `net=102 iface=wlan0 ipv4=192.168.8.126`; null when not bound.
      *
-     * 只作诊断用（失败日志要能看出「进程到底被钉在哪张网上」）。这里不用
-     * `ConnectivityManager.boundNetworkForProcess`：那个 API 从 API 23 起就要求
-     * `ACCESS_NETWORK_STATE` 之外的额外签名权限，普通应用读出来恒为 null，
-     * 而本类持有的 [boundNetwork] 正是自己绑定 / 解绑的那张网，才是可靠来源。
+     * Diagnostics only (failure logs must show which network the process is pinned
+     * to). `ConnectivityManager.boundNetworkForProcess` is not used here: since API
+     * 23 it requires a signature permission beyond `ACCESS_NETWORK_STATE`, so ordinary
+     * apps always read null, whereas [boundNetwork] here is exactly the network this
+     * class binds and unbinds, and is therefore the reliable source.
      */
     fun describeBinding(): String? {
         val network = boundNetwork ?: return null
@@ -59,25 +63,27 @@ class HotspotConnector private constructor(context: Context) {
         ).joinToString(" ")
     }
 
-    /** 最近一次接入尝试的热点名；未尝试（或已 [release]）为 null */
+    /** SSID of the most recent attempt; null if never attempted (or already [release]d) */
     var lastAttemptSsid: String? = null
         private set
 
-    /** 最近一次接入尝试的结论 */
+    /** Outcome of the most recent attempt */
     var lastOutcome: Outcome = Outcome.NOT_ATTEMPTED
         private set
 
-    /** 热点网络分到的 IPv4 地址；未拿到为 null */
+    /** IPv4 address assigned on the hotspot network; null if not obtained */
     var hotspotIpv4: String? = null
         private set
 
-    /** 接入结论：失败提示要据此告诉用户卡在哪一步 */
+    /** Connection outcome; failure messages use it to tell the user which step failed */
     enum class Outcome { NOT_ATTEMPTED, REQUESTING, CONNECTED, LOST, UNAVAILABLE, ERROR }
 
     /**
-     * 请系统连接设备热点，并把本进程的网络绑定到该热点；结果回调在主线程。
+     * Ask the system to join the device hotspot and bind this process to it; the
+     * result is delivered on the main thread.
      *
-     * Android 10 以下没有 [WifiNetworkSpecifier]，直接返回失败，由调用方提示手动连接。
+     * Below Android 10 there is no [WifiNetworkSpecifier], so this fails right away
+     * and the caller prompts the user to connect manually.
      */
     fun connect(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
         val manager = connectivityManager
@@ -101,7 +107,8 @@ class HotspotConnector private constructor(context: Context) {
 
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            // 设备热点没有外网，必须去掉 INTERNET 能力，否则系统不认为该网络可用
+            // The device hotspot has no internet, so the INTERNET capability must be
+            // removed; otherwise the system never deems this network usable
             .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .setNetworkSpecifier(specifier)
             .build()
@@ -115,7 +122,7 @@ class HotspotConnector private constructor(context: Context) {
                 notify(onResult, Result.success(Unit))
             }
 
-            /** 排查连不上时用：能看出热点是否分到了 IPv4 地址 */
+            /** Diagnostics for connection failures: shows whether the hotspot got an IPv4 address */
             override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
                 hotspotIpv4 = linkProperties.linkAddresses
                     .firstOrNull { it.address is Inet4Address }
@@ -131,9 +138,10 @@ class HotspotConnector private constructor(context: Context) {
             }
 
             override fun onLost(network: Network) {
-                // 不能按「network 是否等于当前绑定网络」短路：系统可能先回调 onLost 再没有
-                // 任何后续回调，短路会让 boundNetwork 残留，界面据此误判「还挂在热点上」，
-                // 「刷新连接」按钮就一直置灰。这里一律解绑并清状态。
+                // Do not short-circuit on "network == bound network": the system may
+                // deliver onLost with no further callback, leaving boundNetwork stale;
+                // the UI then thinks it is still on the hotspot and the "refresh
+                // connection" button stays disabled. Always unbind and clear the state.
                 runCatching { manager.bindProcessToNetwork(null) }
                 boundNetwork = null
                 lastOutcome = Outcome.LOST
@@ -154,10 +162,12 @@ class HotspotConnector private constructor(context: Context) {
     }
 
     /**
-     * 已绑定热点网络里的设备地址，即该网络的 IPv4 网关——设备自己就是热点网关。
+     * Device address inside the bound hotspot network, i.e. that network's IPv4
+     * gateway — the device itself is the hotspot gateway.
      *
-     * 用于只记得热点名、不记得设备地址的旧记录回连兜底（不同机型热点网段不同，不能写死 IP）。
-     * 未绑定或取不到时返回 null。
+     * Fallback for reconnecting saved records that keep only the hotspot name and no
+     * device address (hotspot subnets vary by model, so the IP cannot be hardcoded).
+     * Returns null when not bound or when it cannot be read.
      */
     fun boundGateway(): String? {
         val manager = connectivityManager ?: return null
@@ -168,7 +178,8 @@ class HotspotConnector private constructor(context: Context) {
             if (gateway is Inet4Address) return gateway.hostAddress
         }
 
-        // 少数机型默认路由不带网关：热点网段里设备固定是本机地址的最后一段改成 1
+        // On a few models the default route has no gateway: the device on the hotspot
+        // subnet is always our own address with the last octet changed to 1
         val own = properties.linkAddresses
             .firstOrNull { it.address is Inet4Address }
             ?.address
@@ -178,7 +189,7 @@ class HotspotConnector private constructor(context: Context) {
         return if (lastDot > 0) own.substring(0, lastDot + 1) + HOST_SUFFIX else null
     }
 
-    /** 断开热点并把进程网络恢复为系统默认（刷新连接前调用） */
+    /** Leave the hotspot, restore the default process network (call before refreshing) */
     fun release() {
         val manager = connectivityManager
         callback?.let { runCatching { manager?.unregisterNetworkCallback(it) } }
@@ -189,7 +200,7 @@ class HotspotConnector private constructor(context: Context) {
             boundNetwork = null
         }
 
-        // 本次接入已作废，诊断信息不能留旧值误导后续失败提示
+        // This attempt is void; stale diagnostics must not mislead later failure messages
         lastAttemptSsid = null
         lastOutcome = Outcome.NOT_ATTEMPTED
         hotspotIpv4 = null
@@ -202,22 +213,24 @@ class HotspotConnector private constructor(context: Context) {
     companion object {
         private const val TAG = "HotspotConnector"
 
-        /** 系统连接超时，含用户在确认框上停留的时间 */
+        /** System connection timeout, including time the user spends on the confirmation dialog */
         private const val REQUEST_TIMEOUT_MS = 60_000
 
-        /** 兜底把手机在热点网段里的地址换成设备地址（最后一段固定为 1） */
+        /** Fallback: turn the phone's hotspot-subnet address into the device address (last octet is always 1) */
         private const val HOST_SUFFIX = "1"
 
         @Volatile
         private var instance: HotspotConnector? = null
 
         /**
-         * 进程内单例。
+         * Process-wide singleton.
          *
-         * 热点接入的网络请求与进程绑定是「进程」维度的状态，若各 Activity 各持一份连接器，
-         * 配网页 release() 只能解掉自己那份，解不掉主页刚发起的那次请求——手机仍被系统
-         * 钉在设备热点上，进不到局域网，主页信息框就刷不出局域网地址与网络名。
-         * 统一共用同一份 callback / boundNetwork / isConnected。
+         * The hotspot network request and the process binding are per-process state; if
+         * each Activity held its own connector, release() on the config screen would
+         * only clear its own copy and not the request the home screen just started —
+         * the phone would stay pinned to the device hotspot, never reach the LAN, and
+         * the home info box could not show the LAN address and network name. Everything
+         * shares one callback / boundNetwork / isConnected.
          */
         fun get(context: Context): HotspotConnector =
             instance ?: synchronized(this) {

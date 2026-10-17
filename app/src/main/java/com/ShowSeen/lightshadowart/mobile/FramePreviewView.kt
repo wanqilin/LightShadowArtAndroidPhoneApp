@@ -11,14 +11,14 @@ import android.view.View
 import androidx.core.content.ContextCompat
 
 /**
- * 背景配置页的编辑预览（需求 3.3.2 / T-9，F-6 第三轮扩展到纯色）。
+ * Edit preview for the background config page (requirement 3.3.2 / T-9; F-6 round three extended it to solid colors).
  *
- * - 用**红色边框**标示最大边界 1920x1280（与设备端逻辑分辨率一致），提示用户设计内容须落在该范围内；
- * - 边界内按 **centerCrop** 叠加用户导入的背景图，与设备端 `BlurFillView` 的铺图方式保持一致；
- * - 没有图片时铺**背景纯色**（F-6 第三轮），与设备端「图片优先、纯色为底」的取舍一致，
- *   因此预览里看到的就是设备端会铺的那一层。
+ * - A **red border** marks the maximum boundary 1920x1280 (same as the device logical resolution), warning the user that design content must stay inside it;
+ * - Inside the boundary the user-imported background image is drawn with **centerCrop**, matching how the device's `BlurFillView` fills the area;
+ * - With no image, the **solid background color** is painted (F-6 round three), matching the device's "image first, solid color as the base" priority,
+ *   so the preview shows the same layer the device would paint.
  *
- * 注意：预览是近似（实际由设备端按 1920x1280 逻辑分辨率渲染），最终观感以设备屏为准。
+ * Note: the preview is an approximation (the device actually renders at 1920x1280 logical resolution); the device screen is the final word on appearance.
  */
 class FramePreviewView @JvmOverloads constructor(
     context: Context,
@@ -38,16 +38,16 @@ class FramePreviewView @JvmOverloads constructor(
 
     private var previewBitmap: Bitmap? = null
 
-    /** 背景纯色（未选图片时的底色）；`null` 表示不铺 */
+    /** Solid background color (the base when no image is selected); `null` means paint none */
     private var previewColor: Int? = null
 
-    /** 设置待预览的背景图；传 null 表示清空（调用方负责 Bitmap 的回收） */
+    /** Sets the background image to preview; null clears it (the caller is responsible for recycling the Bitmap) */
     fun setPreviewBitmap(bitmap: Bitmap?) {
         previewBitmap = bitmap
         invalidate()
     }
 
-    /** 设置背景纯色（照片外的底色，与设备端 `BlurFillView` 铺的是同一个色） */
+    /** Sets the solid background color (the base outside the photo, the same color the device's `BlurFillView` paints) */
     fun setPreviewColor(color: Int?) {
         previewColor = color
         invalidate()
@@ -55,7 +55,7 @@ class FramePreviewView @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        // Fill 模式：以手机可用宽为基准等比撑满，高由 1920:1280 自动算出（用户口径，需求 3.3.2 / T-9）
+        // Fill mode: fill proportionally from the phone's available width, height derived from 1920:1280 (user's spec, requirement 3.3.2 / T-9)
         val height = (width * BOUNDARY_HEIGHT / BOUNDARY_WIDTH).toInt()
         setMeasuredDimension(width, height)
     }
@@ -65,7 +65,7 @@ class FramePreviewView @JvmOverloads constructor(
         val boundary = boundaryRect()
         if (boundary.width() <= 0f || boundary.height() <= 0f) return
 
-        // 先铺纯色底：有图片时图片盖在上面（与设备端的优先级一致）
+        // Paint the solid base first: an image covers it when present (same priority as the device)
         previewColor?.let { color ->
             colorPaint.color = color
             canvas.drawRect(boundary, colorPaint)
@@ -73,7 +73,7 @@ class FramePreviewView @JvmOverloads constructor(
 
         val bitmap = previewBitmap
         if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {
-            // centerCrop：短边铺满边界、长边居中裁掉，和设备端铺底方式一致
+            // centerCrop: the short edge fills the boundary, the long edge is center-cropped, matching how the device fills the base
             val scale = maxOf(
                 boundary.width() / bitmap.width,
                 boundary.height() / bitmap.height
@@ -84,7 +84,7 @@ class FramePreviewView @JvmOverloads constructor(
             val top = boundary.top + (boundary.height() - drawHeight) / 2f
             srcRect.set(0, 0, bitmap.width, bitmap.height)
             dstRect.set(left, top, left + drawWidth, top + drawHeight)
-            // 超出最大边界的部分裁掉，保证「边界之外什么都没有」
+            // Clip anything past the maximum boundary so nothing is drawn outside it
             canvas.save()
             canvas.clipRect(boundary)
             canvas.drawBitmap(bitmap, srcRect, dstRect, imagePaint)
@@ -94,13 +94,13 @@ class FramePreviewView @JvmOverloads constructor(
         canvas.drawRect(boundary, borderPaint)
     }
 
-    /** 最大边界＝整个 View：本 View 的尺寸已按 1920:1280 由 [onMeasure] 定好 */
+    /** The maximum boundary is the whole View: this View's size is already set to 1920:1280 by [onMeasure] */
     private fun boundaryRect(): RectF {
         return RectF(0f, 0f, width.toFloat(), height.toFloat())
     }
 
     companion object {
-        /** 最大边界：与设备端逻辑分辨率一致（需求 3.3.2 / T-9） */
+        /** Maximum boundary: matches the device logical resolution (requirement 3.3.2 / T-9) */
         const val BOUNDARY_WIDTH = 1920f
         const val BOUNDARY_HEIGHT = 1280f
     }

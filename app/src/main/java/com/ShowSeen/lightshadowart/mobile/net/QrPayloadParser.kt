@@ -3,11 +3,11 @@ package com.ShowSeen.lightshadowart.mobile.net
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
- * 解析设备端待机页二维码。
+ * Parses the QR code shown on the device idle screen.
  *
- * 载荷规范（设备端 `QrPayload.kt`）：
- * `http://<Device_IP>:<Port>/api/v1/auth?token=<DEVICE_TOKEN>&mode=<1|2>&role=<admin|viewer>&folder=<授权文件夹>`
- * 设备开热点时再带 `&ap_ssid=<SSID>&ap_pwd=<PASSWORD>`，手机据此自动接入热点。
+ * Payload spec (device side `QrPayload.kt`):
+ * `http://<Device_IP>:<Port>/api/v1/auth?token=<DEVICE_TOKEN>&mode=<1|2>&role=<admin|viewer>&folder=<authorized folder>`
+ * When the device hosts a hotspot it also carries `&ap_ssid=<SSID>&ap_pwd=<PASSWORD>`, which the phone uses to join it automatically.
  */
 object QrPayloadParser {
 
@@ -28,7 +28,7 @@ object QrPayloadParser {
         val mode = url.queryParameter("mode")?.toIntOrNull() ?: DeviceEndpoint.MODE_STUDIO
         val apSsid = url.queryParameter("ap_ssid").orEmpty()
         val apPassword = url.queryParameter("ap_pwd").orEmpty()
-        // 二维码据此让移动端识别「管理员 / 选片用户」以及授权文件夹（需求 4.2.2 / 6.2）
+        // Lets the phone identify "admin / viewer" and the authorized folder (requirements 4.2.2 / 6.2)
         val role = url.queryParameter("role").orEmpty()
         val folder = url.queryParameter("folder").orEmpty()
         return Result.success(
@@ -36,7 +36,7 @@ object QrPayloadParser {
         )
     }
 
-    /** 设备端只有纯 HTTP，且扫码载荷可能省略 scheme，这里统一补全 */
+    /** The device serves plain HTTP only and scanned payloads may omit the scheme, so it is added here */
     private fun normalize(text: String): String = when {
         text.startsWith("http://", ignoreCase = true) -> text
         text.startsWith("https://", ignoreCase = true) -> "http://" + text.substring("https://".length)

@@ -8,7 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 
-/** 局域网内发现到的设备（NSD 服务解析结果） */
+/** Device discovered on the LAN (result of NSD service resolution) */
 data class DiscoveredDevice(
     val serviceName: String,
     val host: String,
@@ -17,7 +17,7 @@ data class DiscoveredDevice(
     val mode: Int
 ) {
 
-    /** 转成接口调用用的设备地址：设备已在局域网，不需要热点信息 */
+    /** Convert to a device address for API calls: the device is on the LAN, so no hotspot info */
     fun toEndpoint(): DeviceEndpoint = DeviceEndpoint(
         host = host,
         port = port,
@@ -27,11 +27,13 @@ data class DiscoveredDevice(
 }
 
 /**
- * 局域网内发现设备：与设备端 `DeviceNsdAdvertiser` 对应，监听 `_lightshadowart._tcp.` 服务。
+ * Discovers devices on the LAN: mirrors the device-side `DeviceNsdAdvertiser`, listening for the
+ * `_lightshadowart._tcp.` service.
  *
- * 设备接入手机下发的 Wi-Fi（STA 模式）后会注册该服务，此时手机与设备同处一个局域网，
- * 用这里的结果就能拿到设备的新地址并重建会话，不必再让设备弹二维码。
- * 设备仍处于热点模式（未配网）时不会有该服务，只能靠扫码连接。
+ * A device joining the Wi-Fi handed out by the phone (STA mode) registers that service; phone and
+ * device then share one LAN, so these results give the device's new address and let the session be
+ * rebuilt without making the device show a QR code again. While the device is still in hotspot mode
+ * (not yet provisioned) the service does not exist, so scanning the code is the only way in.
  */
 class NsdDiscoverer(context: Context) {
 
@@ -41,28 +43,31 @@ class NsdDiscoverer(context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /**
-     * mDNS 靠组播收发，Android 的 Wi-Fi 省电策略会过滤组播包，
-     * 发现期间必须持有 MulticastLock，否则经常收不到设备应答。
+     * mDNS uses multicast, which Android's Wi-Fi power saving filters out, so a MulticastLock must
+     * be held while discovering or device replies are often missed.
      */
     private val multicastLock: WifiManager.MulticastLock? =
         (context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager)
             ?.createMulticastLock(MULTICAST_LOCK_TAG)
             ?.apply { setReferenceCounted(false) }
 
-    /** 已解析完成的设备，key 为服务名 */
+    /** Resolved devices, keyed by service name */
     private val found = LinkedHashMap<String, DiscoveredDevice>()
 
     /**
-     * 本轮发现里 `onServiceFound` 触发的次数（含最后没解析出地址的）。
+     * Number of `onServiceFound` callbacks in this round (including ones that never resolved to an
+     * address).
      *
-     * 与 [found] 的区别：`found` 只在解析出有效地址后才记账，而排查「找不到设备」时要区分
-     * 「压根没收到任何应答」和「收到了但解析失败」——后者说明组播通了、只差解析，
-     * 前者说明手机可能根本没发出去（例如没连上目标网络）。失败日志靠这个计数说话。
+     * Differs from [found], which only records entries once a valid address is resolved: diagnosing
+     * "no device found" means telling "no reply at all" apart from "replied but resolution failed".
+     * The latter means multicast works and only resolution is missing; the former means the phone
+     * may never have sent anything out (e.g. not connected to the target network). Failure logs
+     * rely on this count.
      */
     var foundCount: Int = 0
         private set
 
-    /** 待解析队列：resolveService 不允许并发，逐个来 */
+    /** Pending resolve queue: resolveService does not allow concurrency, so go one by one */
     private val resolveQueue = ArrayDeque<NsdServiceInfo>()
 
     private var resolving = false
@@ -70,9 +75,10 @@ class NsdDiscoverer(context: Context) {
     private var onFinished: ((List<DiscoveredDevice>) -> Unit)? = null
 
     /**
-     * 开始发现，[timeoutMs] 后在主线程回调结果（可能为空列表）。
+     * Starts discovery and reports the result on the main thread after [timeoutMs] (may be empty).
      *
-     * 同一时间只保留一次发现：重复调用会先结束上一次（其回调不会触发）。
+     * Only one discovery is kept at a time: a repeated call first ends the previous one, whose
+     * callback will not fire.
      */
     fun discover(
         timeoutMs: Long = DISCOVER_TIMEOUT_MS,
@@ -135,26 +141,26 @@ class NsdDiscoverer(context: Context) {
         mainHandler.postDelayed(timeoutRunnable, timeoutMs)
     }
 
-    /** 结束发现（不回调），例如页面退出时 */
+    /** Ends discovery without callback, e.g. when leaving the screen */
     fun cancel() {
         mainHandler.removeCallbacks(timeoutRunnable)
         onFinished = null
         found.clear()
         resolveQueue.clear()
         resolving = false
-        // 作废本轮统计：cancel 后 [foundCount] 是过期数据，失败日志读到会被误导
+        // Void this round's count: after cancel, [foundCount] is stale and would mislead failure logs
         foundCount = 0
         stopDiscovery()
         releaseMulticastLock()
     }
 
     // -----------------------------------------------------------------------
-    // 内部实现
+    // Internal implementation
     // -----------------------------------------------------------------------
 
     private val timeoutRunnable = Runnable { finish() }
 
-    /** 结束发现并回调已找到的设备；已结束则什么都不做 */
+    /** Ends discovery and reports the devices found; does nothing if already finished */
     private fun finish() {
         mainHandler.removeCallbacks(timeoutRunnable)
         val callback = onFinished ?: return
@@ -239,10 +245,10 @@ class NsdDiscoverer(context: Context) {
     private companion object {
         const val TAG = "NsdDiscoverer"
 
-        /** 与设备端 `ServerConfig.NSD_SERVICE_TYPE` 保持一致 */
+        /** Keep in sync with device-side `ServerConfig.NSD_SERVICE_TYPE` */
         const val SERVICE_TYPE = "_lightshadowart._tcp."
 
-        /** 发现窗口：局域网内 mDNS 通常 1 秒内出结果，留 5 秒兜底 */
+        /** Discovery window: LAN mDNS usually answers within 1s; keep 5s as a fallback */
         const val DISCOVER_TIMEOUT_MS = 5_000L
 
         const val ATTR_TOKEN = "token"
@@ -250,7 +256,7 @@ class NsdDiscoverer(context: Context) {
 
         const val MULTICAST_LOCK_TAG = "light_shadow_nsd"
 
-        /** 解析未拿到地址时的占位值 */
+        /** Placeholder value when resolution yields no address */
         const val UNSPECIFIED_HOST = "0.0.0.0"
     }
 }

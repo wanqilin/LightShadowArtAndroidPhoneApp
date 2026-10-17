@@ -24,31 +24,31 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.concurrent.TimeUnit
 
-/** 接口返回非 2xx，或响应体 code 非 200 */
+/** The endpoint returned non-2xx, or the body code is not 200 */
 open class ApiException(val code: Int, message: String) : IOException(message)
 
-/** 设备端返回 401：session 不存在、已过期或被店员强制结束 */
+/** Device returned 401: the session is missing, expired, or was force-ended by staff */
 class SessionExpiredException(message: String) : ApiException(401, message)
 
-/** 设备端返回 413：单文件超过 4G 上限，被拒绝写入（对应需求 4.5 / T-4） */
+/** Device returned 413: a single file exceeds the 4G limit and was rejected (req 4.5 / T-4) */
 class FileTooLargeException(message: String) : ApiException(413, message)
 
-/** 待上传的本地媒体 */
+/** Local media waiting to be uploaded */
 data class UploadSource(
     val uri: Uri,
     val displayName: String,
     val mimeType: String,
-    /** 未知时为 -1，此时上传进度不可计算 */
+    /** -1 when unknown, in which case upload progress cannot be computed */
     val sizeBytes: Long
 )
 
-/** 上传成功后的设备端回执 */
+/** Device receipt after a successful upload */
 data class UploadResult(val filePath: String, val mediaType: String)
 
 /**
- * 设备端可配置的运行参数（需求 5.2.2 / 6.3）。
+ * Configurable device run parameters (req 5.2.2 / 6.3).
  *
- * 单位统一为毫秒；界面按「秒 / 分钟」展示，读写时做换算。
+ * All units are milliseconds; the UI shows seconds / minutes and converts on read and write.
  */
 data class DeviceParams(
     val heartbeatIntervalMs: Long,
@@ -57,7 +57,7 @@ data class DeviceParams(
     val autoPlayIntervalMs: Long
 ) {
     companion object {
-        /** 缺省值取自移动端配置文件 AppConfig：心跳 5 秒、会话超时 10 分钟、无操作倒计时 60 秒、自动播放 3 分钟 */
+        /** Defaults come from the mobile config AppConfig: heartbeat 5 s, session timeout 10 min, idle countdown 60 s, auto-play 3 min */
         val DEFAULT = DeviceParams(
             heartbeatIntervalMs = AppConfig.DEFAULT_HEARTBEAT_INTERVAL_MS,
             sessionTimeoutMs = AppConfig.DEFAULT_SESSION_TIMEOUT_MS,
@@ -67,43 +67,43 @@ data class DeviceParams(
     }
 }
 
-/** POST /auth 回执：会话 + 角色 + 授权文件夹 + 交互模式 + 运行参数 + 设备端版本号 */
+/** POST /auth receipt: session + role + authorised folder + interaction mode + run params + device version */
 data class AuthResult(
     val sessionId: String,
     val role: String,
     val folder: String,
     val mode: Int,
     val params: DeviceParams,
-    /** 设备端 App 版本号；设备端未返回时为空串 */
+    /** Device app version; empty string when the device does not report it */
     val deviceVersion: String
 ) {
-    /** 管理员可配置参数、可移交控制权；选片用户只读 */
+    /** Admins can configure params and hand over control; selection users are read-only */
     val isAdmin: Boolean get() = role.equals(DeviceEndpoint.ROLE_ADMIN, ignoreCase = true)
 }
 
-/** GET /storage 回执：设备剩余可用空间与低存储判定（对应需求 4.5 / T-3） */
+/** GET /storage receipt: device free space and the low-storage verdict (req 4.5 / T-3) */
 data class StorageState(
-    /** 剩余可用字节数；设备端无法探测时为负数 */
+    /** Remaining free bytes; negative when the device cannot probe them */
     val freeBytes: Long,
-    /** 设备端判定的低存储标记（剩余 < 200MB） */
+    /** Low-storage flag as judged by the device (free < 200MB) */
     val low: Boolean
 )
 
-/** POST /heartbeat 回执：剩余有效期 + 会话预警 + 最新参数 */
+/** POST /heartbeat receipt: remaining lifetime + session warning + latest params */
 data class HeartbeatResult(
     val expiresInMs: Long,
     val warning: Boolean,
     val params: DeviceParams
 )
 
-/** GET /media 返回的媒体条目 */
+/** A media entry returned by GET /media */
 data class MediaItem(
     val path: String,
     val name: String,
     val type: String,
     val size: Long,
     val lastModified: Long,
-    /** 日期视图分组键（yyyy-MM-dd） */
+    /** Grouping key for the date view (yyyy-MM-dd) */
     val date: String,
     val favourite: Boolean
 ) {
@@ -111,33 +111,33 @@ data class MediaItem(
 }
 
 /**
- * 设备端 HTTP 客户端（纯 HTTP + Bearer 会话）。
+ * Device HTTP client (plain HTTP + Bearer session).
  *
- * 对应设备端 `ApiRoutes.kt`：
+ * Mirrors the device-side `ApiRoutes.kt`:
  * auth / upload / control / wifi-config / heartbeat / session-end /
  * config / studio-folder / studio-confirm / media / media-raw / media-delete / favourite /
- * session-handover。
+ * session-handover.
  */
 class DeviceClient(private val resolver: ContentResolver) {
 
     // -----------------------------------------------------------------------
-    // 接口
+    // Endpoints
     // -----------------------------------------------------------------------
 
     /**
-     * POST /api/v1/auth —— 用二维码里的 device_token 换取 session_id。
+     * POST /api/v1/auth —— exchange the device_token from the QR code for a session_id.
      *
-     * 同时回传设备端判定的 role / folder / mode / params：
-     * 设备首次绑定者即管理员，其余为选片用户（需求 4.2.2 / 7）。
+     * Also returns the role / folder / mode / params decided by the device:
+     * the first device to bind is the admin, everyone else is a selection user (req 4.2.2 / 7).
      *
-     * @param studioToken 门店选片模式下本次会话独有的 token（需求 3.4 / T-12）：
-     *                    设备端据此建 `年月日+流水号+token` 文件夹并把回执里的 folder 换成它。
-     *                    家庭模式传空串。
+     * @param studioToken token unique to this session in studio selection mode (req 3.4 / T-12):
+     *                    the device builds a `date+serial+token` folder from it and returns that
+     *                    folder in the receipt. Pass an empty string in home mode.
      */
     suspend fun auth(endpoint: DeviceEndpoint, studioToken: String = ""): Result<AuthResult> = call {
         val payload = JSONObject()
             .put("device_token", endpoint.deviceToken)
-        // 二维码声明 role=admin（手动唤醒出码 / 管理员移交控制权）时带上，设备端据此判定管理员
+        // Sent when the QR code declares role=admin (manual wake-up / admin handover); the device uses it to decide admin
         if (endpoint.role.isNotEmpty()) payload.put("role", endpoint.role)
         if (studioToken.isNotEmpty()) payload.put("studio_token", studioToken)
         val body = jsonBody(payload)
@@ -165,8 +165,8 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/upload —— multipart 流式上传，边读边发并回调进度百分比。
-     * 进度回调发生在 IO 线程；总长度未知时不会回调。
+     * POST /api/v1/upload —— streaming multipart upload that sends while reading and reports progress
+     * percentage. The callback runs on the IO thread and is never invoked when the total length is unknown.
      */
     suspend fun upload(
         endpoint: DeviceEndpoint,
@@ -196,7 +196,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** POST /api/v1/wifi-config —— 下发 SSID 与密码，让设备加入局域网 */
+    /** POST /api/v1/wifi-config —— push SSID and password so the device joins the LAN */
     suspend fun wifiConfig(
         endpoint: DeviceEndpoint,
         sessionId: String,
@@ -220,11 +220,13 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/heartbeat —— 返回会话剩余有效毫秒数与最新参数。
+     * POST /api/v1/heartbeat —— returns the session's remaining lifetime in ms and the latest params.
      *
-     * 心跳单独设短超时：默认读超时是 60 秒，而静默丢包（设备重启 / 热点消失时典型表现）不会
-     * 立刻报错，请求会一直挂到超时——那样「30 秒内自动重连」（T-5）根本无法达成。
-     * 真机验证时用 iptables 丢包 14 秒，应用毫无反应，就是被这 60 秒拖住的。
+     * Heartbeat gets its own short timeout: the default read timeout is 60 s, and silent packet loss
+     * (typical when the device reboots or the hotspot disappears) reports no error until the timeout,
+     * so the request hangs — which makes "auto-reconnect within 30 s" (T-5) impossible.
+     * On a real device, iptables dropping packets for 14 s left the app with no reaction at all;
+     * these 60 s were the cause.
      */
     suspend fun heartbeat(endpoint: DeviceEndpoint, sessionId: String): Result<HeartbeatResult> =
         call {
@@ -247,7 +249,7 @@ class DeviceClient(private val resolver: ContentResolver) {
             }
         }
 
-    /** POST /api/v1/session/end —— 结束会话，设备端待机页回到二维码态 */
+    /** POST /api/v1/session/end —— end the session; the device idle screen goes back to the QR state */
     suspend fun endSession(endpoint: DeviceEndpoint, sessionId: String): Result<Unit> = call {
         val request = Request.Builder()
             .url(endpoint.urlOf("/session/end"))
@@ -261,10 +263,10 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/session/handover —— 管理员「退出账号」＝移交管理权（需求 5.7.2 / T-7）。
+     * POST /api/v1/session/handover —— admin "sign out" means handing over admin rights (req 5.7.2 / T-7).
      *
-     * 与 [endSession] 的区别：设备端除结束会话外，还会**解除绑定并主动弹出二维码**，
-     * 供其它人扫码接管管理员。
+     * Difference from [endSession]: besides ending the session, the device also **unbinds itself and
+     * shows the QR code on its own** so someone else can scan it and take over as admin.
      */
     suspend fun handoverSession(endpoint: DeviceEndpoint, sessionId: String): Result<Unit> = call {
         val request = Request.Builder()
@@ -279,11 +281,11 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/control —— 控制设备端播放与旋转（需求 3.2.1）。
+     * POST /api/v1/control —— control device playback and rotation (req 3.2.1).
      *
-     * action 取设备端 `MtkPlayerBridge` 常量：PLAY / PAUSE / RESUME / ROTATE，
-     * 以及导航键 UP / DOWN / LEFT / RIGHT / CONFIRM / EXIT / NEXT / PREV。
-     * 旋转时可在 params 里带 `degree`。
+     * action takes the device-side `MtkPlayerBridge` constants: PLAY / PAUSE / RESUME / ROTATE,
+     * plus the navigation keys UP / DOWN / LEFT / RIGHT / CONFIRM / EXIT / NEXT / PREV.
+     * Rotation may pass `degree` in params.
      */
     suspend fun control(
         endpoint: DeviceEndpoint,
@@ -304,7 +306,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** GET /api/v1/config —— 读取设备端运行参数 */
+    /** GET /api/v1/config —— read device run parameters */
     suspend fun readConfig(endpoint: DeviceEndpoint, sessionId: String): Result<DeviceParams> = call {
         val request = Request.Builder()
             .url(endpoint.urlOf("/config"))
@@ -319,7 +321,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** POST /api/v1/config —— 修改运行参数；仅管理员，选片用户会收到 403 */
+    /** POST /api/v1/config —— change run parameters; admin only, selection users get 403 */
     suspend fun writeConfig(
         endpoint: DeviceEndpoint,
         sessionId: String,
@@ -344,10 +346,10 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/frame/image —— 上传自定义背景图（需求 3.3.2 / T-9，仅管理员）。
+     * POST /api/v1/frame/image —— upload a custom background image (req 3.3.2 / T-9, admin only).
      *
-     * 复用与 `/upload` 同一套流式上传体（`FilePartBody`），不为此另写一套；
-     * 设备端把它存在 App 私有目录，不会混进客户照片文件夹。
+     * Reuses the same streaming body as `/upload` (`FilePartBody`) instead of writing a second one;
+     * the device keeps the image in its app-private directory, never in the customer photo folder.
      */
     suspend fun uploadFrameImage(
         endpoint: DeviceEndpoint,
@@ -373,7 +375,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** GET /api/v1/frame —— 读取设备端边框预设参数与可选样式列表（需求 3.3.1 / T-13） */
+    /** GET /api/v1/frame —— read the device frame preset params and the available style list (req 3.3.1 / T-13) */
     suspend fun readFrame(endpoint: DeviceEndpoint, sessionId: String): Result<FrameConfig> = call {
         val request = Request.Builder()
             .url(endpoint.urlOf("/frame"))
@@ -389,12 +391,13 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/frame —— 下发边框参数；仅管理员（选片用户会收到 403）。
+     * POST /api/v1/frame —— push frame parameters; admin only (selection users get 403).
      *
-     * 只把 [FramePatch] 里**非 null** 的字段写进请求体，未提及的字段设备端沿用当前值；
-     * 回执是真实生效的值。上一版这里是无条件整份下发（`FrameParams` 的每个字段都有默认值），
-     * 导致「风格」页只切样式时把用户调好的线条颜色 / 线宽 / 背景纸一并重置——改用补丁类型后
-     * 「没改就不发」由类型保证。
+     * Only the **non-null** fields of [FramePatch] go into the request body; anything not mentioned
+     * keeps the device's current value, and the receipt holds the values actually in effect. The
+     * previous version always sent the whole set (every `FrameParams` field has a default), so
+     * switching only the style on the Style page also reset the user's line colour / width / paper —
+     * with a patch type, "send only what changed" is guaranteed by the type.
      */
     suspend fun writeFrame(
         endpoint: DeviceEndpoint,
@@ -425,7 +428,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** POST /api/v1/studio/folder —— 门店模式：管理员创建下一个客户文件夹，返回文件夹名 */
+    /** POST /api/v1/studio/folder —— studio mode: admin creates the next customer folder, returns its name */
     suspend fun createStudioFolder(endpoint: DeviceEndpoint, sessionId: String): Result<String> =
         call {
             val request = Request.Builder()
@@ -442,8 +445,9 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
 
     /**
-     * POST /api/v1/studio/confirm —— 门店模式：摄影师已把照片放进本次会话的文件夹，
-     * 用户点「确认开始选片」；设备端据此结束屏显提示并进入选片界面（需求 3.4 / T-12）。
+     * POST /api/v1/studio/confirm —— studio mode: the photographer has put the photos into this
+     * session's folder and the user taps "confirm and start selecting"; the device then ends the
+     * on-screen prompt and enters the selection UI (req 3.4 / T-12).
      */
     suspend fun confirmStudioSelection(
         endpoint: DeviceEndpoint,
@@ -462,7 +466,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** GET /api/v1/media —— 列出授权文件夹下的媒体；favouriteOnly 时仅返回已标记喜爱的 */
+    /** GET /api/v1/media —— list media in the authorised folder; favouriteOnly returns only hearted items */
     suspend fun listMedia(
         endpoint: DeviceEndpoint,
         sessionId: String,
@@ -486,7 +490,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** GET /api/v1/media/raw —— 读取媒体原始字节用于预览；失败返回 null */
+    /** GET /api/v1/media/raw —— read raw media bytes for preview; returns null on failure */
     suspend fun mediaRaw(
         endpoint: DeviceEndpoint,
         sessionId: String,
@@ -507,7 +511,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }.getOrNull()
     }
 
-    /** POST /api/v1/media/delete —— 个人模式多选删除，返回实际删除数量 */
+    /** POST /api/v1/media/delete —— multi-select delete in personal mode, returns the count actually deleted */
     suspend fun deleteMedia(
         endpoint: DeviceEndpoint,
         sessionId: String,
@@ -528,7 +532,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** POST /api/v1/favourite —— 心形喜爱标记，返回设备端确认后的最新状态 */
+    /** POST /api/v1/favourite —— heart favourite flag, returns the latest state confirmed by the device */
     suspend fun favourite(
         endpoint: DeviceEndpoint,
         sessionId: String,
@@ -549,8 +553,8 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/favourite/export —— 把带心形标记的媒体同步到独立 Fav 文件夹
-     * （个人模式 ALL_Fav，门店模式选片文件夹 + _Fav），返回同步后的文件数量。
+     * POST /api/v1/favourite/export —— sync heart-marked media into a separate Fav folder
+     * (ALL_Fav in personal mode, the selection folder + _Fav in studio mode); returns the file count.
      */
     suspend fun exportFavourite(endpoint: DeviceEndpoint, sessionId: String): Result<Int> = call {
         val request = Request.Builder()
@@ -567,9 +571,9 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * GET /api/v1/storage —— 只读探测设备剩余可用空间（需求 4.5 / T-3）。
+     * GET /api/v1/storage —— read-only probe of the device's free space (req 4.5 / T-3).
      *
-     * 移动端在上传前调用，`low` 为 true（剩余 < 200MB）时提示用户释放空间。
+     * The app calls it before uploading and asks the user to free space when `low` is true (free < 200MB).
      */
     suspend fun storage(endpoint: DeviceEndpoint, sessionId: String): Result<StorageState> = call {
         val request = Request.Builder()
@@ -619,10 +623,11 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * 探测设备是否可达：只做一次 TCP 连接，不走完整 HTTP。
+     * Probe whether the device is reachable: a single TCP connect, no full HTTP round trip.
      *
-     * 下发 Wi-Fi 前用它确认手机确实处在设备热点链路上——设备热点每次重启都会换一个网段，
-     * 手机也可能被系统切回其它 Wi-Fi，直接下发只会等满 10 秒连接超时。
+     * Used before sending Wi-Fi to confirm the phone really sits on the device hotspot link — the
+     * hotspot changes subnet on every reboot and the system may switch the phone back to another
+     * Wi-Fi, so sending right away would just burn the full 10 s connect timeout.
      */
     suspend fun probe(endpoint: DeviceEndpoint, timeoutMs: Int = PROBE_TIMEOUT_MS): Boolean =
         withContext(Dispatchers.IO) {
@@ -634,7 +639,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
 
     // -----------------------------------------------------------------------
-    // 内部工具
+    // Internal helpers
     // -----------------------------------------------------------------------
 
     private suspend fun <T> call(block: () -> T): Result<T> =
@@ -655,19 +660,20 @@ class DeviceClient(private val resolver: ContentResolver) {
         const val READ_TIMEOUT_SECONDS = 60L
 
         /**
-         * 心跳的整调用超时（秒）。
-         * 心跳体积很小，必须在心跳间隔量级内失败，否则静默丢包时「30 秒内自动重连」（T-5）无从谈起。
+         * Whole-call timeout for heartbeat (seconds).
+         * Heartbeats are tiny, so they must fail within the heartbeat interval scale; otherwise
+         * "auto-reconnect within 30 s" (T-5) is unattainable under silent packet loss.
          */
         const val HEARTBEAT_TIMEOUT_SECONDS = 8L
 
-        /** GET /media 的 view 参数取值，与设备端 ApiRoutes 一致 */
+        /** Values of the GET /media `view` parameter, matching the device-side ApiRoutes */
         const val VIEW_ALL = "all"
         const val VIEW_FAVOURITE = "favourite"
 
-        /** 探测设备是否可达的超时；明显短于正常请求，避免失败时让用户干等 */
+        /** Timeout for the reachability probe; far shorter than a normal request so failures don't stall the user */
         const val PROBE_TIMEOUT_MS = 3_000
 
-        /** 大视频上传耗时不可预估，写超时关闭 */
+        /** Large video uploads take unpredictable time, so the write timeout is switched off */
         val EMPTY_BODY: RequestBody = ByteArray(0).toRequestBody(null)
 
         val client: OkHttpClient = OkHttpClient.Builder()
@@ -689,7 +695,7 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 }
 
-/** 边读边发，按已发送字节数回调百分比，避免把整个文件读进内存 */
+/** Sends while reading, reporting a percentage from the bytes sent, so the whole file never sits in memory */
 private class FilePartBody(
     private val resolver: ContentResolver,
     private val source: UploadSource,
@@ -723,7 +729,7 @@ private class FilePartBody(
     }
 }
 
-/** 读取所选媒体的展示名、MIME 与大小；大小未知返回 -1（该上传将走 chunked） */
+/** Read the display name, MIME and size of the picked media; unknown size returns -1 (that upload goes chunked) */
 fun ContentResolver.toUploadSource(uri: Uri): UploadSource {
     var name: String? = null
     var size = -1L
@@ -747,7 +753,7 @@ fun ContentResolver.toUploadSource(uri: Uri): UploadSource {
     )
 }
 
-/** 解析设备端 `params` 对象；缺失或非法字段回退到默认值（字段名与 ApiRoutes.paramsJson 一致） */
+/** Parse the device `params` object; missing or invalid fields fall back to defaults (field names match ApiRoutes.paramsJson) */
 private fun JSONObject?.toParams(): DeviceParams {
     val fallback = DeviceParams.DEFAULT
     if (this == null) return fallback
@@ -764,8 +770,8 @@ private fun JSONObject?.toParams(): DeviceParams {
 }
 
 /**
- * 解析 `GET/POST /frame` 回执（字段名与设备端 `ApiRoutes.frameJson` 一致）。
- * 缺失字段回退到 [FrameParams] 的默认值，保证旧设备端也能被解析。
+ * Parse the `GET/POST /frame` receipt (field names match the device-side `ApiRoutes.frameJson`).
+ * Missing fields fall back to [FrameParams] defaults so older devices still parse.
  */
 private fun JSONObject?.toFrameConfig(): FrameConfig {
     if (this == null) return FrameConfig(FrameParams(), emptyList())
@@ -779,7 +785,7 @@ private fun JSONObject?.toFrameConfig(): FrameConfig {
         paperEnabled = optBoolean("paper_enabled", FrameParams.DEFAULT_PAPER_ENABLED),
         backgroundImage = optBoolean("background_image", FrameParams.DEFAULT_BACKGROUND_IMAGE),
         hasBackground = optBoolean("has_background", false),
-        // 解析出来的几何参数一定非空：界面上要直接填表
+        // Parsed geometry values are never null: the UI fills them straight into the form
         paddingDp = optDouble("padding_dp", FrameParams.DEFAULT_PADDING_DP.toDouble()).toFloat(),
         borderGapDp = optDouble("border_gap_dp", FrameParams.DEFAULT_BORDER_GAP_DP.toDouble())
             .toFloat(),
@@ -797,7 +803,7 @@ private fun JSONObject?.toFrameConfig(): FrameConfig {
     return FrameConfig(params, styles)
 }
 
-/** 解析 GET /media 的 items 数组 */private fun JSONArray?.toMediaItems(): List<MediaItem> {
+/** Parse the GET /media items array */private fun JSONArray?.toMediaItems(): List<MediaItem> {
     val array = this ?: return emptyList()
     return buildList {
         for (i in 0 until array.length()) {
