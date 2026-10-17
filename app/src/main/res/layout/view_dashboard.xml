@@ -52,7 +52,7 @@
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/item_gap">
+                    android:layout_marginTop="@dimen/section_gap">
 
                     <TextView
                         android:id="@+id/tv_dashboard_brand"
@@ -162,10 +162,12 @@
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
+            <!-- Extra bottom margin lifts the whole card group slightly off the page edge -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/item_gap"
+                android:layout_marginBottom="@dimen/section_gap"
                 android:baselineAligned="false"
                 android:orientation="horizontal">
 
