@@ -42,6 +42,7 @@
                     android:id="@+id/tv_dashboard_logo"
                     android:layout_width="@dimen/dashboard_logo_size"
                     android:layout_height="@dimen/dashboard_logo_size"
+                    android:layout_marginTop="@dimen/dashboard_brand_top_offset"
                     android:background="@drawable/bg_logo_disc"
                     android:gravity="center"
                     android:text="@string/welcome_logo_mark"
@@ -52,7 +53,7 @@
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/section_gap">
+                    android:layout_marginTop="@dimen/dashboard_brand_gap">
 
                     <TextView
                         android:id="@+id/tv_dashboard_brand"
@@ -60,7 +61,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_centerHorizontal="true"
-                        android:text="@string/app_name" />
+                        android:text="@string/app_name"
+                        android:textSize="@dimen/text_dashboard_brand" />
 
                     <View
                         android:id="@+id/view_dashboard_dot"
