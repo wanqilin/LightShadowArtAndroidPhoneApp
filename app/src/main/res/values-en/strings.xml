@@ -65,7 +65,7 @@
     <string name="toast_storage_low">Not enough storage space, please free up space</string>
     <string name="toast_file_too_large">Files over 4 GB cannot be written</string>
     <string name="dialog_continue_upload">Continue uploading</string>
-    <string name="toast_need_session">Please scan to connect to the device first</string>
+    <string name="toast_need_session">Please connect to the device first</string>
     <string name="toast_session_expired">Session ended. Tap “Refresh connection” to reconnect</string>
     <string name="toast_auto_reconnected">Connection was interrupted and has been restored automatically</string>
     <string name="toast_disconnected">Disconnected. The device is back on its standby page and others can scan to connect</string>

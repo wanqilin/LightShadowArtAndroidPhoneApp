@@ -66,10 +66,10 @@
 
                     <View
                         android:id="@+id/view_dashboard_dot"
-                        android:layout_width="8dp"
-                        android:layout_height="8dp"
+                        android:layout_width="@dimen/dashboard_dot_size"
+                        android:layout_height="@dimen/dashboard_dot_size"
                         android:layout_centerVertical="true"
-                        android:layout_marginStart="8dp"
+                        android:layout_marginStart="@dimen/dashboard_dot_gap"
                         android:layout_toEndOf="@id/tv_dashboard_brand"
                         android:background="@drawable/dot_session" />
                 </RelativeLayout>
@@ -79,7 +79,7 @@
                     style="@style/Text.Body"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="@dimen/dashboard_subtitle_gap"
                     android:text="@string/welcome_subtitle"
                     android:textColor="@color/text_secondary" />
             </LinearLayout>
@@ -94,7 +94,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
+                android:layout_marginTop="@dimen/dashboard_card_group_min_gap"
                 android:baselineAligned="false"
                 android:orientation="horizontal">
 

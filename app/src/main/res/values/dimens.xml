@@ -31,6 +31,12 @@
     <dimen name="text_dashboard_brand">26sp</dimen>
     <dimen name="dashboard_brand_gap">32dp</dimen>
     <dimen name="dashboard_brand_top_offset">3dp</dimen>
+    <!-- Brand state dot and the rhythm below the brand name -->
+    <dimen name="dashboard_dot_size">8dp</dimen>
+    <dimen name="dashboard_dot_gap">8dp</dimen>
+    <dimen name="dashboard_subtitle_gap">8dp</dimen>
+    <!-- Minimum gap between the brand block and the bottom-anchored card group -->
+    <dimen name="dashboard_card_group_min_gap">28dp</dimen>
 
     <!-- Controls: 48dp is the minimum touch target (UI PRD §5) -->
     <dimen name="touch_min_height">48dp</dimen>
