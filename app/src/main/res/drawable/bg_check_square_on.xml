@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selected multi-select marker: primary filled square, the check mark is drawn on top -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/primary_blue" />
+    <corners android:radius="5dp" />
+</shape>

@@ -43,6 +43,9 @@
     <!-- Tint laid over a selected gallery thumbnail -->
     <color name="selection_overlay">#662F6FED</color>
 
+    <!-- Multi-select square marker backdrop: dark enough for the white outline to read on any photo -->
+    <color name="check_backdrop">#33000000</color>
+
     <!--
         Legacy aliases kept so not-yet-migrated screens keep compiling while the UI
         refactor moves page by page; they point at the v3.0 tokens above.

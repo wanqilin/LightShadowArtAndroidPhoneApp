@@ -17,10 +17,11 @@ interface ThumbnailProvider {
 }
 
 /**
- * Gallery adapter: rounded square thumbnails with video / favourite / selection markers.
+ * Gallery adapter for one view of the Space page: rounded square thumbnails with video / favourite
+ * markers and the multi-select marker.
  *
- * A long press opens the page's context menu (UI PRD §3.6 F) instead of entering selection mode,
- * so "long press shows a menu" and "the Select button starts multi-select" never fight each other.
+ * A long press enters multi-select with that picture already selected (UI PRD §3.6 F); while
+ * selecting, a tap toggles the selection instead of asking the device to play.
  */
 class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -40,10 +41,12 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         private set
 
     var onItemClick: ((MediaItem) -> Unit)? = null
+
+    /** Long press on a picture: enter multi-select with that picture selected */
     var onItemLongClick: ((MediaItem) -> Unit)? = null
 
-    /** Selection changed, so the page can enable / disable the delete button */
-    var onSelectionChanged: ((Int) -> Unit)? = null
+    /** Selection mode or selected count changed, so the page can re-render both bars */
+    var onSelectionChanged: ((Boolean, Int) -> Unit)? = null
 
     fun submit(newItems: List<MediaItem>) {
         items.clear()
@@ -51,7 +54,7 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         selected.retainAll(items.map { it.path }.toSet())
         rebuildRows()
         notifyDataSetChanged()
-        onSelectionChanged?.invoke(selected.size)
+        onSelectionChanged?.invoke(selectionMode, selected.size)
     }
 
     fun setGroupByDate(enabled: Boolean) {
@@ -73,17 +76,43 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         }
     }
 
-    fun setSelectionMode(enabled: Boolean) {
-        if (selectionMode == enabled) return
-        selectionMode = enabled
-        if (!enabled) selected.clear()
+    /** Enter multi-select with [item] selected. Long press is the only way in (no Select button). */
+    fun startSelection(item: MediaItem) {
+        selectionMode = true
+        selected.clear()
+        if (items.any { it.path == item.path }) selected.add(item.path)
         notifyDataSetChanged()
-        onSelectionChanged?.invoke(selected.size)
+        onSelectionChanged?.invoke(selectionMode, selected.size)
     }
+
+    /** Leave multi-select and drop the selection. */
+    fun clearSelection() {
+        if (!selectionMode && selected.isEmpty()) return
+        selectionMode = false
+        selected.clear()
+        notifyDataSetChanged()
+        onSelectionChanged?.invoke(selectionMode, selected.size)
+    }
+
+    /** Select every picture currently loaded in this view; selecting all again clears the selection. */
+    fun toggleSelectAll() {
+        if (items.isEmpty()) return
+        if (selected.size == items.size) {
+            selected.clear()
+        } else {
+            selected.clear()
+            items.forEach { selected.add(it.path) }
+        }
+        selectionMode = selected.isNotEmpty()
+        notifyDataSetChanged()
+        onSelectionChanged?.invoke(selectionMode, selected.size)
+    }
+
+    fun allSelected(): Boolean = items.isNotEmpty() && selected.size == items.size
 
     fun selectedPaths(): List<String> = selected.toList()
 
-    /** Whether every selected item is already a favourite (drives the favourite button label). */
+    /** Whether every selected item is already a favourite (drives the favourite action label). */
     fun selectedAllFavourite(): Boolean {
         val picked = items.filter { selected.contains(it.path) }
         return picked.isNotEmpty() && picked.all { it.favourite }
@@ -93,7 +122,11 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         if (!selected.add(item.path)) selected.remove(item.path)
         val index = rows.indexOfFirst { it is Row.Media && it.item.path == item.path }
         if (index >= 0) notifyItemChanged(index)
-        onSelectionChanged?.invoke(selected.size)
+        if (selected.isEmpty()) {
+            selectionMode = false
+            notifyDataSetChanged()
+        }
+        onSelectionChanged?.invoke(selectionMode, selected.size)
     }
 
     override fun getItemCount(): Int = rows.size
@@ -116,12 +149,13 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
             is Row.Media -> {
                 val item = row.item
                 val mediaHolder = holder as MediaViewHolder
-                mediaHolder.bind(item, selected.contains(item.path))
+                mediaHolder.bind(item, selectionMode, selected.contains(item.path))
                 mediaHolder.itemView.setOnClickListener {
                     if (selectionMode) toggleSelection(item) else onItemClick?.invoke(item)
                 }
                 mediaHolder.itemView.setOnLongClickListener {
-                    onItemLongClick?.invoke(item)
+                    // With a long press already inside multi-select, keep toggling instead of re-entering
+                    if (selectionMode) toggleSelection(item) else onItemLongClick?.invoke(item)
                     true
                 }
             }
@@ -153,11 +187,21 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         private val check: ImageView = itemView.findViewById(R.id.iv_check)
         private val overlay: View = itemView.findViewById(R.id.view_select_overlay)
 
-        fun bind(item: MediaItem, selected: Boolean) {
+        fun bind(item: MediaItem, selecting: Boolean, selected: Boolean) {
             videoBadge.isVisible = item.isVideo
             favourite.isVisible = item.favourite
-            check.isVisible = selected
             overlay.isVisible = selected
+
+            // Square marker: empty outline while unselected, primary fill + check while selected
+            check.isVisible = selecting
+            check.setBackgroundResource(
+                if (selected) R.drawable.bg_check_square_on else R.drawable.bg_check_square_off
+            )
+            if (selected) {
+                check.setImageResource(R.drawable.ic_check)
+            } else {
+                check.setImageDrawable(null)
+            }
 
             // Tag the bound path: a late thumbnail for a recycled holder must be dropped
             thumb.tag = item.path

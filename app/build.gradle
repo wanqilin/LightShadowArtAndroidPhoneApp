@@ -47,6 +47,10 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    // Space: three swipeable gallery views (UI PRD §3.6 B) and pull-to-refresh (§3.6 I).
+    // Material 1.11 pulls viewpager2 up to 1.1.0-beta02 through its own constraint.
+    implementation 'androidx.viewpager2:viewpager2:1.0.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
 
     // HTTP 客户端：multipart 流式上传 + 进度回调
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'

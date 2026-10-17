@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    One Space tab label. TabLayout gives the indicator bar, the code switches weight and colour, so
+    the selected tab is marked by more than colour alone (UI PRD §3.6 B).
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:maxLines="1"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:textSize="@dimen/text_row_title" />

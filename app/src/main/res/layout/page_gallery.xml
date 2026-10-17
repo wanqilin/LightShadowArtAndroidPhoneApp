@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    One view of the Space gallery, used as a ViewPager2 page (UI PRD §3.6 B). The padding keeps the
+    grid off the screen edges and leaves room under the last row for the floating bars.
+-->
+<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:paddingStart="@dimen/page_horizontal_padding"
+    android:paddingTop="4dp"
+    android:paddingEnd="@dimen/page_horizontal_padding"
+    android:paddingBottom="@dimen/gallery_bottom_inset" />

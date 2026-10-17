@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Space Art Gallery (UI PRD §3.6). Back arrow + title + read-only playback capsule on top,
-    filter pills, the artwork itself (three-column grid, or a single scaled frame while the
-    device is playing), a floating Design / Backgrounds / Layers / Reset toolbar and the floating
-    collapsible device control pad.
-
-    No palette entry lives up here: the palette belongs to the Design / Backgrounds pages.
+    Space Art Gallery (UI PRD §3.6). Top: back + title + read-only playback capsule, switching to a
+    multi-select header (cancel / selected count / select all) while a long-press selection is active.
+    Below it the three views are one control — TabLayout driving a ViewPager2, each page a three-column
+    grid — wrapped in a pull-to-refresh container, with the floating device control pad on top.
+    The artwork area swaps to a single scaled frame while the device plays, and the bottom bar swaps
+    between the normal Design / Backgrounds toolbar and the multi-select action row.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -21,150 +21,83 @@
         android:paddingStart="8dp"
         android:paddingEnd="@dimen/card_padding" />
 
+    <!-- Multi-select header: same height as the top bar so switching does not shift the page -->
     <LinearLayout
+        android:id="@+id/space_select_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="@dimen/page_horizontal_padding"
-        android:paddingEnd="@dimen/page_horizontal_padding">
+        android:layout_height="@dimen/top_bar_height"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="@dimen/page_horizontal_padding"
+        android:visibility="gone">
 
-        <!-- Filter pills: Immersive / By Date / Favs. Widths are shared, so nothing overlaps -->
-        <LinearLayout
-            android:id="@+id/row_space_filters"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/btn_space_cancel"
+            style="@style/Text.RowTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:minWidth="64dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/space_cancel"
+            android:textColor="@color/primary_blue" />
+
+        <TextView
+            android:id="@+id/tv_space_selected"
+            style="@style/Text.RowTitle"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1" />
 
-            <TextView
-                android:id="@+id/pill_space_immersive"
-                style="@style/FilterPill"
-                android:layout_weight="1"
-                android:text="@string/space_mode_immersive" />
-
-            <TextView
-                android:id="@+id/pill_space_date"
-                style="@style/FilterPill"
-                android:layout_marginStart="@dimen/item_gap"
-                android:layout_weight="1"
-                android:text="@string/space_mode_date" />
-
-            <TextView
-                android:id="@+id/pill_space_favourite"
-                style="@style/FilterPill"
-                android:layout_marginStart="@dimen/item_gap"
-                android:layout_weight="1"
-                android:text="@string/space_mode_favourite" />
-        </LinearLayout>
-
-        <!--
-            The gallery's remaining single-item actions. Kept to three per row so an English label
-            such as "Ex.Fav" cannot wrap and stretch the pill.
-        -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/item_gap"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_space_refresh"
-                style="@style/PillButton.Outlined"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minWidth="0dp"
-                android:maxLines="1"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:text="@string/space_refresh"
-                android:textSize="@dimen/text_hint" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_space_select"
-                style="@style/PillButton.Outlined"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:minWidth="0dp"
-                android:maxLines="1"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:text="@string/space_select"
-                android:textSize="@dimen/text_hint" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_space_export_fav"
-                style="@style/PillButton.Outlined"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:minWidth="0dp"
-                android:maxLines="1"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:text="@string/space_export_fav"
-                android:textSize="@dimen/text_hint" />
-        </LinearLayout>
-
-        <!-- Selection actions: only meaningful once the Select button has started multi-select -->
-        <LinearLayout
-            android:id="@+id/row_space_selection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:baselineAligned="false"
-            android:orientation="horizontal"
-            android:visibility="gone">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_space_favourite"
-                style="@style/PillButton.Outlined"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minWidth="0dp"
-                android:maxLines="1"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:text="@string/space_favourite"
-                android:textSize="@dimen/text_hint" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_space_delete"
-                style="@style/PillButton.Outlined"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:enabled="false"
-                android:minWidth="0dp"
-                android:maxLines="1"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:text="@string/space_delete"
-                android:textSize="@dimen/text_hint" />
-        </LinearLayout>
+        <TextView
+            android:id="@+id/btn_space_select_all"
+            style="@style/Text.RowTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:minWidth="64dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/space_select_all"
+            android:textColor="@color/primary_blue" />
     </LinearLayout>
 
-    <!-- The artwork area: grid, or the single frame the device is showing while it plays -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabs_space"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        app:tabGravity="fill"
+        app:tabIndicatorColor="@color/primary_blue"
+        app:tabIndicatorFullWidth="false"
+        app:tabIndicatorHeight="3dp"
+        app:tabMode="fixed"
+        app:tabRippleColor="@color/primary_soft" />
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/item_gap"
+        android:layout_marginTop="4dp"
         android:layout_weight="1">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_media"
+        <!-- Pull-to-refresh wraps the pager, so a vertical pull reloads the current view (§3.6 I) -->
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_space"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingStart="@dimen/page_horizontal_padding"
-            android:paddingEnd="@dimen/page_horizontal_padding"
-            android:paddingBottom="@dimen/gallery_bottom_inset" />
+            android:layout_height="match_parent">
+
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/pager_space"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <!-- Now Playing: one scaled frame, tap to toggle auto play / pause (UI PRD §3.6 C2) -->
         <FrameLayout
@@ -201,9 +134,25 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:visibility="gone" />
+
+            <!-- Rotate lives here: the device can only turn what it is showing, so this is the only
+                 place the rotation entry is offered (UI PRD §3.6 D, product decision 2026-10-17).
+                 It sits left of the control pad entry so the two floating controls never overlap. -->
+            <ImageButton
+                android:id="@+id/btn_now_playing_rotate"
+                android:layout_width="@dimen/touch_min_height"
+                android:layout_height="@dimen/touch_min_height"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="80dp"
+                android:layout_marginBottom="@dimen/gallery_bottom_inset"
+                android:background="@drawable/bg_floating_toolbar"
+                android:contentDescription="@string/space_rotate"
+                android:padding="12dp"
+                android:src="@drawable/ic_rotate"
+                android:tint="@color/primary_blue" />
         </FrameLayout>
 
-        <!-- Empty state: only shown when the gallery really has nothing -->
+        <!-- Empty state: only shown when the current view really has nothing -->
         <LinearLayout
             android:id="@+id/space_empty_state"
             android:layout_width="match_parent"
@@ -229,7 +178,7 @@
                 android:text="@string/space_empty" />
         </LinearLayout>
 
-        <!-- Floating toolbar; the control pad sits above it so the two never overlap -->
+        <!-- Normal bottom bar: Design / Backgrounds only (Layers and Reset are gone, §3.6 D) -->
         <LinearLayout
             android:id="@+id/gallery_toolbar"
             android:layout_width="wrap_content"
@@ -251,7 +200,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:minWidth="68dp"
+                android:minWidth="88dp"
                 android:orientation="vertical"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp">
@@ -281,7 +230,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:minWidth="68dp"
+                android:minWidth="88dp"
                 android:orientation="vertical"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp">
@@ -302,55 +251,68 @@
                     android:text="@string/space_toolbar_backgrounds"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
+        </LinearLayout>
+
+        <!-- Multi-select bottom row: favourite / rotate / export favourites / delete (§3.6 D) -->
+        <LinearLayout
+            android:id="@+id/row_space_actions"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/floating_toolbar_height"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="@dimen/item_gap"
+            android:layout_marginEnd="@dimen/item_gap"
+            android:layout_marginBottom="@dimen/item_gap"
+            android:background="@drawable/bg_floating_toolbar"
+            android:elevation="6dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
 
             <LinearLayout
-                android:id="@+id/btn_toolbar_layers"
-                android:layout_width="wrap_content"
+                android:id="@+id/btn_space_favourite"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_weight="1"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:minWidth="68dp"
-                android:orientation="vertical"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp">
+                android:orientation="vertical">
 
                 <ImageView
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_layers"
+                    android:src="@drawable/ic_favourite"
                     app:tint="@color/primary_blue" />
 
                 <TextView
+                    android:id="@+id/tv_space_favourite"
                     style="@style/Text.Hint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:maxLines="1"
-                    android:text="@string/space_toolbar_layers"
+                    android:text="@string/space_favourite"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/btn_toolbar_reset"
-                android:layout_width="wrap_content"
+                android:id="@+id/btn_space_rotate"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_weight="1"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:minWidth="68dp"
-                android:orientation="vertical"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp">
+                android:orientation="vertical">
 
                 <ImageView
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_reset"
+                    android:src="@drawable/ic_rotate"
                     app:tint="@color/primary_blue" />
 
                 <TextView
@@ -359,7 +321,64 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:maxLines="1"
-                    android:text="@string/space_toolbar_reset"
+                    android:text="@string/space_rotate"
+                    android:textSize="@dimen/text_label" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_space_export_fav"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_export"
+                    app:tint="@color/primary_blue" />
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="1"
+                    android:text="@string/space_export_fav"
+                    android:textSize="@dimen/text_label" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_space_delete"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_delete"
+                    app:tint="@color/status_destructive" />
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="1"
+                    android:text="@string/space_delete"
+                    android:textColor="@color/status_destructive"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
         </LinearLayout>

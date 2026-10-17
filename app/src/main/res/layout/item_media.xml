@@ -62,16 +62,20 @@
         app:layout_constraintTop_toTopOf="parent"
         app:tint="@color/favourite" />
 
+    <!--
+        Multi-select marker: square, bottom-right, empty outline when unselected and primary filled
+        with a white check when selected (UI PRD §3.6 C / F). Only shown while selecting.
+    -->
     <ImageView
         android:id="@+id/iv_check"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_margin="4dp"
-        android:contentDescription="@string/space_select"
-        android:src="@drawable/ic_check_circle"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_margin="6dp"
+        android:background="@drawable/bg_check_square_off"
+        android:contentDescription="@string/space_selected_marker_desc"
+        android:padding="3dp"
         android:visibility="gone"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:tint="@color/on_primary" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

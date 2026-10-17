@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -21,8 +22,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.tabs.TabLayout
 import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
 import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
 import com.ShowSeen.lightshadowart.mobile.net.FileTooLargeException
@@ -65,25 +69,28 @@ class MainActivity : DeviceActivity() {
 
     // Space
     private lateinit var spaceTopBar: PageTopBarView
-    private lateinit var pillImmersive: TextView
-    private lateinit var pillDate: TextView
-    private lateinit var pillFavourite: TextView
-    private lateinit var btnSpaceRefresh: MaterialButton
-    private lateinit var btnSpaceSelect: MaterialButton
-    private lateinit var btnSpaceFavourite: MaterialButton
-    private lateinit var btnSpaceDelete: MaterialButton
-    private lateinit var btnSpaceExportFav: MaterialButton
-    private lateinit var rowSpaceSelection: View
-    private lateinit var recyclerMedia: RecyclerView
+    private lateinit var spaceSelectBar: View
+    private lateinit var btnSpaceCancel: View
+    private lateinit var tvSpaceSelected: TextView
+    private lateinit var btnSpaceSelectAll: TextView
+    private lateinit var tabsSpace: TabLayout
+    private lateinit var pagerSpace: ViewPager2
+    private lateinit var swipeSpace: SwipeRefreshLayout
+    private lateinit var btnSpaceFavourite: View
+    private lateinit var btnSpaceRotate: View
+    private lateinit var btnSpaceExportFav: View
+    private lateinit var btnSpaceDelete: View
+    private lateinit var tvSpaceFavouriteLabel: TextView
+    private lateinit var rowSpaceActions: View
     private lateinit var spaceEmptyState: View
     private lateinit var nowPlaying: View
     private lateinit var ivNowPlaying: ImageView
+    private lateinit var btnNowPlayingRotate: View
     private lateinit var progressNowPlaying: ProgressBar
     private lateinit var tvNowPlayingStatus: TextView
+    private lateinit var galleryToolbar: View
     private lateinit var toolbarDesign: View
     private lateinit var toolbarBackgrounds: View
-    private lateinit var toolbarLayers: View
-    private lateinit var toolbarReset: View
     private lateinit var controlPad: DeviceControlPadView
 
     // Settings
@@ -117,7 +124,12 @@ class MainActivity : DeviceActivity() {
     private lateinit var viewSettings: View
 
     private val uploadAdapter = UploadAdapter()
-    private lateinit var mediaAdapter: MediaGridAdapter
+
+    /** One media adapter per gallery view, in tab order: immersive, by date, favourites. */
+    private lateinit var pageAdapters: List<MediaGridAdapter>
+
+    /** Index of the view the pager is on; drives which adapter the page actions read from. */
+    private var viewIndex = 0
 
     private var uploadJob: Job? = null
     private var mediaJob: Job? = null
@@ -243,25 +255,28 @@ class MainActivity : DeviceActivity() {
         tvUploadSummary = findViewById(R.id.tv_upload_summary)
 
         spaceTopBar = findViewById(R.id.space_top_bar)
-        pillImmersive = findViewById(R.id.pill_space_immersive)
-        pillDate = findViewById(R.id.pill_space_date)
-        pillFavourite = findViewById(R.id.pill_space_favourite)
-        btnSpaceRefresh = findViewById(R.id.btn_space_refresh)
-        btnSpaceSelect = findViewById(R.id.btn_space_select)
+        spaceSelectBar = findViewById(R.id.space_select_bar)
+        btnSpaceCancel = findViewById(R.id.btn_space_cancel)
+        tvSpaceSelected = findViewById(R.id.tv_space_selected)
+        btnSpaceSelectAll = findViewById(R.id.btn_space_select_all)
+        tabsSpace = findViewById(R.id.tabs_space)
+        pagerSpace = findViewById(R.id.pager_space)
+        swipeSpace = findViewById(R.id.swipe_space)
         btnSpaceFavourite = findViewById(R.id.btn_space_favourite)
-        btnSpaceDelete = findViewById(R.id.btn_space_delete)
+        btnSpaceRotate = findViewById(R.id.btn_space_rotate)
         btnSpaceExportFav = findViewById(R.id.btn_space_export_fav)
-        rowSpaceSelection = findViewById(R.id.row_space_selection)
-        recyclerMedia = findViewById(R.id.recycler_media)
+        btnSpaceDelete = findViewById(R.id.btn_space_delete)
+        tvSpaceFavouriteLabel = findViewById(R.id.tv_space_favourite)
+        rowSpaceActions = findViewById(R.id.row_space_actions)
         spaceEmptyState = findViewById(R.id.space_empty_state)
         nowPlaying = findViewById(R.id.now_playing)
         ivNowPlaying = findViewById(R.id.iv_now_playing)
+        btnNowPlayingRotate = findViewById(R.id.btn_now_playing_rotate)
         progressNowPlaying = findViewById(R.id.progress_now_playing)
         tvNowPlayingStatus = findViewById(R.id.tv_now_playing_status)
+        galleryToolbar = findViewById(R.id.gallery_toolbar)
         toolbarDesign = findViewById(R.id.btn_toolbar_design)
         toolbarBackgrounds = findViewById(R.id.btn_toolbar_backgrounds)
-        toolbarLayers = findViewById(R.id.btn_toolbar_layers)
-        toolbarReset = findViewById(R.id.btn_toolbar_reset)
         controlPad = findViewById(R.id.device_control_pad)
 
         settingsTopBar = findViewById(R.id.settings_top_bar)
@@ -309,55 +324,161 @@ class MainActivity : DeviceActivity() {
         spaceTopBar.setTitle(getString(R.string.space_title))
         spaceTopBar.setOnBackClickListener { showPage(Page.DASHBOARD) }
 
-        pillImmersive.setOnClickListener { selectBrowseMode(BROWSER_MODE_IMMERSIVE) }
-        pillDate.setOnClickListener { selectBrowseMode(BROWSER_MODE_DATE) }
-        pillFavourite.setOnClickListener { selectBrowseMode(BROWSER_MODE_FAVOURITE) }
-
-        mediaAdapter = MediaGridAdapter(thumbnailProvider)
-        mediaAdapter.onItemClick = { item ->
-            // The device control API takes actions only, so a tap asks the device to start playing
-            sendControl(CTRL_PLAY)
-            toast(getString(R.string.toast_media_playing))
-            Log.i(TAG, "media click: ${item.path}")
-        }
-        mediaAdapter.onItemLongClick = { item -> showItemMenu(item) }
-        mediaAdapter.onSelectionChanged = { count ->
-            btnSpaceDelete.isEnabled = mediaAdapter.selectionMode && count > 0
-            rowSpaceSelection.isVisible = mediaAdapter.selectionMode
-            updateFavouriteButton()
-        }
-        recyclerMedia.adapter = mediaAdapter
-        applyMediaLayout(BROWSER_MODE_IMMERSIVE)
-        renderFilterPills(BROWSER_MODE_IMMERSIVE)
-        updateSelectButton()
-
-        btnSpaceRefresh.setOnClickListener {
-            if (SessionStore.isActive) reloadMedia() else requireSession()
-        }
-        btnSpaceSelect.setOnClickListener { toggleSelectionMode() }
-        btnSpaceFavourite.setOnClickListener { favouriteSelected() }
-        btnSpaceDelete.setOnClickListener { deleteSelected() }
-        btnSpaceExportFav.setOnClickListener { exportFavourite() }
+        setupGalleryPager()
+        setupSpaceBars()
 
         toolbarDesign.setOnClickListener { openFrameDesign() }
         toolbarBackgrounds.setOnClickListener { openBackgrounds() }
-        toolbarLayers.setOnClickListener { toast(getString(R.string.space_layers_unavailable)) }
-        toolbarReset.setOnClickListener { confirmResetDesign() }
 
         controlPad.onAction = { action -> sendControl(action) }
         controlPad.onCenterClick = { onControlPadCenter() }
-        controlPad.onExpandedChanged = { expanded ->
-            // Keep the pad from covering the last row while it is expanded
-            val extra = if (expanded) resources.getDimensionPixelSize(R.dimen.control_pad_diameter) else 0
-            recyclerMedia.setPadding(
-                recyclerMedia.paddingLeft,
-                recyclerMedia.paddingTop,
-                recyclerMedia.paddingRight,
-                resources.getDimensionPixelSize(R.dimen.gallery_bottom_inset) + extra
-            )
-        }
+        controlPad.onExpandedChanged = { expanded -> applyGalleryBottomInset(expanded) }
 
         nowPlaying.setOnClickListener { onControlPadCenter() }
+        btnNowPlayingRotate.setOnClickListener {
+            sendControl(CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
+        }
+    }
+
+    /**
+     * Three gallery views as one control (UI PRD §3.6 B): a TabLayout drives a ViewPager2 whose pages
+     * are the three grids. Tab and swiping both select the view, and the indicator plus the bold
+     * label follow, so the selection is not shown by colour alone.
+     */
+    private fun setupGalleryPager() {
+        val modes = intArrayOf(BROWSER_MODE_IMMERSIVE, BROWSER_MODE_DATE, BROWSER_MODE_FAVOURITE)
+        pageAdapters = modes.map { mode ->
+            MediaGridAdapter(thumbnailProvider).apply {
+                setGroupByDate(mode == BROWSER_MODE_DATE)
+                onItemClick = { item ->
+                    // The control API takes actions only, so a tap asks the device to start playing
+                    sendControl(CTRL_PLAY)
+                    toast(getString(R.string.toast_media_playing))
+                    Log.i(TAG, "media click: ${item.path}")
+                }
+                onItemLongClick = { item -> startSelection(this, item) }
+                onSelectionChanged = { _, _ -> renderSelectionUi() }
+            }
+        }
+
+        // Keep all three pages alive so each view keeps its scroll position across tabs
+        pagerSpace.offscreenPageLimit = modes.size
+        pagerSpace.adapter = GalleryPagerAdapter(modes.size) { position, list ->
+            list.layoutManager = if (modes[position] == BROWSER_MODE_DATE) {
+                LinearLayoutManager(this)
+            } else {
+                GridLayoutManager(this, MEDIA_SPAN_COUNT)
+            }
+            list.adapter = pageAdapters[position]
+        }
+
+        val labels = intArrayOf(
+            R.string.space_mode_immersive,
+            R.string.space_mode_date,
+            R.string.space_mode_favourite
+        )
+        labels.forEach { labelRes ->
+            val tab = tabsSpace.newTab()
+            tab.customView = layoutInflater.inflate(R.layout.item_space_tab, tabsSpace, false)
+                .apply { (this as TextView).setText(labelRes) }
+            tabsSpace.addTab(tab)
+        }
+        renderTabSelection(0)
+
+        tabsSpace.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                renderTabSelection(tab.position)
+                if (pagerSpace.currentItem != tab.position) pagerSpace.setCurrentItem(tab.position, true)
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
+        })
+
+        pagerSpace.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                selectGalleryView(position)
+            }
+        })
+
+        swipeSpace.setOnRefreshListener {
+            if (SessionStore.isActive) {
+                loadGalleryView(viewIndex, refreshing = true)
+            } else {
+                swipeSpace.isRefreshing = false
+                requireSession()
+            }
+        }
+    }
+
+    private fun setupSpaceBars() {
+        btnSpaceCancel.setOnClickListener { exitSelection() }
+        btnSpaceSelectAll.setOnClickListener {
+            adapterForCurrentView().toggleSelectAll()
+        }
+        btnSpaceFavourite.setOnClickListener { favouriteSelected() }
+        btnSpaceRotate.setOnClickListener {
+            // Product decision 2026-10-17: the device can only rotate what it shows, so the batch
+            // entry stays visible but explains itself instead of failing silently.
+            toast(getString(R.string.space_action_rotate_unavailable))
+        }
+        btnSpaceExportFav.setOnClickListener { exportFavourite() }
+        btnSpaceDelete.setOnClickListener { deleteSelected() }
+    }
+
+    private fun adapterForCurrentView(): MediaGridAdapter = pageAdapters[viewIndex]
+
+    /** Tab selection state: primary colour and bold weight, on top of the indicator bar. */
+    private fun renderTabSelection(position: Int) {
+        for (i in 0 until tabsSpace.tabCount) {
+            val label = tabsSpace.getTabAt(i)?.customView as? TextView ?: continue
+            val selected = i == position
+            label.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (selected) R.color.primary_blue else R.color.text_secondary
+                )
+            )
+            label.typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        }
+    }
+
+    /**
+     * Switch the gallery to [position]: exit any selection, then load that view if it is empty.
+     *
+     * The tab is selected here too, so a swipe and a tab tap leave the same state: the indicator, the
+     * bold label and the visible page always agree.
+     */
+    private fun selectGalleryView(position: Int) {
+        if (viewIndex == position) {
+            tabsSpace.elevateSelection(position)
+            return
+        }
+        // A selection belongs to one view, so switching tabs ends it rather than acting across views
+        adapterForCurrentView().clearSelection()
+        viewIndex = position
+        currentBrowseMode = BROWSER_VIEW_MODES[position]
+        tabsSpace.elevateSelection(position)
+        if (adapterForCurrentView().itemCount == 0) loadGalleryView(position)
+        sendBrowseMode(currentBrowseMode)
+        updateMediaEmpty()
+    }
+
+    /** Move the TabLayout's own selection (indicator included) without re-entering this method. */
+    private fun TabLayout.elevateSelection(position: Int) {
+        val tab = getTabAt(position) ?: return
+        if (selectedTabPosition != position) selectTab(tab)
+    }
+
+    /** Bottom inset for the grids: the floating bars always, plus the pad while it is expanded. */
+    private fun applyGalleryBottomInset(padExpanded: Boolean) {
+        val extra = if (padExpanded) resources.getDimensionPixelSize(R.dimen.control_pad_diameter) else 0
+        val base = resources.getDimensionPixelSize(R.dimen.gallery_bottom_inset) + extra
+        for (index in 0 until pagerSpace.childCount) {
+            val page = pagerSpace.getChildAt(index) as? RecyclerView ?: continue
+            page.setPadding(page.paddingLeft, page.paddingTop, page.paddingRight, base)
+        }
     }
 
     private fun setupSettings() {
@@ -394,8 +515,8 @@ class MainActivity : DeviceActivity() {
             }
 
             Page.SPACE -> {
-                renderFilterPills(currentBrowseMode)
-                reloadMedia()
+                renderTabSelection(viewIndex)
+                loadGalleryView(viewIndex)
                 startPlaybackPolling()
             }
 
@@ -423,20 +544,19 @@ class MainActivity : DeviceActivity() {
     override fun onSessionCleared() {
         // The cached thumbnails belong to the session that just ended
         thumbCache.evictAll()
-        mediaAdapter.submit(emptyList())
+        pageAdapters.forEach { it.submit(emptyList()) }
         updateMediaEmpty()
         playbackState = null
         nowPlayingPath = ""
     }
 
     override fun onSessionEstablished() {
-        mediaAdapter.setSelectionMode(false)
-        updateSelectButton()
-        reloadMedia()
+        exitSelection()
+        loadGalleryView(viewIndex)
     }
 
     override fun onStudioSelectionConfirmed() {
-        reloadMedia()
+        loadGalleryView(viewIndex)
         showPage(Page.SPACE)
     }
 
@@ -491,85 +611,49 @@ class MainActivity : DeviceActivity() {
 
     private fun renderSpaceAvailability() {
         val active = SessionStore.isActive
-        btnSpaceRefresh.isEnabled = active
-        btnSpaceExportFav.isEnabled = active
+        btnSpaceExportFav.alpha = if (active) 1f else DISABLED_ALPHA
         // Store mode has no delete entry, and the service refuses it as well
         btnSpaceDelete.isVisible = active && !SessionStore.inStudioMode
+        swipeSpace.isEnabled = active
     }
 
     // -----------------------------------------------------------------------
-    // Space: browse modes and media
+    // Space: the three gallery views
     // -----------------------------------------------------------------------
-
-    private fun selectBrowseMode(mode: Int) {
-        if (currentBrowseMode == mode) return
-        currentBrowseMode = mode
-        renderFilterPills(mode)
-        applyMediaLayout(mode)
-        reloadMedia()
-        sendBrowseMode(mode)
-    }
-
-    /** Filter pills: the selected one is filled *and* bolder, so colour is not the only cue. */
-    private fun renderFilterPills(selectedMode: Int) {
-        listOf(
-            pillImmersive to BROWSER_MODE_IMMERSIVE,
-            pillDate to BROWSER_MODE_DATE,
-            pillFavourite to BROWSER_MODE_FAVOURITE
-        ).forEach { (pill, mode) ->
-            val selected = mode == selectedMode
-            pill.setBackgroundResource(
-                if (selected) R.drawable.bg_pill_primary else R.drawable.bg_pill_outline
-            )
-            pill.setTextColor(
-                ContextCompat.getColor(this, if (selected) R.color.on_primary else R.color.text_secondary)
-            )
-            pill.typeface = if (selected) {
-                android.graphics.Typeface.DEFAULT_BOLD
-            } else {
-                android.graphics.Typeface.DEFAULT
-            }
-        }
-    }
 
     /**
-     * Local arrangement per browse mode: the date view is a single-column list with date headers,
-     * the immersive / favourite views are three-column grids (matching the device).
+     * Load one gallery view. Each tab keeps its own data set and scroll position, so switching tabs
+     * never refetches what is already there; a pull-to-refresh forces the reload.
      */
-    private fun applyMediaLayout(mode: Int) {
-        val dateMode = mode == BROWSER_MODE_DATE
-        mediaAdapter.setGroupByDate(dateMode)
-        recyclerMedia.layoutManager = if (dateMode) {
-            LinearLayoutManager(this)
-        } else {
-            GridLayoutManager(this, MEDIA_SPAN_COUNT)
-        }
-    }
-
-    private fun reloadMedia() {
+    private fun loadGalleryView(position: Int, refreshing: Boolean = false) {
+        val adapter = pageAdapters[position]
         val endpoint = SessionStore.endpoint
         val sessionId = SessionStore.sessionId
         if (endpoint == null || sessionId == null) {
-            mediaAdapter.submit(emptyList())
+            adapter.submit(emptyList())
+            swipeSpace.isRefreshing = false
             updateMediaEmpty()
             return
         }
 
         mediaJob?.cancel()
-        val favouriteOnly = currentBrowseMode == BROWSER_MODE_FAVOURITE
+        val favouriteOnly = BROWSER_VIEW_MODES[position] == BROWSER_MODE_FAVOURITE
         mediaJob = lifecycleScope.launch {
             client.listMedia(endpoint, sessionId, favouriteOnly)
                 .onSuccess {
-                    mediaAdapter.submit(it)
+                    adapter.submit(it)
                     updateMediaEmpty()
+                    if (refreshing) toast(getString(R.string.space_refresh_done, it.size))
                 }
                 .onFailure { error ->
                     if (error is SessionExpiredException) {
                         handleSessionExpired()
-                    } else {
-                        toast(getString(R.string.toast_media_failed, error.message.orEmpty()))
+                        return@launch
                     }
+                    // Never pretend a refresh worked: say what failed and allow another pull
+                    toast(getString(R.string.toast_media_failed, error.message.orEmpty()))
                 }
+            swipeSpace.isRefreshing = false
         }
     }
 
@@ -578,105 +662,61 @@ class MainActivity : DeviceActivity() {
         sendControl(CTRL_SWITCH_VIEW, JSONObject().put("mode", mode))
     }
 
+    /** Empty state belongs to the view that is on screen, and never overlaps the Now Playing frame. */
     private fun updateMediaEmpty() {
-        val empty = mediaAdapter.itemCount == 0
+        val empty = adapterForCurrentView().itemCount == 0
         spaceEmptyState.isVisible = empty && !nowPlaying.isVisible
     }
 
-    private fun updateSelectButton() {
-        val selecting = mediaAdapter.selectionMode
-        btnSpaceSelect.setText(
-            if (selecting) R.string.space_select_done else R.string.space_select
-        )
-        // The favourite / delete pair only makes sense once something can be selected
-        rowSpaceSelection.isVisible = selecting
-    }
-
-    private fun toggleSelectionMode() {
-        mediaAdapter.setSelectionMode(!mediaAdapter.selectionMode)
-        updateSelectButton()
-    }
-
-    private fun updateFavouriteButton() {
-        btnSpaceFavourite.setText(
-            if (mediaAdapter.selectedAllFavourite()) {
-                R.string.space_menu_favourite_cancel
-            } else {
-                R.string.space_menu_favourite
-            }
-        )
-    }
-
     /**
-     * Long-press menu (UI PRD §3.6 F): Play / Rotate / Favourite for one item. Multi-select is the
-     * job of the Select button, so a long press never turns into a selection.
+     * Re-render both bars for the current selection state (UI PRD §3.6 A / D / F): the top bar swaps
+     * to cancel / count / select all, the bottom bar swaps to favourite / rotate / export / delete.
      */
-    private fun showItemMenu(item: MediaItem) {
-        val actions = mutableListOf<String>()
-        val actionIds = mutableListOf<Int>()
-        actions.add(getString(R.string.space_menu_play)); actionIds.add(ACTION_PLAY_ITEM)
-        actions.add(getString(R.string.space_menu_rotate)); actionIds.add(ACTION_ROTATE_ITEM)
-        actions.add(
-            getString(
-                if (item.favourite) R.string.space_menu_favourite_cancel
-                else R.string.space_menu_favourite
-            )
+    private fun renderSelectionUi() {
+        val adapter = adapterForCurrentView()
+        val selecting = adapter.selectionMode
+        val count = adapter.selectedPaths().size
+
+        spaceTopBar.isVisible = !selecting
+        spaceSelectBar.isVisible = selecting
+        tvSpaceSelected.text = getString(R.string.space_selected_count, count)
+        btnSpaceSelectAll.setText(
+            if (adapter.allSelected()) R.string.space_deselect_all else R.string.space_select_all
         )
-        actionIds.add(ACTION_FAVOURITE_ITEM)
 
-        if (actions.isEmpty()) return
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.space_menu_title)
-            .setItems(actions.toTypedArray()) { _, which ->
-                when (actionIds[which]) {
-                    ACTION_PLAY_ITEM -> {
-                        // Enter playback and stop there, exactly like the control pad centre key
-                        sendControl(CTRL_PLAY)
-                        startPlaybackPolling(refreshSoon = true)
-                    }
+        rowSpaceActions.isVisible = selecting
+        // The two bars are two layouts: the normal toolbar leaves the screen while selecting
+        galleryToolbar.isVisible = !selecting
+        renderEditAvailability(playbackState?.mode)
 
-                    ACTION_ROTATE_ITEM -> sendControl(
-                        CTRL_ROTATE,
-                        JSONObject().put("degree", ROTATE_DEGREE)
-                    )
-
-                    ACTION_FAVOURITE_ITEM -> setFavourite(item, !item.favourite)
-                }
-            }
-            .show()
+        btnSpaceFavourite.isEnabled = selecting && count > 0
+        btnSpaceExportFav.isEnabled = selecting && count > 0
+        btnSpaceDelete.isEnabled = selecting && count > 0
+        btnSpaceFavourite.alpha = if (selecting && count > 0) 1f else DISABLED_ALPHA
+        btnSpaceExportFav.alpha = if (selecting && count > 0) 1f else DISABLED_ALPHA
+        btnSpaceDelete.alpha = if (selecting && count > 0) 1f else DISABLED_ALPHA
+        // Batch rotate stays visibly unavailable: the device can only rotate what it shows
+        btnSpaceRotate.alpha = DISABLED_ALPHA
+        tvSpaceFavouriteLabel.setText(
+            if (adapter.selectedAllFavourite()) R.string.space_unfavourite
+            else R.string.space_favourite
+        )
     }
 
-    private fun setFavourite(item: MediaItem, favourite: Boolean) {
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-        if (endpoint == null || sessionId == null) {
-            requireSession()
-            return
-        }
-        lifecycleScope.launch {
-            client.favourite(endpoint, sessionId, item.path, favourite)
-                .onSuccess {
-                    toast(
-                        getString(
-                            if (favourite) R.string.toast_favourite_added
-                            else R.string.toast_favourite_removed
-                        )
-                    )
-                    reloadMedia()
-                }
-                .onFailure { error ->
-                    if (error is SessionExpiredException) {
-                        handleSessionExpired()
-                    } else {
-                        toast(getString(R.string.toast_favourite_failed, error.message.orEmpty()))
-                    }
-                }
-        }
+    private fun startSelection(adapter: MediaGridAdapter, item: MediaItem) {
+        adapter.startSelection(item)
+        renderSelectionUi()
     }
 
-    /** Favourite the selected items (batch, via the Select button flow). */
+    private fun exitSelection() {
+        pageAdapters.forEach { it.clearSelection() }
+        renderSelectionUi()
+    }
+
+    /** Favourite the selected items, then leave the selection (UI PRD §3.6 D / F). */
     private fun favouriteSelected() {
-        val paths = mediaAdapter.selectedPaths()
+        val adapter = adapterForCurrentView()
+        val paths = adapter.selectedPaths()
         if (paths.isEmpty()) {
             toast(getString(R.string.toast_select_none))
             return
@@ -687,7 +727,7 @@ class MainActivity : DeviceActivity() {
             requireSession()
             return
         }
-        val target = !mediaAdapter.selectedAllFavourite()
+        val target = !adapter.selectedAllFavourite()
         lifecycleScope.launch {
             var success = 0
             var firstError: String? = null
@@ -709,13 +749,15 @@ class MainActivity : DeviceActivity() {
                     else -> getString(R.string.toast_favourite_removed)
                 }
             )
-            reloadMedia()
+            exitSelection()
+            loadGalleryView(viewIndex)
         }
     }
 
-    /** Multi-select delete; personal mode only (the service refuses it in store mode). */
+    /** Multi-select delete with confirmation; personal mode only (the service refuses store mode). */
     private fun deleteSelected() {
-        val paths = mediaAdapter.selectedPaths()
+        val adapter = adapterForCurrentView()
+        val paths = adapter.selectedPaths()
         if (paths.isEmpty()) {
             toast(getString(R.string.toast_delete_none))
             return
@@ -740,9 +782,8 @@ class MainActivity : DeviceActivity() {
                     client.deleteMedia(endpoint, sessionId, paths)
                         .onSuccess { count ->
                             toast(getString(R.string.toast_deleted, count))
-                            mediaAdapter.setSelectionMode(false)
-                            updateSelectButton()
-                            reloadMedia()
+                            exitSelection()
+                            loadGalleryView(viewIndex)
                         }
                         .onFailure { error ->
                             if (error is SessionExpiredException) {
@@ -757,10 +798,16 @@ class MainActivity : DeviceActivity() {
     }
 
     /**
-     * Export the favourites into their own Fav folder. Always driven by the device's current
-     * markers: newly marked items are copied in, unmarked leftovers are removed.
+     * Export the favourites into their own Fav folder. Driven by the device's current markers: newly
+     * marked items are copied in, unmarked leftovers are removed. Requires a selection, so the
+     * multi-select action cannot fire on an empty list (UI PRD §3.6 D).
      */
     private fun exportFavourite() {
+        val adapter = adapterForCurrentView()
+        if (adapter.selectedPaths().isEmpty()) {
+            toast(getString(R.string.toast_select_none))
+            return
+        }
         val endpoint = SessionStore.endpoint
         val sessionId = SessionStore.sessionId
         if (endpoint == null || sessionId == null) {
@@ -778,7 +825,8 @@ class MainActivity : DeviceActivity() {
                             getString(R.string.toast_export_fav_empty)
                         }
                     )
-                    reloadMedia()
+                    exitSelection()
+                    loadGalleryView(viewIndex)
                 }
                 .onFailure { error ->
                     if (error is SessionExpiredException) {
@@ -787,7 +835,7 @@ class MainActivity : DeviceActivity() {
                         toast(getString(R.string.toast_export_fav_failed, error.message.orEmpty()))
                     }
                 }
-            btnSpaceExportFav.isEnabled = SessionStore.isActive
+            btnSpaceExportFav.isEnabled = true
         }
     }
 
@@ -879,7 +927,9 @@ class MainActivity : DeviceActivity() {
      * is unavailable instead of failing silently. Only administrators may edit at all.
      */
     private fun renderEditAvailability(mode: PlaybackMode?) {
-        val editable = mode == PlaybackMode.STATIC && SessionStore.isActive && SessionStore.isAdmin
+        val selecting = pageAdapters[viewIndex].selectionMode
+        val editable = mode == PlaybackMode.STATIC && SessionStore.isActive &&
+            SessionStore.isAdmin && !selecting
         listOf(toolbarDesign, toolbarBackgrounds).forEach { view ->
             view.alpha = if (editable) 1f else DISABLED_ALPHA
         }
@@ -989,6 +1039,10 @@ class MainActivity : DeviceActivity() {
             toast(getString(R.string.toast_admin_only))
             return false
         }
+        if (adapterForCurrentView().selectionMode) {
+            toast(getString(R.string.space_edit_need_exit_selection))
+            return false
+        }
         when (playbackState?.mode) {
             PlaybackMode.STATIC -> return true
             PlaybackMode.AUTO -> {
@@ -1000,48 +1054,6 @@ class MainActivity : DeviceActivity() {
                 toast(getString(R.string.space_edit_need_enter_playback))
                 return false
             }
-        }
-    }
-
-    /** Reset to the device defaults: frame off and no custom wallpaper, i.e. back to blur. */
-    private fun confirmResetDesign() {
-        if (!SessionStore.isActive) {
-            requireSession()
-            return
-        }
-        if (!SessionStore.isAdmin) {
-            toast(getString(R.string.toast_admin_only))
-            return
-        }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.space_reset_confirm_title)
-            .setMessage(R.string.space_reset_confirm_message)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.space_toolbar_reset) { _, _ -> resetDesign() }
-            .show()
-    }
-
-    private fun resetDesign() {
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-        if (endpoint == null || sessionId == null) {
-            requireSession()
-            return
-        }
-        lifecycleScope.launch {
-            client.writeFrame(
-                endpoint,
-                sessionId,
-                FramePatch(frameEnabled = false, backgroundImage = false, paperEnabled = true)
-            )
-                .onSuccess { toast(getString(R.string.space_reset_done)) }
-                .onFailure { error ->
-                    if (error is SessionExpiredException) {
-                        handleSessionExpired()
-                    } else {
-                        toast(getString(R.string.space_reset_failed, error.message.orEmpty()))
-                    }
-                }
         }
     }
 
@@ -1423,9 +1435,11 @@ class MainActivity : DeviceActivity() {
 
         const val DISABLED_ALPHA = 0.4f
 
-        // Long-press menu item ids
-        const val ACTION_PLAY_ITEM = 0
-        const val ACTION_ROTATE_ITEM = 1
-        const val ACTION_FAVOURITE_ITEM = 2
+        /** Gallery views in tab order: immersive, by date, favourites (UI PRD §3.6 B). */
+        val BROWSER_VIEW_MODES = intArrayOf(
+            BROWSER_MODE_IMMERSIVE,
+            BROWSER_MODE_DATE,
+            BROWSER_MODE_FAVOURITE
+        )
     }
 }
