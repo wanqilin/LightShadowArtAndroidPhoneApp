@@ -793,6 +793,7 @@ abstract class DeviceActivity : AppCompatActivity() {
 
         // Device /control action names, matching MtkPlayerBridge
         const val CTRL_PLAY = "PLAY"
+        const val CTRL_PAUSE = "PAUSE"
         const val CTRL_AUTO_PLAY = "AUTO_PLAY"
         const val CTRL_AUTO_PAUSE = "AUTO_PAUSE"
         const val CTRL_ROTATE = "ROTATE"

@@ -31,6 +31,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Video badge moves to the top-left so the heart can hug the top-right corner -->
     <TextView
         android:id="@+id/tv_video_badge"
         android:layout_width="wrap_content"
@@ -45,16 +46,15 @@
         android:textColor="@color/on_primary"
         android:textSize="10sp"
         android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Heart shares the top-right corner with the video badge, so it clears the badge width -->
     <ImageView
         android:id="@+id/iv_favourite"
         android:layout_width="18dp"
         android:layout_height="18dp"
         android:layout_marginTop="4dp"
-        android:layout_marginEnd="40dp"
+        android:layout_marginEnd="4dp"
         android:contentDescription="@string/space_favourite"
         android:src="@drawable/ic_favourite"
         android:visibility="gone"

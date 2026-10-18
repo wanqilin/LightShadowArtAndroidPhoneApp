@@ -9,6 +9,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.util.LruCache
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
@@ -43,6 +45,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import kotlin.math.abs
 
 /**
  * Main Dashboard and the two sub-pages it hosts: Space Art Gallery and Settings.
@@ -74,21 +77,21 @@ class MainActivity : DeviceActivity() {
     private lateinit var tabsSpace: TabLayout
     private lateinit var pagerSpace: ViewPager2
     private lateinit var swipeSpace: SwipeRefreshLayout
-    private lateinit var btnSpaceFavourite: View
-    private lateinit var btnSpaceRotate: View
-    private lateinit var btnSpaceExportFav: View
-    private lateinit var btnSpaceDelete: View
-    private lateinit var tvSpaceFavouriteLabel: TextView
-    private lateinit var rowSpaceActions: View
+    private lateinit var btnToolbarFrame: View
+    private lateinit var btnToolbarWall: View
+    private lateinit var btnToolbarRotate: View
+    private lateinit var btnToolbarPlaybackFav: View
+    private lateinit var btnToolbarFav: View
+    private lateinit var btnToolbarExportFav: View
+    private lateinit var btnToolbarDelete: View
+    private lateinit var galleryToolbarSelect: View
+    private lateinit var galleryToolbarPlayback: View
     private lateinit var spaceEmptyState: View
     private lateinit var nowPlaying: View
     private lateinit var ivNowPlaying: ImageView
-    private lateinit var btnNowPlayingRotate: View
+    private lateinit var ivNowPlayingFavourite: ImageView
     private lateinit var progressNowPlaying: ProgressBar
     private lateinit var tvNowPlayingStatus: TextView
-    private lateinit var galleryToolbar: View
-    private lateinit var toolbarDesign: View
-    private lateinit var toolbarBackgrounds: View
     private lateinit var controlPad: DeviceControlPadView
 
     // Settings
@@ -141,8 +144,14 @@ class MainActivity : DeviceActivity() {
     /** Last playback state the device reported; null means "not known yet" (offline / loading). */
     private var playbackState: PlaybackState? = null
 
+    /** Keeps a second rotate request from stacking on top of one still in flight. */
+    private var rotateInFlight = false
+
     /** Path currently drawn in the Now Playing area, to avoid reloading the same frame. */
     private var nowPlayingPath: String = ""
+
+    /** Local favourite state of the paused frame, so the marker follows a tap immediately. */
+    private var nowPlayingFavourite: Boolean? = null
 
     /** Thumbnail cache, counted by entry: one entry per image, so a big library cannot blow memory. */
     private val thumbCache = LruCache<String, Bitmap>(THUMB_CACHE_ITEMS)
@@ -261,21 +270,21 @@ class MainActivity : DeviceActivity() {
         tabsSpace = findViewById(R.id.tabs_space)
         pagerSpace = findViewById(R.id.pager_space)
         swipeSpace = findViewById(R.id.swipe_space)
-        btnSpaceFavourite = findViewById(R.id.btn_space_favourite)
-        btnSpaceRotate = findViewById(R.id.btn_space_rotate)
-        btnSpaceExportFav = findViewById(R.id.btn_space_export_fav)
-        btnSpaceDelete = findViewById(R.id.btn_space_delete)
-        tvSpaceFavouriteLabel = findViewById(R.id.tv_space_favourite)
-        rowSpaceActions = findViewById(R.id.row_space_actions)
+        btnToolbarFrame = findViewById(R.id.btn_toolbar_frame)
+        btnToolbarWall = findViewById(R.id.btn_toolbar_wall)
+        btnToolbarRotate = findViewById(R.id.btn_toolbar_rotate)
+        btnToolbarPlaybackFav = findViewById(R.id.btn_toolbar_playback_fav)
+        btnToolbarFav = findViewById(R.id.btn_toolbar_fav)
+        btnToolbarExportFav = findViewById(R.id.btn_toolbar_export_fav)
+        btnToolbarDelete = findViewById(R.id.btn_toolbar_delete)
+        galleryToolbarSelect = findViewById(R.id.gallery_toolbar_select)
+        galleryToolbarPlayback = findViewById(R.id.gallery_toolbar_playback)
         spaceEmptyState = findViewById(R.id.space_empty_state)
         nowPlaying = findViewById(R.id.now_playing)
         ivNowPlaying = findViewById(R.id.iv_now_playing)
-        btnNowPlayingRotate = findViewById(R.id.btn_now_playing_rotate)
+        ivNowPlayingFavourite = findViewById(R.id.iv_now_playing_favourite)
         progressNowPlaying = findViewById(R.id.progress_now_playing)
         tvNowPlayingStatus = findViewById(R.id.tv_now_playing_status)
-        galleryToolbar = findViewById(R.id.gallery_toolbar)
-        toolbarDesign = findViewById(R.id.btn_toolbar_design)
-        toolbarBackgrounds = findViewById(R.id.btn_toolbar_backgrounds)
         controlPad = findViewById(R.id.device_control_pad)
 
         settingsTopBar = findViewById(R.id.settings_top_bar)
@@ -326,16 +335,48 @@ class MainActivity : DeviceActivity() {
         setupGalleryPager()
         setupSpaceBars()
 
-        toolbarDesign.setOnClickListener { openFrameDesign() }
-        toolbarBackgrounds.setOnClickListener { openBackgrounds() }
-
         controlPad.onAction = { action -> sendControl(action) }
         controlPad.onCenterClick = { onControlPadCenter() }
         controlPad.onExpandedChanged = { expanded -> applyGalleryBottomInset(expanded) }
 
-        nowPlaying.setOnClickListener { onControlPadCenter() }
-        btnNowPlayingRotate.setOnClickListener {
-            sendControl(CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
+        setupNowPlayingGestures()
+    }
+
+    /**
+     * Gestures on the full-screen frame: a tap keeps its old meaning (toggle auto play / pause),
+     * a left swipe leaves playback and returns to the browser. Both static and auto playback take
+     * the swipe, and travel is measured so a slow drag works as well as a flick.
+     */
+    private fun setupNowPlayingGestures() {
+        val minSwipeDx = resources.displayMetrics.density * SWIPE_EXIT_MIN_DP
+        val tapDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                onControlPadCenter()
+                return true
+            }
+        })
+        var downX = 0f
+        var downY = 0f
+        nowPlaying.setOnTouchListener { _, event ->
+            tapDetector.onTouchEvent(event)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - downX
+                    val dy = event.y - downY
+                    val inPlayback = playbackState?.mode == PlaybackMode.STATIC ||
+                        playbackState?.mode == PlaybackMode.AUTO
+                    if (inPlayback && dx <= -minSwipeDx && abs(dx) > abs(dy)) {
+                        exitFullScreen()
+                        return@setOnTouchListener true
+                    }
+                }
+            }
+            true
         }
     }
 
@@ -350,8 +391,8 @@ class MainActivity : DeviceActivity() {
             MediaGridAdapter(thumbnailProvider).apply {
                 setGroupByDate(mode == BROWSER_MODE_DATE)
                 onItemClick = { item ->
-                    // The control API takes actions only, so a tap asks the device to start playing
-                    sendControl(CTRL_PLAY)
+                    // Send the tapped path: the device may not have loaded this view's order yet
+                    sendControl(CTRL_PLAY, JSONObject().put("path", item.path))
                     toast(getString(R.string.toast_media_playing))
                     Log.i(TAG, "media click: ${item.path}")
                 }
@@ -416,14 +457,13 @@ class MainActivity : DeviceActivity() {
         btnSpaceSelectAll.setOnClickListener {
             adapterForCurrentView().toggleSelectAll()
         }
-        btnSpaceFavourite.setOnClickListener { favouriteSelected() }
-        btnSpaceRotate.setOnClickListener {
-            // Product decision 2026-10-17: the device can only rotate what it shows, so the batch
-            // entry stays visible but explains itself instead of failing silently.
-            toast(getString(R.string.space_action_rotate_unavailable))
-        }
-        btnSpaceExportFav.setOnClickListener { exportFavourite() }
-        btnSpaceDelete.setOnClickListener { deleteSelected() }
+        btnToolbarFrame.setOnClickListener { openFrameDesign() }
+        btnToolbarWall.setOnClickListener { openBackgrounds() }
+        btnToolbarRotate.setOnClickListener { rotate() }
+        btnToolbarPlaybackFav.setOnClickListener { onFavouriteClick() }
+        btnToolbarFav.setOnClickListener { onFavouriteClick() }
+        btnToolbarExportFav.setOnClickListener { exportFavourite() }
+        btnToolbarDelete.setOnClickListener { onDeleteClick() }
     }
 
     private fun adapterForCurrentView(): MediaGridAdapter = pageAdapters[viewIndex]
@@ -599,11 +639,8 @@ class MainActivity : DeviceActivity() {
     }
 
     private fun renderSpaceAvailability() {
-        val active = SessionStore.isActive
-        btnSpaceExportFav.alpha = if (active) 1f else DISABLED_ALPHA
-        // Store mode has no delete entry, and the service refuses it as well
-        btnSpaceDelete.isVisible = active && !SessionStore.inStudioMode
-        swipeSpace.isEnabled = active
+        swipeSpace.isEnabled = SessionStore.isActive
+        renderToolbarAvailability()
     }
 
     // -----------------------------------------------------------------------
@@ -658,8 +695,9 @@ class MainActivity : DeviceActivity() {
     }
 
     /**
-     * Re-render both bars for the current selection state (UI PRD §3.6 A / D / F): the top bar swaps
-     * to cancel / count / select all, the bottom bar swaps to favourite / rotate / export / delete.
+     * Re-render the top bar and the bottom bar for the current selection state (UI PRD §3.6
+     * A / D / F): the top bar swaps to cancel / count / select all, and the multi-select bar
+     * appears with favourite / delete / export favourites.
      */
     private fun renderSelectionUi() {
         val adapter = adapterForCurrentView()
@@ -673,23 +711,31 @@ class MainActivity : DeviceActivity() {
             if (adapter.allSelected()) R.string.space_deselect_all else R.string.space_select_all
         )
 
-        rowSpaceActions.isVisible = selecting
-        // The two bars are two layouts: the normal toolbar leaves the screen while selecting
-        galleryToolbar.isVisible = !selecting
-        renderEditAvailability(playbackState?.mode)
+        renderToolbarAvailability()
+    }
 
-        btnSpaceFavourite.isEnabled = selecting && count > 0
-        btnSpaceExportFav.isEnabled = selecting && count > 0
-        btnSpaceDelete.isEnabled = selecting && count > 0
-        btnSpaceFavourite.alpha = if (selecting && count > 0) 1f else DISABLED_ALPHA
-        btnSpaceExportFav.alpha = if (selecting && count > 0) 1f else DISABLED_ALPHA
-        btnSpaceDelete.alpha = if (selecting && count > 0) 1f else DISABLED_ALPHA
-        // Batch rotate stays visibly unavailable: the device can only rotate what it shows
-        btnSpaceRotate.alpha = DISABLED_ALPHA
-        tvSpaceFavouriteLabel.setText(
-            if (adapter.selectedAllFavourite()) R.string.space_unfavourite
-            else R.string.space_favourite
-        )
+    /**
+     * The two bottom bars never show together (UI PRD §3.6 D): a multi-select shows favourite /
+     * delete / export favourites, a paused full-screen frame shows favourite / frame / wallpaper /
+     * rotate. Both stay hidden in every other state. The paused bar keeps favourite so the frame on
+     * screen can be marked without leaving playback. Dimmed tools stay clickable so a tap explains
+     * why the action is unavailable instead of failing silently.
+     */
+    private fun renderToolbarAvailability() {
+        val selecting = adapterForCurrentView().selectionMode
+        val static = SessionStore.isActive && playbackState?.mode == PlaybackMode.STATIC
+
+        galleryToolbarSelect.isVisible = selecting
+        galleryToolbarPlayback.isVisible = static && !selecting
+
+        setToolAvailable(btnToolbarDelete, !SessionStore.inStudioMode)
+        setToolAvailable(btnToolbarFrame, SessionStore.isAdmin)
+        setToolAvailable(btnToolbarWall, SessionStore.isAdmin)
+        setToolAvailable(btnToolbarRotate, true)
+    }
+
+    private fun setToolAvailable(view: View, available: Boolean) {
+        view.alpha = if (available) 1f else DISABLED_ALPHA
     }
 
     private fun startSelection(adapter: MediaGridAdapter, item: MediaItem) {
@@ -700,6 +746,107 @@ class MainActivity : DeviceActivity() {
     private fun exitSelection() {
         pageAdapters.forEach { it.clearSelection() }
         renderSelectionUi()
+    }
+
+    /** Fav: batch in selection mode, otherwise the single frame the device is showing. */
+    private fun onFavouriteClick() {
+        if (adapterForCurrentView().selectionMode) {
+            favouriteSelected()
+            return
+        }
+        if (!requireCurrentFrame()) return
+        val path = playbackState?.lastFile.orEmpty()
+        if (path.isEmpty()) {
+            toast(getString(R.string.space_frame_not_ready))
+            return
+        }
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            requireSession()
+            return
+        }
+        // The local mark wins over the lists: the paused frame may not be in the loaded view at all
+        val known = nowPlayingFavourite
+            ?: pageAdapters.firstNotNullOfOrNull { it.favouriteOf(path) }
+        val target = known != true
+        lifecycleScope.launch {
+            client.favourite(endpoint, sessionId, path, target)
+                .onSuccess {
+                    toast(
+                        getString(
+                            if (target) R.string.toast_favourite_added
+                            else R.string.toast_favourite_removed
+                        )
+                    )
+                    // Mark the paused frame and every loaded thumbnail right away, before the reload
+                    nowPlayingFavourite = target
+                    ivNowPlayingFavourite.isVisible = target
+                    pageAdapters.forEach { it.updateFavourite(path, target) }
+                    loadGalleryView(viewIndex)
+                }
+                .onFailure { error ->
+                    if (error is SessionExpiredException) {
+                        handleSessionExpired()
+                    } else {
+                        toast(getString(R.string.toast_favourite_failed, error.message.orEmpty()))
+                    }
+                }
+        }
+    }
+
+    /**
+     * Rotate the physical frame 90° clockwise (UI PRD §3.6 D). Requests are serialised so a double
+     * tap cannot queue two turns, and a failure says the connection should be checked.
+     */
+    private fun rotate() {
+        if (!requireCurrentFrame() || rotateInFlight) return
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            requireSession()
+            return
+        }
+        rotateInFlight = true
+        btnToolbarRotate.isEnabled = false
+        lifecycleScope.launch {
+            client.control(endpoint, sessionId, CTRL_ROTATE, JSONObject().put("degree", ROTATE_DEGREE))
+                .onSuccess { startPlaybackPolling(refreshSoon = true) }
+                .onFailure { error ->
+                    if (error is SessionExpiredException) {
+                        handleSessionExpired()
+                    } else {
+                        toast(getString(R.string.space_rotate_failed))
+                    }
+                }
+            rotateInFlight = false
+            btnToolbarRotate.isEnabled = true
+            renderToolbarAvailability()
+        }
+    }
+
+    /** Fav / Del on the current frame need a connected device sitting on a paused photo. */
+    private fun requireCurrentFrame(): Boolean {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return false
+        }
+        if (adapterForCurrentView().selectionMode) {
+            toast(getString(R.string.space_edit_need_exit_selection))
+            return false
+        }
+        when (playbackState?.mode) {
+            PlaybackMode.STATIC -> return true
+            PlaybackMode.AUTO -> {
+                toast(getString(R.string.space_edit_need_pause_auto))
+                return false
+            }
+
+            else -> {
+                toast(getString(R.string.space_edit_need_enter_playback))
+                return false
+            }
+        }
     }
 
     /** Favourite the selected items, then leave the selection (UI PRD §3.6 D / F). */
@@ -743,10 +890,28 @@ class MainActivity : DeviceActivity() {
         }
     }
 
-    /** Multi-select delete with confirmation; personal mode only (the service refuses store mode). */
+    /** Del: batch in selection mode, otherwise the single frame the device is showing. */
+    private fun onDeleteClick() {
+        if (adapterForCurrentView().selectionMode) {
+            deleteSelected()
+            return
+        }
+        if (!requireCurrentFrame()) return
+        if (SessionStore.inStudioMode) {
+            toast(getString(R.string.toast_delete_personal_only))
+            return
+        }
+        val path = playbackState?.lastFile.orEmpty()
+        if (path.isEmpty()) {
+            toast(getString(R.string.space_frame_not_ready))
+            return
+        }
+        confirmDelete(listOf(path))
+    }
+
+    /** Multi-select delete; personal mode only (the service refuses store mode). */
     private fun deleteSelected() {
-        val adapter = adapterForCurrentView()
-        val paths = adapter.selectedPaths()
+        val paths = adapterForCurrentView().selectedPaths()
         if (paths.isEmpty()) {
             toast(getString(R.string.toast_delete_none))
             return
@@ -755,6 +920,11 @@ class MainActivity : DeviceActivity() {
             toast(getString(R.string.toast_delete_personal_only))
             return
         }
+        confirmDelete(paths)
+    }
+
+    /** Delete always asks first; [paths] is either the selection or the one frame on screen. */
+    private fun confirmDelete(paths: List<String>) {
         val endpoint = SessionStore.endpoint
         val sessionId = SessionStore.sessionId
         if (endpoint == null || sessionId == null) {
@@ -787,23 +957,18 @@ class MainActivity : DeviceActivity() {
     }
 
     /**
-     * Export the favourites into their own Fav folder. Driven by the device's current markers: newly
-     * marked items are copied in, unmarked leftovers are removed. Requires a selection, so the
-     * multi-select action cannot fire on an empty list (UI PRD §3.6 D).
+     * Export every favourite into their own Fav folder. Driven by the device's current markers:
+     * newly marked items are copied in, unmarked leftovers are removed. Independent of the current
+     * frame and of any selection (UI PRD §3.6 D).
      */
     private fun exportFavourite() {
-        val adapter = adapterForCurrentView()
-        if (adapter.selectedPaths().isEmpty()) {
-            toast(getString(R.string.toast_select_none))
-            return
-        }
         val endpoint = SessionStore.endpoint
         val sessionId = SessionStore.sessionId
         if (endpoint == null || sessionId == null) {
             requireSession()
             return
         }
-        btnSpaceExportFav.isEnabled = false
+        btnToolbarExportFav.isEnabled = false
         lifecycleScope.launch {
             client.exportFavourite(endpoint, sessionId)
                 .onSuccess { count ->
@@ -824,7 +989,8 @@ class MainActivity : DeviceActivity() {
                         toast(getString(R.string.toast_export_fav_failed, error.message.orEmpty()))
                     }
                 }
-            btnSpaceExportFav.isEnabled = true
+            btnToolbarExportFav.isEnabled = true
+            renderToolbarAvailability()
         }
     }
 
@@ -904,24 +1070,9 @@ class MainActivity : DeviceActivity() {
             }
         )
 
-        // Editing the frame / wallpaper is only allowed while the device sits on a paused photo
-        renderEditAvailability(mode)
+        // The whole bar follows the device state: only a paused frame unlocks every action
+        renderToolbarAvailability()
         renderNowPlaying(state)
-    }
-
-    /**
-     * Frame Design and Backgrounds are only usable in static playback (UI PRD §3.6 D).
-     *
-     * The entries are dimmed but stay clickable on purpose: tapping a dimmed entry explains why it
-     * is unavailable instead of failing silently. Only administrators may edit at all.
-     */
-    private fun renderEditAvailability(mode: PlaybackMode?) {
-        val selecting = pageAdapters[viewIndex].selectionMode
-        val editable = mode == PlaybackMode.STATIC && SessionStore.isActive &&
-            SessionStore.isAdmin && !selecting
-        listOf(toolbarDesign, toolbarBackgrounds).forEach { view ->
-            view.alpha = if (editable) 1f else DISABLED_ALPHA
-        }
     }
 
     /**
@@ -933,6 +1084,8 @@ class MainActivity : DeviceActivity() {
         nowPlaying.isVisible = playing
         if (!playing) {
             nowPlayingPath = ""
+            nowPlayingFavourite = null
+            ivNowPlayingFavourite.isVisible = false
             ivNowPlaying.setImageDrawable(null)
             updateMediaEmpty()
             return
@@ -940,6 +1093,7 @@ class MainActivity : DeviceActivity() {
 
         updateMediaEmpty()
         val path = state?.lastFile.orEmpty()
+        renderNowPlayingFavourite(state, path)
         if (path.isEmpty()) {
             showNowPlayingPlaceholder(getString(R.string.space_now_playing_loading))
             return
@@ -966,6 +1120,22 @@ class MainActivity : DeviceActivity() {
                 ivNowPlaying.setImageBitmap(bitmap)
             }
         }
+    }
+
+    /**
+     * Heart on the paused frame: a tap stores the local value, the gallery lists fill it in
+     * otherwise. Only a static frame carries the marker, so auto play never shows a stale heart.
+     */
+    private fun renderNowPlayingFavourite(state: PlaybackState?, path: String) {
+        if (path != nowPlayingPath) nowPlayingFavourite = null
+        if (state?.mode != PlaybackMode.STATIC || path.isEmpty()) {
+            ivNowPlayingFavourite.isVisible = false
+            return
+        }
+        val favourite = nowPlayingFavourite
+            ?: pageAdapters.firstNotNullOfOrNull { it.favouriteOf(path) }
+            ?: false
+        ivNowPlayingFavourite.isVisible = favourite
     }
 
     private fun showNowPlayingPlaceholder(message: String) {
@@ -1003,6 +1173,16 @@ class MainActivity : DeviceActivity() {
             // Auto play: pause, keeping the frame
             PlaybackMode.AUTO -> sendControl(CTRL_AUTO_PAUSE)
         }
+        startPlaybackPolling(refreshSoon = true)
+    }
+
+    /** Left swipe on the frame: end playback on the device and come back to the browser. */
+    private fun exitFullScreen() {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return
+        }
+        sendControl(CTRL_PAUSE)
         startPlaybackPolling(refreshSoon = true)
     }
 
@@ -1433,6 +1613,9 @@ class MainActivity : DeviceActivity() {
         const val NOW_PLAYING_MAX_PX = 1280
 
         const val DISABLED_ALPHA = 0.4f
+
+        /** Minimum horizontal travel of the swipe that leaves full-screen playback */
+        const val SWIPE_EXIT_MIN_DP = 72f
 
         /** Gallery views in tab order: immersive, by date, favourites (UI PRD §3.6 B). */
         val BROWSER_VIEW_MODES = intArrayOf(

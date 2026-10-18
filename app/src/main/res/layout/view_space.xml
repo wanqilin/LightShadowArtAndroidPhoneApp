@@ -4,8 +4,9 @@
     multi-select header (cancel / selected count / select all) while a long-press selection is active.
     Below it the three views are one control — TabLayout driving a ViewPager2, each page a three-column
     grid — wrapped in a pull-to-refresh container, with the floating device control pad on top.
-    The artwork area swaps to a single scaled frame while the device plays, and the bottom bar swaps
-    between the normal Design / Backgrounds toolbar and the multi-select action row.
+    The artwork area swaps to a single scaled frame while the device plays. Two bottom toolbars are
+    hidden by default and shown per state (UI PRD §3.6 D): multi-select shows favourite / delete /
+    export favourites, a paused full-screen frame shows favourite / frame / wallpaper / rotate.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -119,6 +120,19 @@
                 android:contentDescription="@string/space_now_playing_desc"
                 android:scaleType="fitCenter" />
 
+            <!-- Favourite marker for the paused frame: follows the device marker immediately -->
+            <ImageView
+                android:id="@+id/iv_now_playing_favourite"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="@dimen/item_gap"
+                android:layout_marginEnd="@dimen/page_horizontal_padding"
+                android:contentDescription="@string/space_favourite"
+                android:src="@drawable/ic_favourite"
+                android:visibility="gone"
+                app:tint="@color/favourite" />
+
             <ProgressBar
                 android:id="@+id/progress_now_playing"
                 android:layout_width="wrap_content"
@@ -134,22 +148,6 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:visibility="gone" />
-
-            <!-- Rotate lives here: the device can only turn what it is showing, so this is the only
-                 place the rotation entry is offered (UI PRD §3.6 D, product decision 2026-10-17).
-                 It sits left of the control pad entry so the two floating controls never overlap. -->
-            <ImageButton
-                android:id="@+id/btn_now_playing_rotate"
-                android:layout_width="@dimen/touch_min_height"
-                android:layout_height="@dimen/touch_min_height"
-                android:layout_gravity="bottom|end"
-                android:layout_marginEnd="80dp"
-                android:layout_marginBottom="@dimen/gallery_bottom_inset"
-                android:background="@drawable/bg_floating_toolbar"
-                android:contentDescription="@string/space_rotate"
-                android:padding="12dp"
-                android:src="@drawable/ic_rotate"
-                android:tint="@color/primary_blue" />
         </FrameLayout>
 
         <!-- Empty state: only shown when the current view really has nothing -->
@@ -178,98 +176,25 @@
                 android:text="@string/space_empty" />
         </LinearLayout>
 
-        <!-- Normal bottom bar: Design / Backgrounds only (Layers and Reset are gone, §3.6 D) -->
+        <!-- Multi-select bar, hidden by default: favourite / delete / export favourites (UI PRD §3.6 D / F) -->
         <LinearLayout
-            android:id="@+id/gallery_toolbar"
-            android:layout_width="wrap_content"
-            android:layout_height="@dimen/floating_toolbar_height"
-            android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="@dimen/item_gap"
-            android:background="@drawable/bg_floating_toolbar"
-            android:elevation="6dp"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp">
-
-            <LinearLayout
-                android:id="@+id/btn_toolbar_design"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:minWidth="88dp"
-                android:orientation="vertical"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_design"
-                    app:tint="@color/primary_blue" />
-
-                <TextView
-                    style="@style/Text.Hint"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:maxLines="1"
-                    android:text="@string/space_toolbar_design"
-                    android:textSize="@dimen/text_label" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/btn_toolbar_backgrounds"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:minWidth="88dp"
-                android:orientation="vertical"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_backgrounds"
-                    app:tint="@color/primary_blue" />
-
-                <TextView
-                    style="@style/Text.Hint"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:maxLines="1"
-                    android:text="@string/space_toolbar_backgrounds"
-                    android:textSize="@dimen/text_label" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Multi-select bottom row: favourite / rotate / export favourites / delete (§3.6 D) -->
-        <LinearLayout
-            android:id="@+id/row_space_actions"
+            android:id="@+id/gallery_toolbar_select"
             android:layout_width="match_parent"
             android:layout_height="@dimen/floating_toolbar_height"
             android:layout_gravity="bottom"
             android:layout_marginStart="@dimen/item_gap"
             android:layout_marginEnd="@dimen/item_gap"
-            android:layout_marginBottom="@dimen/item_gap"
+            android:layout_marginBottom="@dimen/gallery_toolbar_bottom_gap"
             android:background="@drawable/bg_floating_toolbar"
             android:elevation="6dp"
             android:gravity="center"
             android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:visibility="gone">
 
             <LinearLayout
-                android:id="@+id/btn_space_favourite"
+                android:id="@+id/btn_toolbar_fav"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
@@ -287,74 +212,18 @@
                     app:tint="@color/primary_blue" />
 
                 <TextView
-                    android:id="@+id/tv_space_favourite"
                     style="@style/Text.Hint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
+                    android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/space_favourite"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/btn_space_rotate"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_rotate"
-                    app:tint="@color/primary_blue" />
-
-                <TextView
-                    style="@style/Text.Hint"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:maxLines="1"
-                    android:text="@string/space_rotate"
-                    android:textSize="@dimen/text_label" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/btn_space_export_fav"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_export"
-                    app:tint="@color/primary_blue" />
-
-                <TextView
-                    style="@style/Text.Hint"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:maxLines="1"
-                    android:text="@string/space_export_fav"
-                    android:textSize="@dimen/text_label" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/btn_space_delete"
+                android:id="@+id/btn_toolbar_delete"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
@@ -376,9 +245,173 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
+                    android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/space_delete"
                     android:textColor="@color/status_destructive"
+                    android:textSize="@dimen/text_label" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_toolbar_export_fav"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_export"
+                    app:tint="@color/primary_blue" />
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/space_export_fav"
+                    android:textSize="@dimen/text_label" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Paused full-screen bar, hidden otherwise: favourite / frame / wallpaper / rotate -->
+        <LinearLayout
+            android:id="@+id/gallery_toolbar_playback"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/floating_toolbar_height"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="@dimen/item_gap"
+            android:layout_marginEnd="@dimen/item_gap"
+            android:layout_marginBottom="@dimen/gallery_toolbar_bottom_gap"
+            android:background="@drawable/bg_floating_toolbar"
+            android:elevation="6dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/btn_toolbar_playback_fav"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_favourite"
+                    app:tint="@color/primary_blue" />
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/space_favourite"
+                    android:textSize="@dimen/text_label" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_toolbar_frame"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_design"
+                    app:tint="@color/primary_blue" />
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/space_toolbar_frame"
+                    android:textSize="@dimen/text_label" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_toolbar_wall"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_backgrounds"
+                    app:tint="@color/primary_blue" />
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/space_toolbar_wall"
+                    android:textSize="@dimen/text_label" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_toolbar_rotate"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_rotate"
+                    app:tint="@color/primary_blue" />
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/space_rotate"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
         </LinearLayout>

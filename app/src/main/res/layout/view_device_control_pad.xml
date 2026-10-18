@@ -100,18 +100,6 @@
                 android:src="@drawable/ic_arrow_down"
                 app:tint="@color/text_primary" />
         </LinearLayout>
-
-        <!-- Exit sits outside the wheel on purpose, so it cannot be hit while steering -->
-        <ImageButton
-            android:id="@+id/pad_exit"
-            android:layout_width="@dimen/touch_min_height"
-            android:layout_height="@dimen/touch_min_height"
-            android:layout_marginTop="@dimen/item_gap"
-            android:background="@drawable/bg_pill_tint"
-            android:contentDescription="@string/space_control_exit"
-            android:padding="12dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_exit" />
     </LinearLayout>
 
     <ImageButton

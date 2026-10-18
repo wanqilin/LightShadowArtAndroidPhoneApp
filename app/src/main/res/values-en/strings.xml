@@ -112,9 +112,8 @@
     <string name="space_control_down">Down</string>
     <string name="space_control_left">Left</string>
     <string name="space_control_right">Right</string>
-    <string name="space_control_exit">Back</string>
     <string name="space_favourite">Fav</string>
-    <string name="space_delete">Delete</string>
+    <string name="space_delete">Del</string>
     <string name="space_video_badge">Video</string>
     <string name="toast_delete_confirm_title">Delete files</string>
     <string name="toast_delete_confirm_message">Delete the %1$d selected files? This cannot be undone.</string>
@@ -268,8 +267,8 @@
     <string name="scan_open_settings">Open settings</string>
     <string name="scan_invalid_qr">This is not a LightShadowArt frame QR code.</string>
     <string name="space_title">Space Art Gallery</string>
-    <string name="space_toolbar_design">Design</string>
-    <string name="space_toolbar_backgrounds">Backgrounds</string>
+    <string name="space_toolbar_frame">Frame</string>
+    <string name="space_toolbar_wall">Wall</string>
     <string name="playback_state_browse">Browse</string>
     <string name="playback_state_static">Static</string>
     <string name="playback_state_auto">Auto</string>
@@ -313,9 +312,9 @@
     <string name="space_select_all">Select all</string>
     <string name="space_deselect_all">Deselect all</string>
     <string name="space_selected_count">%1$d selected</string>
-    <string name="space_unfavourite">Remove fav</string>
     <string name="space_rotate">Rotate</string>
-    <string name="space_action_rotate_unavailable">Rotate is only available while the device is paused in full-screen playback</string>
+    <string name="space_rotate_failed">Rotation failed. Check the device connection.</string>
+    <string name="space_frame_not_ready">The current frame is not ready yet</string>
     <string name="space_edit_need_exit_selection">Exit the selection first</string>
     <string name="space_refresh_done">Refreshed · %1$d items</string>
     <string name="space_selected_marker_desc">Selection marker</string>

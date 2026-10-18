@@ -107,7 +107,6 @@
     <string name="space_control_down">下</string>
     <string name="space_control_left">左</string>
     <string name="space_control_right">右</string>
-    <string name="space_control_exit">退出</string>
     <string name="space_favourite">喜爱</string>
     <string name="space_delete">删除</string>
     <string name="space_video_badge">视频</string>
@@ -263,8 +262,8 @@
     <string name="scan_open_settings">打开系统设置</string>
     <string name="scan_invalid_qr">这不是光影艺术相框的二维码。</string>
     <string name="space_title">艺术空间</string>
-    <string name="space_toolbar_design">边框</string>
-    <string name="space_toolbar_backgrounds">背景</string>
+    <string name="space_toolbar_frame">边框</string>
+    <string name="space_toolbar_wall">墙纸</string>
     <string name="playback_state_browse">浏览模式</string>
     <string name="playback_state_static">静止播放</string>
     <string name="playback_state_auto">自动播放</string>
@@ -308,9 +307,9 @@
     <string name="space_select_all">全选</string>
     <string name="space_deselect_all">取消全选</string>
     <string name="space_selected_count">已选择 %1$d 项</string>
-    <string name="space_unfavourite">取消喜爱</string>
     <string name="space_rotate">旋转</string>
-    <string name="space_action_rotate_unavailable">旋转仅在全屏播放且暂停时可用</string>
+    <string name="space_rotate_failed">旋转失败，请检查设备连接</string>
+    <string name="space_frame_not_ready">当前画面尚未就绪</string>
     <string name="space_edit_need_exit_selection">请先退出选择</string>
     <string name="space_refresh_done">已刷新 %1$d 项</string>
     <string name="space_selected_marker_desc">选择标记</string>

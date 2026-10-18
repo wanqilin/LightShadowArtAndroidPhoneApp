@@ -118,6 +118,20 @@ class MediaGridAdapter(private val thumbnails: ThumbnailProvider) :
         return picked.isNotEmpty() && picked.all { it.favourite }
     }
 
+    /** Favourite flag of [path] when it is loaded in this view; null when it is not. */
+    fun favouriteOf(path: String): Boolean? = items.firstOrNull { it.path == path }?.favourite
+
+    /** Repaint one heart without reloading the view, so a mark shows up immediately. */
+    fun updateFavourite(path: String, favourite: Boolean) {
+        val itemIndex = items.indexOfFirst { it.path == path }
+        if (itemIndex < 0 || items[itemIndex].favourite == favourite) return
+        items[itemIndex] = items[itemIndex].copy(favourite = favourite)
+        val rowIndex = rows.indexOfFirst { it is Row.Media && it.item.path == path }
+        if (rowIndex < 0) return
+        rows[rowIndex] = Row.Media(items[itemIndex])
+        notifyItemChanged(rowIndex)
+    }
+
     private fun toggleSelection(item: MediaItem) {
         if (!selected.add(item.path)) selected.remove(item.path)
         val index = rows.indexOfFirst { it is Row.Media && it.item.path == item.path }
