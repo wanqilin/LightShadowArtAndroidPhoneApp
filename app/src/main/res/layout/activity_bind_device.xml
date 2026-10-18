@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Bind Your Device (UI PRD §3.2): step dots, then one white rounded guide card holding the
-    connection illustration, the title and the explanation, then the actions — "Scan QR Code" opens
-    the real full-screen scanner, Continue moves on. Titles use the system sans font: no serif.
+    Bind Your Device (UI PRD §3.2): step dots, then the connection illustration, the title and the
+    explanation sitting directly on the page surface (no card), then the actions — "Scan QR Code"
+    opens the real full-screen scanner, Continue moves on. Titles use the system sans font: no serif.
 
-    The weighted spacers keep the artwork under the step dots and the action block flush with the
-    bottom on tall screens, while the column still scrolls when the screen is short or the system
-    font is large.
+    The action block lives outside the ScrollView: weighted spacers inside a ScrollView child are
+    measured against the parent height, which pushed the bottom padding out of the window. With a
+    fixed footer the three controls keep a stable lift above the page bottom, while the guide above
+    still scrolls when the screen is short or the system font is large.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -37,7 +38,7 @@
             android:paddingStart="@dimen/page_horizontal_padding"
             android:paddingTop="@dimen/item_gap"
             android:paddingEnd="@dimen/page_horizontal_padding"
-            android:paddingBottom="@dimen/page_vertical_padding">
+            android:paddingBottom="@dimen/item_gap">
 
             <include
                 android:id="@+id/bind_steps"
@@ -52,82 +53,67 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/scan_bind_step" />
 
-            <!-- Small gap so the guide card sits just below the step dots -->
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.4" />
-
-            <com.google.android.material.card.MaterialCardView
-                style="@style/SurfaceCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
-                    android:padding="@dimen/page_vertical_padding">
-
-                    <ImageView
-                        android:layout_width="280dp"
-                        android:layout_height="182dp"
-                        android:contentDescription="@string/scan_bind_illustration_desc"
-                        android:src="@drawable/ic_frame_connection" />
-
-                    <TextView
-                        style="@style/Text.TitleLarge"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/card_padding"
-                        android:gravity="center"
-                        android:text="@string/scan_bind_title" />
-
-                    <TextView
-                        style="@style/Text.Body"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:text="@string/scan_bind_message"
-                        android:textColor="@color/text_secondary" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Absorbs the leftover height so the action block stays at the bottom -->
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_bind_scan"
-                style="@style/PillButton.Outlined"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
-                android:text="@string/scan_bind_action"
-                app:icon="@drawable/ic_scan"
-                app:iconGravity="textStart"
-                app:iconTint="@color/primary_blue" />
+            <!-- Guide block: illustration, title and explanation sit directly on the page surface -->
+            <ImageView
+                android:layout_width="@dimen/bind_guide_image_width"
+                android:layout_height="@dimen/bind_guide_image_height"
+                android:layout_marginTop="@dimen/bind_guide_top_gap"
+                android:contentDescription="@string/scan_bind_illustration_desc"
+                android:src="@drawable/ic_frame_connection" />
 
             <TextView
-                style="@style/Text.Hint"
+                style="@style/Text.TitleLarge"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/item_gap"
+                android:layout_marginTop="@dimen/card_padding"
                 android:gravity="center"
-                android:text="@string/scan_bind_connection_hint" />
+                android:text="@string/scan_bind_title" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_bind_continue"
-                style="@style/PillButton"
+            <TextView
+                style="@style/Text.Body"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
-                android:text="@string/scan_bind_continue" />
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/scan_bind_message"
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
     </ScrollView>
+
+    <!-- Fixed action block: sits bind_action_bottom_gap above the page bottom -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/page_horizontal_padding"
+        android:paddingEnd="@dimen/page_horizontal_padding"
+        android:paddingBottom="@dimen/bind_action_bottom_gap">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_bind_scan"
+            style="@style/PillButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/section_gap"
+            android:text="@string/scan_bind_action"
+            app:icon="@drawable/ic_scan"
+            app:iconGravity="textStart"
+            app:iconTint="@color/primary_blue" />
+
+        <TextView
+            style="@style/Text.Hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/item_gap"
+            android:gravity="center"
+            android:text="@string/scan_bind_connection_hint" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_bind_continue"
+            style="@style/PillButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/section_gap"
+            android:text="@string/scan_bind_continue" />
+    </LinearLayout>
 </LinearLayout>

@@ -261,7 +261,7 @@
     <string name="scan_bind_message">Scan the QR code on your photo frame to connect.</string>
     <string name="scan_bind_action">Scan QR Code</string>
     <string name="scan_bind_illustration_desc">Phone connecting to the frame over Wi-Fi</string>
-    <string name="scan_bind_connection_hint">Connect via Bluetooth or Wi-Fi</string>
+    <string name="scan_bind_connection_hint">Connect via Wi-Fi</string>
     <string name="scan_bind_continue">Continue</string>
     <string name="scan_permission_title">Camera permission needed</string>
     <string name="scan_permission_message">Scanning needs the camera. Allow it in system settings and try again.</string>

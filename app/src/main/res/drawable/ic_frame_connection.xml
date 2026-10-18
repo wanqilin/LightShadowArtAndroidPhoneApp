@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Bind-device illustration (UI PRD §3.2): a phone standing next to the photo frame, with the QR
-    code printed on the frame's mat — the thing the phone is about to scan. Purely decorative, so
-    callers mark it as such for accessibility.
+    Bind-device illustration (UI PRD §3.2): a phone standing beside a photo frame. The frame is drawn
+    smaller and set higher than the phone, so it reads as sitting further back — the composition
+    gains depth instead of two flat objects side by side. The phone keeps a wide, modern body so it
+    does not look thin. The frame is 3:2 landscape (the device screen ratio), has a thick coloured
+    border and a white mat, so it reads as a frame rather than a card; the QR code on the mat is
+    deliberately small because it is only an illustration, not a scannable code. The phone screen
+    carries a viewfinder mark (square with open sides and a centre line) to show it is looking at
+    the code. A dashed double-headed arrow joins the two devices to show the pairing link. Purely
+    decorative, so callers mark it as such for accessibility.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="280dp"
@@ -10,68 +16,108 @@
     android:viewportWidth="200"
     android:viewportHeight="130">
 
-    <!-- Soft ground shadow so the two devices read as standing on a surface -->
+    <!-- Ground shadows: the frame floats a little above its shadow, the phone sits flat, which
+         reinforces the depth between the two devices -->
     <path
-        android:fillAlpha="0.45"
+        android:fillAlpha="0.35"
         android:fillColor="@color/divider_stroke"
-        android:pathData="M52 122a66 7 0 1 0 132 0a66 7 0 1 0 -132 0z" />
+        android:pathData="M98 95.5a46 4.5 0 1 0 92 0a46 4.5 0 1 0 -92 0z" />
 
-    <!-- Phone, tilted a little as in the reference -->
+    <path
+        android:fillAlpha="0.4"
+        android:fillColor="@color/divider_stroke"
+        android:pathData="M12 103a21 4.5 0 1 0 42 0a21 4.5 0 1 0 -42 0z" />
+
+    <!-- Dashed double-headed link between the phone and the frame -->
+    <path
+        android:strokeColor="@color/text_secondary"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.6"
+        android:pathData="M67 62h2.4 M71.2 62h2.4 M75.4 62h2.4 M79.6 62h2.4 M83.8 62h2.4" />
+
+    <path
+        android:fillColor="@color/text_secondary"
+        android:pathData="M60 62l5.5 -3.3v6.6z M93.3 62l-5.5 -3.3v6.6z" />
+
+    <!-- Phone on the left, tilted so it sits forward of the frame -->
     <group
-        android:pivotX="42"
+        android:pivotX="33"
         android:pivotY="68"
         android:rotation="-8">
 
         <path
             android:fillColor="@color/card_bg"
-            android:pathData="M20 16h44a12 12 0 0 1 12 12v80a12 12 0 0 1 -12 12H20a12 12 0 0 1 -12 -12V28a12 12 0 0 1 12 -12z"
+            android:pathData="M19.5 33h27a7.5 7.5 0 0 1 7.5 7.5v55a7.5 7.5 0 0 1 -7.5 7.5h-27a7.5 7.5 0 0 1 -7.5 -7.5v-55a7.5 7.5 0 0 1 7.5 -7.5z"
             android:strokeColor="@color/primary_blue"
-            android:strokeWidth="3" />
+            android:strokeWidth="2.5" />
 
         <path
             android:fillColor="@color/primary_soft"
-            android:pathData="M22 22h40a8 8 0 0 1 8 8v76a8 8 0 0 1 -8 8H22a8 8 0 0 1 -8 -8V30a8 8 0 0 1 8 -8z" />
+            android:pathData="M22.5 40h21a4.5 4.5 0 0 1 4.5 4.5v47a4.5 4.5 0 0 1 -4.5 4.5h-21a4.5 4.5 0 0 1 -4.5 -4.5v-47a4.5 4.5 0 0 1 4.5 -4.5z" />
+
+        <!-- Viewfinder: a square with open left and right sides plus a centre line, hinting that
+             the phone is looking at a code -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M24 65V59h18v6 M42 71v6H24v-6 M26.5 68h13"
+            android:strokeColor="@color/primary_blue"
+            android:strokeLineCap="round"
+            android:strokeWidth="1.5" />
 
         <path
             android:fillColor="@color/primary_blue"
-            android:pathData="M36 24h12a2 2 0 0 1 0 4H36a2 2 0 0 1 0 -4z" />
+            android:pathData="M28 36.5h10a1 1 0 0 1 0 2h-10a1 1 0 0 1 0 -2z" />
 
         <path
             android:fillColor="@color/primary_blue"
-            android:pathData="M35.5 108h13a2.5 2.5 0 0 1 0 5h-13a2.5 2.5 0 0 1 0 -5z" />
+            android:pathData="M28 97.5h10a1 1 0 0 1 0 2h-10a1 1 0 0 1 0 -2z" />
     </group>
 
-    <!-- Photo frame with the QR code on its mat -->
+    <!-- Photo frame on the right: 3:2 landscape, coloured border, white mat, small QR. It is drawn
+         smaller, offset to the right and set 12dp higher than the phone, so its top edge clears the
+         phone and the frame reads as sitting further back. -->
     <group
-        android:pivotX="135"
-        android:pivotY="72"
-        android:rotation="3">
+        android:pivotX="138"
+        android:pivotY="57.5"
+        android:rotation="2"
+        android:translateX="6"
+        android:translateY="-2.6">
 
+        <!-- Frame border -->
+        <path
+            android:fillColor="@color/primary_blue"
+            android:pathData="M94.5 25.5h87a4.5 4.5 0 0 1 4.5 4.5v55a4.5 4.5 0 0 1 -4.5 4.5h-87a4.5 4.5 0 0 1 -4.5 -4.5V30a4.5 4.5 0 0 1 4.5 -4.5z" />
+
+        <!-- White mat inside the frame -->
         <path
             android:fillColor="@color/card_bg"
-            android:pathData="M101 22h68a7 7 0 0 1 7 7v86a7 7 0 0 1 -7 7h-68a7 7 0 0 1 -7 -7V29a7 7 0 0 1 7 -7z"
-            android:strokeColor="@color/primary_blue"
-            android:strokeWidth="3" />
+            android:pathData="M96.5 29h83a3 3 0 0 1 3 3v51a3 3 0 0 1 -3 3h-83a3 3 0 0 1 -3 -3V32a3 3 0 0 1 3 -3z" />
 
+        <!-- Picture opening, also 3:2 -->
         <path
-            android:fillColor="@color/card_tint"
-            android:pathData="M107 31h56a4 4 0 0 1 4 4v74a4 4 0 0 1 -4 4h-56a4 4 0 0 1 -4 -4V35a4 4 0 0 1 4 -4z" />
+            android:fillColor="@color/primary_soft"
+            android:pathData="M101.5 31.5h73a2.5 2.5 0 0 1 2.5 2.5v47a2.5 2.5 0 0 1 -2.5 2.5h-73a2.5 2.5 0 0 1 -2.5 -2.5V34a2.5 2.5 0 0 1 2.5 -2.5z" />
+
+        <!-- Quiet zone behind the small QR -->
+        <path
+            android:fillColor="@color/card_bg"
+            android:pathData="M129 45.5h18a3 3 0 0 1 3 3v18a3 3 0 0 1 -3 3h-18a3 3 0 0 1 -3 -3V48.5a3 3 0 0 1 3 -3z" />
 
         <!-- QR finder patterns -->
         <path
             android:fillColor="#00000000"
-            android:pathData="M109 37h14v14h-14z M147 37h14v14h-14z M109 93h14v14h-14z"
+            android:pathData="M130 49.5h4.8v4.8h-4.8z M141.2 49.5h4.8v4.8h-4.8z M130 60.7h4.8v4.8h-4.8z"
             android:strokeColor="@color/text_primary"
             android:strokeLineJoin="miter"
-            android:strokeWidth="3.5" />
+            android:strokeWidth="1.25" />
 
         <path
             android:fillColor="@color/text_primary"
-            android:pathData="M113.5 41.5h5v5h-5z M151.5 41.5h5v5h-5z M113.5 97.5h5v5h-5z" />
+            android:pathData="M131.6 51.1h1.6v1.6h-1.6z M142.8 51.1h1.6v1.6h-1.6z M131.6 62.3h1.6v1.6h-1.6z" />
 
         <!-- QR data modules -->
         <path
             android:fillColor="@color/text_primary"
-            android:pathData="M131 39h4v4h-4z M137 39h4v4h-4z M143 39h4v4h-4z M131 45h4v4h-4z M141 45h4v4h-4z M111 57h4v4h-4z M123 57h4v4h-4z M135 57h4v4h-4z M147 57h4v4h-4z M155 57h4v4h-4z M109 63h4v4h-4z M121 63h4v4h-4z M133 63h4v4h-4z M145 63h4v4h-4z M157 63h4v4h-4z M115 69h4v4h-4z M127 69h4v4h-4z M139 69h4v4h-4z M151 69h4v4h-4z M109 75h4v4h-4z M119 75h4v4h-4z M131 75h4v4h-4z M143 75h4v4h-4z M155 75h4v4h-4z M113 81h4v4h-4z M125 81h4v4h-4z M137 81h4v4h-4z M149 81h4v4h-4z M159 81h4v4h-4z M109 87h4v4h-4z M121 87h4v4h-4z M133 87h4v4h-4z M145 87h4v4h-4z M157 87h4v4h-4z M127 99h4v4h-4z M139 99h4v4h-4z M151 99h4v4h-4z M159 99h4v4h-4z" />
+            android:pathData="M134.8 49.5h1.6v1.6h-1.6z M138 49.5h1.6v1.6h-1.6z M136.4 51.1h1.6v1.6h-1.6z M139.6 51.1h1.6v1.6h-1.6z M134.8 52.7h1.6v1.6h-1.6z M136.4 52.7h1.6v1.6h-1.6z M139.6 52.7h1.6v1.6h-1.6z M130 54.3h1.6v1.6h-1.6z M131.6 54.3h1.6v1.6h-1.6z M134.8 54.3h1.6v1.6h-1.6z M139.6 54.3h1.6v1.6h-1.6z M142.8 54.3h1.6v1.6h-1.6z M131.6 55.9h1.6v1.6h-1.6z M133.2 55.9h1.6v1.6h-1.6z M136.4 55.9h1.6v1.6h-1.6z M138 55.9h1.6v1.6h-1.6z M141.2 55.9h1.6v1.6h-1.6z M130 57.5h1.6v1.6h-1.6z M133.2 57.5h1.6v1.6h-1.6z M134.8 57.5h1.6v1.6h-1.6z M139.6 57.5h1.6v1.6h-1.6z M142.8 57.5h1.6v1.6h-1.6z M144.4 57.5h1.6v1.6h-1.6z M131.6 59.1h1.6v1.6h-1.6z M136.4 59.1h1.6v1.6h-1.6z M138 59.1h1.6v1.6h-1.6z M141.2 59.1h1.6v1.6h-1.6z M134.8 60.7h1.6v1.6h-1.6z M136.4 60.7h1.6v1.6h-1.6z M139.6 60.7h1.6v1.6h-1.6z M136.4 62.3h1.6v1.6h-1.6z M138 62.3h1.6v1.6h-1.6z M141.2 62.3h1.6v1.6h-1.6z M134.8 63.9h1.6v1.6h-1.6z M139.6 63.9h1.6v1.6h-1.6z M142.8 63.9h1.6v1.6h-1.6z" />
     </group>
 </vector>
