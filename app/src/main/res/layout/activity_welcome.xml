@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     First-run guide, step 1 (UI PRD §3.1): the brand mark, the greeting and the language choice.
-    The 80dp brand disc, the greeting and the two language cards form one block in the upper part
+    The 116dp brand disc, the greeting and the two language cards form one block in the upper part
     of the page; Get Started stays above the bottom safe area with flexible space in between.
 
     The trailing spacer takes the remaining height, so the page keeps the "compact on top, airy at
@@ -37,17 +37,17 @@
                 android:layout_height="0dp"
                 android:layout_weight="0.4" />
 
-            <!-- Brand mark: an 80dp primary disc with the LS monogram (UI PRD §3.1) -->
+            <!-- Brand mark: a 116dp primary disc with the LS monogram (UI PRD §3.1) -->
             <TextView
                 android:id="@+id/tv_welcome_logo"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="@dimen/welcome_logo_size"
+                android:layout_height="@dimen/welcome_logo_size"
                 android:layout_gravity="center_horizontal"
                 android:background="@drawable/bg_logo_disc"
                 android:gravity="center"
                 android:text="@string/welcome_logo_mark"
                 android:textColor="@color/on_primary"
-                android:textSize="28sp"
+                android:textSize="@dimen/text_welcome_logo"
                 android:textStyle="bold" />
 
             <TextView
@@ -55,7 +55,7 @@
                 style="@style/Text.TitleLarge"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="@dimen/welcome_title_gap"
                 android:gravity="center"
                 android:text="@string/welcome_title" />
 
@@ -64,7 +64,7 @@
                 style="@style/Text.Body"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/welcome_subtitle_gap"
                 android:gravity="center"
                 android:text="@string/welcome_subtitle"
                 android:textColor="@color/text_secondary" />
@@ -74,7 +74,7 @@
                 style="@style/Text.Hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
+                android:layout_marginTop="@dimen/welcome_language_gap"
                 android:layout_marginBottom="@dimen/item_gap"
                 android:gravity="center"
                 android:text="@string/welcome_choose_language" />
@@ -159,6 +159,7 @@
                 style="@style/PillButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/welcome_start_bottom_gap"
                 android:text="@string/welcome_get_started" />
         </LinearLayout>
     </ScrollView>
