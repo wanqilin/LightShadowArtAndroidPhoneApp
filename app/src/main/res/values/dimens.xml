@@ -37,6 +37,9 @@
     <dimen name="dashboard_subtitle_gap">8dp</dimen>
     <!-- Minimum gap between the brand block and the bottom-anchored card group -->
     <dimen name="dashboard_card_group_min_gap">28dp</dimen>
+    <!-- Bottom gap of the 2x2 card group: the 14dp baseline (section_gap) plus two 12dp lifts
+         requested on 2026-10-18, which moves all four cards up by 24dp -->
+    <dimen name="dashboard_card_group_bottom_gap">38dp</dimen>
 
     <!-- Welcome guide brand block, language choice and bottom action -->
     <dimen name="welcome_logo_size">116dp</dimen>
