@@ -344,8 +344,8 @@ class MainActivity : DeviceActivity() {
 
     /**
      * Gestures on the full-screen frame: a tap keeps its old meaning (toggle auto play / pause),
-     * a left swipe leaves playback and returns to the browser. Both static and auto playback take
-     * the swipe, and travel is measured so a slow drag works as well as a flick.
+     * a horizontal swipe (either direction) leaves playback and returns to the browser. Both static
+     * and auto playback take the swipe, and travel is measured so a slow drag works as well as a flick.
      */
     private fun setupNowPlayingGestures() {
         val minSwipeDx = resources.displayMetrics.density * SWIPE_EXIT_MIN_DP
@@ -370,7 +370,7 @@ class MainActivity : DeviceActivity() {
                     val dy = event.y - downY
                     val inPlayback = playbackState?.mode == PlaybackMode.STATIC ||
                         playbackState?.mode == PlaybackMode.AUTO
-                    if (inPlayback && dx <= -minSwipeDx && abs(dx) > abs(dy)) {
+                    if (inPlayback && abs(dx) >= minSwipeDx && abs(dx) > abs(dy)) {
                         exitFullScreen()
                         return@setOnTouchListener true
                     }
@@ -1176,7 +1176,7 @@ class MainActivity : DeviceActivity() {
         startPlaybackPolling(refreshSoon = true)
     }
 
-    /** Left swipe on the frame: end playback on the device and come back to the browser. */
+    /** Horizontal swipe on the frame: end playback on the device and come back to the browser. */
     private fun exitFullScreen() {
         if (!SessionStore.isActive) {
             requireSession()

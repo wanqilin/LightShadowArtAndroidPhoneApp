@@ -68,7 +68,6 @@
     <dimen name="space_grid_spacing">6dp</dimen>
 
     <!-- Gallery overlays -->
-    <dimen name="floating_toolbar_height">66dp</dimen>
     <dimen name="control_pad_diameter">168dp</dimen>
     <dimen name="control_pad_key_size">52dp</dimen>
     <dimen name="control_pad_center_size">56dp</dimen>
@@ -80,6 +79,11 @@
     <dimen name="gallery_bottom_inset">116dp</dimen>
     <!-- Bottom bar gap: the 10dp baseline (item_gap) plus the requested 24dp lift -->
     <dimen name="gallery_toolbar_bottom_gap">34dp</dimen>
+    <!-- Compact bottom bar: the pill hugs its items (no full-width stretch) -->
+    <dimen name="gallery_toolbar_padding">6dp</dimen>
+    <dimen name="gallery_toolbar_item_width">72dp</dimen>
+    <dimen name="gallery_toolbar_item_padding">6dp</dimen>
+    <dimen name="gallery_toolbar_item_padding_vertical">4dp</dimen>
 
     <!-- Type scale (UI PRD v3.0 §2.2): title_large 24 Bold, title 20 Bold, page_title 18 Normal -->
     <dimen name="text_title_large">24sp</dimen>

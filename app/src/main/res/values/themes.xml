@@ -174,6 +174,40 @@
         <item name="trackDecorationTint">@color/switch_track_decoration</item>
     </style>
 
+    <!--
+        Gallery bottom toolbar (UI PRD §3.6 D): a compact pill that hugs its items instead of
+        stretching across the page, so two to four actions read as one small control.
+    -->
+    <style name="Widget.LightShadowArtPhone.GalleryToolbar" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_gravity">bottom|center_horizontal</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/bg_floating_toolbar</item>
+        <item name="android:elevation">6dp</item>
+        <item name="android:paddingStart">@dimen/gallery_toolbar_padding</item>
+        <item name="android:paddingEnd">@dimen/gallery_toolbar_padding</item>
+        <item name="android:paddingTop">@dimen/gallery_toolbar_padding</item>
+        <item name="android:paddingBottom">@dimen/gallery_toolbar_padding</item>
+    </style>
+
+    <!-- One action inside the toolbar: icon over a single-line label -->
+    <style name="Widget.LightShadowArtPhone.GalleryToolbar.Item" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minWidth">@dimen/gallery_toolbar_item_width</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingStart">@dimen/gallery_toolbar_item_padding</item>
+        <item name="android:paddingEnd">@dimen/gallery_toolbar_item_padding</item>
+        <item name="android:paddingTop">@dimen/gallery_toolbar_item_padding_vertical</item>
+        <item name="android:paddingBottom">@dimen/gallery_toolbar_item_padding_vertical</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
     <!-- White content card: 22dp corners, thin grey stroke, very light shadow -->
     <style name="SurfaceCard" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/card_bg</item>

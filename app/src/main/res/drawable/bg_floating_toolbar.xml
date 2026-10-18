@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Floating gallery toolbar: translucent white rounded bar above the artwork -->
+<!-- Floating gallery toolbar: 70% white rounded bar above the artwork -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@color/surface_translucent" />

@@ -179,30 +179,13 @@
         <!-- Multi-select bar, hidden by default: favourite / delete / export favourites (UI PRD §3.6 D / F) -->
         <LinearLayout
             android:id="@+id/gallery_toolbar_select"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/floating_toolbar_height"
-            android:layout_gravity="bottom"
-            android:layout_marginStart="@dimen/item_gap"
-            android:layout_marginEnd="@dimen/item_gap"
+            style="@style/Widget.LightShadowArtPhone.GalleryToolbar"
             android:layout_marginBottom="@dimen/gallery_toolbar_bottom_gap"
-            android:background="@drawable/bg_floating_toolbar"
-            android:elevation="6dp"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
             android:visibility="gone">
 
             <LinearLayout
                 android:id="@+id/btn_toolbar_fav"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 
                 <ImageView
                     android:layout_width="22dp"
@@ -224,14 +207,7 @@
 
             <LinearLayout
                 android:id="@+id/btn_toolbar_delete"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 
                 <ImageView
                     android:layout_width="22dp"
@@ -254,14 +230,7 @@
 
             <LinearLayout
                 android:id="@+id/btn_toolbar_export_fav"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 
                 <ImageView
                     android:layout_width="22dp"
@@ -285,30 +254,13 @@
         <!-- Paused full-screen bar, hidden otherwise: favourite / frame / wallpaper / rotate -->
         <LinearLayout
             android:id="@+id/gallery_toolbar_playback"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/floating_toolbar_height"
-            android:layout_gravity="bottom"
-            android:layout_marginStart="@dimen/item_gap"
-            android:layout_marginEnd="@dimen/item_gap"
+            style="@style/Widget.LightShadowArtPhone.GalleryToolbar"
             android:layout_marginBottom="@dimen/gallery_toolbar_bottom_gap"
-            android:background="@drawable/bg_floating_toolbar"
-            android:elevation="6dp"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
             android:visibility="gone">
 
             <LinearLayout
                 android:id="@+id/btn_toolbar_playback_fav"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 
                 <ImageView
                     android:layout_width="22dp"
@@ -330,14 +282,7 @@
 
             <LinearLayout
                 android:id="@+id/btn_toolbar_frame"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 
                 <ImageView
                     android:layout_width="22dp"
@@ -359,14 +304,7 @@
 
             <LinearLayout
                 android:id="@+id/btn_toolbar_wall"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 
                 <ImageView
                     android:layout_width="22dp"
@@ -388,14 +326,7 @@
 
             <LinearLayout
                 android:id="@+id/btn_toolbar_rotate"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 
                 <ImageView
                     android:layout_width="22dp"
