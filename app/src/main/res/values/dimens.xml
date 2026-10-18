@@ -30,7 +30,7 @@
     <dimen name="text_dashboard_logo">36sp</dimen>
     <dimen name="text_dashboard_brand">26sp</dimen>
     <dimen name="dashboard_brand_gap">32dp</dimen>
-    <dimen name="dashboard_brand_top_offset">58dp</dimen>
+    <dimen name="dashboard_brand_top_offset">54dp</dimen>
     <!-- Brand state dot and the rhythm below the brand name -->
     <dimen name="dashboard_dot_size">8dp</dimen>
     <dimen name="dashboard_dot_gap">8dp</dimen>
@@ -44,7 +44,7 @@
     <dimen name="welcome_title_gap">32dp</dimen>
     <dimen name="welcome_subtitle_gap">8dp</dimen>
     <dimen name="welcome_language_gap">56dp</dimen>
-    <dimen name="welcome_start_bottom_gap">12dp</dimen>
+    <dimen name="welcome_start_bottom_gap">24dp</dimen>
 
     <!-- Controls: 48dp is the minimum touch target (UI PRD §5) -->
     <dimen name="touch_min_height">48dp</dimen>
