@@ -84,6 +84,8 @@ class MainActivity : DeviceActivity() {
     private lateinit var btnToolbarFav: View
     private lateinit var btnToolbarExportFav: View
     private lateinit var btnToolbarDelete: View
+    private lateinit var ivToolbarPlaybackFavIcon: ImageView
+    private lateinit var ivToolbarFavIcon: ImageView
     private lateinit var galleryToolbarSelect: View
     private lateinit var galleryToolbarPlayback: View
     private lateinit var spaceEmptyState: View
@@ -152,6 +154,9 @@ class MainActivity : DeviceActivity() {
 
     /** Local favourite state of the paused frame, so the marker follows a tap immediately. */
     private var nowPlayingFavourite: Boolean? = null
+
+    /** Frame whose favourite mark was last read from the device, so it is not re-read every poll. */
+    private var favouriteSyncedPath: String? = null
 
     /** Thumbnail cache, counted by entry: one entry per image, so a big library cannot blow memory. */
     private val thumbCache = LruCache<String, Bitmap>(THUMB_CACHE_ITEMS)
@@ -277,6 +282,8 @@ class MainActivity : DeviceActivity() {
         btnToolbarFav = findViewById(R.id.btn_toolbar_fav)
         btnToolbarExportFav = findViewById(R.id.btn_toolbar_export_fav)
         btnToolbarDelete = findViewById(R.id.btn_toolbar_delete)
+        ivToolbarPlaybackFavIcon = btnToolbarPlaybackFav.findViewById(R.id.iv_toolbar_fav_icon)
+        ivToolbarFavIcon = btnToolbarFav.findViewById(R.id.iv_toolbar_fav_icon)
         galleryToolbarSelect = findViewById(R.id.gallery_toolbar_select)
         galleryToolbarPlayback = findViewById(R.id.gallery_toolbar_playback)
         spaceEmptyState = findViewById(R.id.space_empty_state)
@@ -587,6 +594,10 @@ class MainActivity : DeviceActivity() {
         updateMediaEmpty()
         playbackState = null
         nowPlayingPath = ""
+        nowPlayingFavourite = null
+        favouriteSyncedPath = null
+        ivNowPlayingFavourite.isVisible = false
+        renderFavouriteIcons()
     }
 
     override fun onSessionEstablished() {
@@ -732,10 +743,69 @@ class MainActivity : DeviceActivity() {
         setToolAvailable(btnToolbarFrame, SessionStore.isAdmin)
         setToolAvailable(btnToolbarWall, SessionStore.isAdmin)
         setToolAvailable(btnToolbarRotate, true)
+        renderFavouriteIcons()
     }
 
     private fun setToolAvailable(view: View, available: Boolean) {
         view.alpha = if (available) 1f else DISABLED_ALPHA
+    }
+
+    /**
+     * The favourite keys show an outline heart until what they act on really is a favourite: the
+     * paused frame for the playback bar, every selected item for the multi-select bar. The frame's
+     * state is read from the device (see [syncCurrentFrameFavourite]), so entering a photo that is
+     * already marked shows a filled heart straight away.
+     */
+    private fun renderFavouriteIcons() {
+        setFavouriteIcon(ivToolbarPlaybackFavIcon, currentFrameFavourite() == true)
+        setFavouriteIcon(ivToolbarFavIcon, adapterForCurrentView().selectedAllFavourite())
+    }
+
+    private fun setFavouriteIcon(icon: ImageView, favourited: Boolean) {
+        icon.setImageResource(
+            if (favourited) R.drawable.ic_favourite else R.drawable.ic_favourite_outline
+        )
+    }
+
+    /** Best known favourite state of the frame on screen; null while nothing is known yet. */
+    private fun currentFrameFavourite(): Boolean? {
+        val path = playbackState?.lastFile.orEmpty()
+        if (path.isEmpty()) return null
+        return nowPlayingFavourite ?: pageAdapters.firstNotNullOfOrNull { it.favouriteOf(path) }
+    }
+
+    /**
+     * Reads the paused frame's favourite mark from the device, so the key never trusts a stale
+     * local value: the frame may not be part of the loaded grid at all (another view, a fresh
+     * session). One request per frame, not per poll.
+     */
+    private fun syncCurrentFrameFavourite(path: String) {
+        if (playbackState?.mode != PlaybackMode.STATIC || path.isEmpty()) {
+            favouriteSyncedPath = null
+            return
+        }
+        if (path == favouriteSyncedPath) return
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) return
+
+        favouriteSyncedPath = path
+        lifecycleScope.launch {
+            client.listMedia(endpoint, sessionId, favouriteOnly = true)
+                .onSuccess { items ->
+                    // The device may have moved on while the list was in flight
+                    if (playbackState?.lastFile != path ||
+                        playbackState?.mode != PlaybackMode.STATIC
+                    ) {
+                        return@onSuccess
+                    }
+                    val favourite = items.any { it.path == path }
+                    nowPlayingFavourite = favourite
+                    pageAdapters.forEach { it.updateFavourite(path, favourite) }
+                    ivNowPlayingFavourite.isVisible = favourite
+                    renderFavouriteIcons()
+                }
+        }
     }
 
     private fun startSelection(adapter: MediaGridAdapter, item: MediaItem) {
@@ -767,8 +837,7 @@ class MainActivity : DeviceActivity() {
             return
         }
         // The local mark wins over the lists: the paused frame may not be in the loaded view at all
-        val known = nowPlayingFavourite
-            ?: pageAdapters.firstNotNullOfOrNull { it.favouriteOf(path) }
+        val known = currentFrameFavourite()
         val target = known != true
         lifecycleScope.launch {
             client.favourite(endpoint, sessionId, path, target)
@@ -779,10 +848,12 @@ class MainActivity : DeviceActivity() {
                             else R.string.toast_favourite_removed
                         )
                     )
-                    // Mark the paused frame and every loaded thumbnail right away, before the reload
+                    // Mark the paused frame, its key and every loaded thumbnail before the reload
                     nowPlayingFavourite = target
+                    favouriteSyncedPath = path
                     ivNowPlayingFavourite.isVisible = target
                     pageAdapters.forEach { it.updateFavourite(path, target) }
+                    renderFavouriteIcons()
                     loadGalleryView(viewIndex)
                 }
                 .onFailure { error ->
@@ -1085,8 +1156,10 @@ class MainActivity : DeviceActivity() {
         if (!playing) {
             nowPlayingPath = ""
             nowPlayingFavourite = null
+            favouriteSyncedPath = null
             ivNowPlayingFavourite.isVisible = false
             ivNowPlaying.setImageDrawable(null)
+            renderFavouriteIcons()
             updateMediaEmpty()
             return
         }
@@ -1094,6 +1167,9 @@ class MainActivity : DeviceActivity() {
         updateMediaEmpty()
         val path = state?.lastFile.orEmpty()
         renderNowPlayingFavourite(state, path)
+        // Read the mark from the device once per frame, so an already-favourited photo shows a
+        // filled heart without waiting for the gallery list to be reloaded
+        syncCurrentFrameFavourite(path)
         if (path.isEmpty()) {
             showNowPlayingPlaceholder(getString(R.string.space_now_playing_loading))
             return
@@ -1123,19 +1199,20 @@ class MainActivity : DeviceActivity() {
     }
 
     /**
-     * Heart on the paused frame: a tap stores the local value, the gallery lists fill it in
-     * otherwise. Only a static frame carries the marker, so auto play never shows a stale heart.
+     * Heart on the paused frame: the local value wins right after a tap, the gallery lists and the
+     * device read fill it in otherwise. Only a static frame carries the marker, so auto play never
+     * shows a stale heart.
      */
     private fun renderNowPlayingFavourite(state: PlaybackState?, path: String) {
         if (path != nowPlayingPath) nowPlayingFavourite = null
         if (state?.mode != PlaybackMode.STATIC || path.isEmpty()) {
             ivNowPlayingFavourite.isVisible = false
+            renderFavouriteIcons()
             return
         }
-        val favourite = nowPlayingFavourite
-            ?: pageAdapters.firstNotNullOfOrNull { it.favouriteOf(path) }
-            ?: false
+        val favourite = currentFrameFavourite() ?: false
         ivNowPlayingFavourite.isVisible = favourite
+        renderFavouriteIcons()
     }
 
     private fun showNowPlayingPlaceholder(message: String) {
