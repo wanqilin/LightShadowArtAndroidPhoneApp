@@ -31,8 +31,8 @@
     <color name="status_connected">#1B8A5A</color>
     <color name="status_destructive">#C0392B</color>
 
-    <!-- Heart markers (thumbnail + full-screen frame): blue, per the 2026-10-19 UI fine-tune -->
-    <color name="favourite">#2F6FED</color>
+    <!-- Heart markers (thumbnail + full-screen frame): white, per the 2026-10-20 UI fine-tune -->
+    <color name="favourite">#FFFFFF</color>
 
     <!-- Preview boundary of the user wallpaper canvas (mobile preview only) -->
     <color name="frame_boundary">#FFFF0000</color>

@@ -10,9 +10,11 @@ import android.os.Bundle
 import android.util.Log
 import android.util.LruCache
 import android.view.GestureDetector
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -397,6 +399,9 @@ class MainActivity : DeviceActivity() {
                 }
             }
             true
+        }
+        ivNowPlaying.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            positionNowPlayingFavourite()
         }
     }
 
@@ -1157,6 +1162,7 @@ class MainActivity : DeviceActivity() {
         // The whole bar follows the device state: only a paused frame unlocks every action
         renderToolbarAvailability()
         renderNowPlaying(state)
+        if (nowPlaying.isVisible) ivNowPlaying.post { positionNowPlayingFavourite() }
     }
 
     /**
@@ -1207,8 +1213,42 @@ class MainActivity : DeviceActivity() {
                 progressNowPlaying.isVisible = false
                 tvNowPlayingStatus.isVisible = false
                 ivNowPlaying.setImageBitmap(bitmap)
+                ivNowPlaying.post { positionNowPlayingFavourite() }
             }
         }
+    }
+
+    /**
+     * The full-screen frame is drawn with `fitCenter`, so the visible photo is smaller than its
+     * container on one axis. Anchor the heart to the visible photo's top-right corner (not the
+     * container corner), otherwise it floats on the letterbox above the artwork.
+     */
+    private fun positionNowPlayingFavourite() {
+        val drawable = ivNowPlaying.drawable ?: return
+        val intrinsicW = drawable.intrinsicWidth
+        val intrinsicH = drawable.intrinsicHeight
+        val viewW = ivNowPlaying.width
+        val viewH = ivNowPlaying.height
+        if (intrinsicW <= 0 || intrinsicH <= 0 || viewW <= 0 || viewH <= 0) return
+        if (nowPlaying.width <= 0 || ivNowPlayingFavourite.width <= 0) return
+
+        val scale = minOf(viewW.toFloat() / intrinsicW, viewH.toFloat() / intrinsicH)
+        val imageW = intrinsicW * scale
+        val imageH = intrinsicH * scale
+        val imageLeft = ivNowPlaying.left + (viewW - imageW) / 2f
+        val imageTop = ivNowPlaying.top + (viewH - imageH) / 2f
+        val gap = resources.getDimensionPixelSize(R.dimen.item_gap)
+        val right = (nowPlaying.width - (imageLeft + imageW) + gap).toInt()
+        val top = (imageTop + gap).toInt()
+
+        val lp = ivNowPlayingFavourite.layoutParams as FrameLayout.LayoutParams
+        if (lp.gravity == (Gravity.TOP or Gravity.END) && lp.topMargin == top && lp.rightMargin == right) {
+            return
+        }
+        lp.gravity = Gravity.TOP or Gravity.END
+        lp.topMargin = top
+        lp.rightMargin = right
+        ivNowPlayingFavourite.layoutParams = lp
     }
 
     /**
