@@ -239,14 +239,27 @@ class MainActivity : DeviceActivity() {
         stopPlaybackPolling()
     }
 
-    /** Android back first returns to the Dashboard; only from there does it leave the app. */
+    /**
+     * Android back first leaves full-screen playback, then returns to the Dashboard; only from
+     * there does it leave the app. An edge swipe is delivered as the system back gesture, so
+     * without this branch it would skip the page and leave the device playing.
+     */
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onBackPressed() {
+        if (currentPage == Page.SPACE && isPlaybackActive()) {
+            exitFullScreen()
+            return
+        }
         if (currentPage != Page.DASHBOARD) {
             showPage(Page.DASHBOARD)
             return
         }
         super.onBackPressed()
+    }
+
+    private fun isPlaybackActive(): Boolean {
+        val mode = playbackState?.mode
+        return mode == PlaybackMode.STATIC || mode == PlaybackMode.AUTO
     }
 
     // -----------------------------------------------------------------------
