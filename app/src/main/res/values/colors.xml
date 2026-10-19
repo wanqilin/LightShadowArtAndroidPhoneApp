@@ -61,7 +61,7 @@
     <!-- 70% opacity (was #F2FFFFFF / 95%): the gallery bottom bar lets the artwork show through -->
     <color name="surface_translucent">#B3FFFFFF</color>
     <!-- Lighter neutral grey at 55% alpha: full-screen playback bar only -->
-    <color name="surface_translucent_gray">#8C8A9099</color>
+    <color name="surface_translucent_gray">#8CA6ABB3</color>
     <color name="surface_translucent_strong">#E6FFFFFF</color>
     <color name="badge_scrim">#B31A1C1E</color>
 
