@@ -252,11 +252,12 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Paused full-screen bar, hidden otherwise: favourite / frame / wallpaper / rotate -->
+        <!-- Paused full-screen bar: 70% grey background with white icons / labels (2026-10-20) -->
         <LinearLayout
             android:id="@+id/gallery_toolbar_playback"
             style="@style/Widget.LightShadowArtPhone.GalleryToolbar"
             android:layout_marginBottom="@dimen/gallery_toolbar_bottom_gap"
+            android:background="@drawable/bg_gallery_toolbar_playback"
             android:visibility="gone">
 
             <LinearLayout
@@ -269,7 +270,7 @@
                     android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_favourite_outline"
-                    app:tint="@color/primary_blue" />
+                    app:tint="@color/on_primary" />
 
                 <TextView
                     style="@style/Text.Hint"
@@ -279,6 +280,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/space_favourite"
+                    android:textColor="@color/on_primary"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
 
@@ -291,7 +293,7 @@
                     android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_design"
-                    app:tint="@color/primary_blue" />
+                    app:tint="@color/on_primary" />
 
                 <TextView
                     style="@style/Text.Hint"
@@ -301,6 +303,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/space_toolbar_frame"
+                    android:textColor="@color/on_primary"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
 
@@ -313,7 +316,7 @@
                     android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_backgrounds"
-                    app:tint="@color/primary_blue" />
+                    app:tint="@color/on_primary" />
 
                 <TextView
                     style="@style/Text.Hint"
@@ -323,6 +326,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/space_toolbar_wall"
+                    android:textColor="@color/on_primary"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
 
@@ -335,7 +339,7 @@
                     android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_rotate"
-                    app:tint="@color/primary_blue" />
+                    app:tint="@color/on_primary" />
 
                 <TextView
                     style="@style/Text.Hint"
@@ -345,6 +349,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:text="@string/space_rotate"
+                    android:textColor="@color/on_primary"
                     android:textSize="@dimen/text_label" />
             </LinearLayout>
         </LinearLayout>
