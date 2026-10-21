@@ -32,7 +32,7 @@
     <!-- Subtitle under the logo -->
     <dimen name="text_dashboard_subtitle">18sp</dimen>
     <!-- Brand state dot, moved to the page's top-right corner and nudged inwards -->
-    <dimen name="dashboard_dot_size">16dp</dimen>
+    <dimen name="dashboard_dot_size">8dp</dimen>
     <dimen name="dashboard_dot_inset">12dp</dimen>
     <!-- Minimum gap between the brand block and the bottom-anchored card group -->
     <dimen name="dashboard_card_group_min_gap">28dp</dimen>
