@@ -29,8 +29,8 @@
     <dimen name="dashboard_logo_size">116dp</dimen>
     <dimen name="dashboard_brand_gap">32dp</dimen>
     <dimen name="dashboard_brand_top_offset">54dp</dimen>
-    <!-- Subtitle under the logo: 30sp (double the 15sp body size) -->
-    <dimen name="text_dashboard_subtitle">30sp</dimen>
+    <!-- Subtitle under the logo -->
+    <dimen name="text_dashboard_subtitle">22sp</dimen>
     <!-- Brand state dot, moved to the page's top-right corner -->
     <dimen name="dashboard_dot_size">8dp</dimen>
     <!-- Minimum gap between the brand block and the bottom-anchored card group -->
