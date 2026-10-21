@@ -31,55 +31,45 @@
             android:paddingEnd="@dimen/page_horizontal_padding"
             android:paddingBottom="@dimen/page_vertical_padding">
 
-            <!-- ===== Upper half: brand block, display only ===== -->
-            <LinearLayout
+            <!-- ===== Upper half: brand logo + subtitle; state dot in the top-right corner ===== -->
+            <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:orientation="vertical">
+                android:layout_height="wrap_content">
 
-                <ImageView
-                    android:id="@+id/iv_dashboard_logo"
-                    android:layout_width="@dimen/dashboard_logo_size"
-                    android:layout_height="@dimen/dashboard_logo_size"
-                    android:layout_marginTop="@dimen/dashboard_brand_top_offset"
-                    android:contentDescription="@null"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_brand_logo" />
-
-                <RelativeLayout
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/dashboard_brand_gap">
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/iv_dashboard_logo"
+                        android:layout_width="@dimen/dashboard_logo_size"
+                        android:layout_height="@dimen/dashboard_logo_size"
+                        android:layout_marginTop="@dimen/dashboard_brand_top_offset"
+                        android:contentDescription="@null"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_brand_logo" />
 
                     <TextView
-                        android:id="@+id/tv_dashboard_brand"
-                        style="@style/Text.Title"
+                        android:id="@+id/tv_dashboard_subtitle"
+                        style="@style/Text.Body"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_centerHorizontal="true"
-                        android:text="@string/app_name"
-                        android:textSize="@dimen/text_dashboard_brand" />
+                        android:layout_marginTop="@dimen/dashboard_brand_gap"
+                        android:text="@string/welcome_subtitle"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_dashboard_subtitle" />
+                </LinearLayout>
 
-                    <View
-                        android:id="@+id/view_dashboard_dot"
-                        android:layout_width="@dimen/dashboard_dot_size"
-                        android:layout_height="@dimen/dashboard_dot_size"
-                        android:layout_centerVertical="true"
-                        android:layout_marginStart="@dimen/dashboard_dot_gap"
-                        android:layout_toEndOf="@id/tv_dashboard_brand"
-                        android:background="@drawable/dot_session" />
-                </RelativeLayout>
-
-                <TextView
-                    android:id="@+id/tv_dashboard_subtitle"
-                    style="@style/Text.Body"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/dashboard_subtitle_gap"
-                    android:text="@string/welcome_subtitle"
-                    android:textColor="@color/text_secondary" />
-            </LinearLayout>
+                <View
+                    android:id="@+id/view_dashboard_dot"
+                    android:layout_width="@dimen/dashboard_dot_size"
+                    android:layout_height="@dimen/dashboard_dot_size"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentTop="true"
+                    android:background="@drawable/dot_session" />
+            </RelativeLayout>
 
             <!-- Flexible gap: keeps the 2x2 card group anchored to the bottom of the page -->
             <Space

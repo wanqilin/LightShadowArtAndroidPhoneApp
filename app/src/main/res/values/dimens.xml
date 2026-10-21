@@ -27,13 +27,12 @@
     <dimen name="dashboard_card_height">140dp</dimen>
     <!-- Dashboard brand disc, its mark, and the spacing around the brand block -->
     <dimen name="dashboard_logo_size">116dp</dimen>
-    <dimen name="text_dashboard_brand">26sp</dimen>
     <dimen name="dashboard_brand_gap">32dp</dimen>
     <dimen name="dashboard_brand_top_offset">54dp</dimen>
-    <!-- Brand state dot and the rhythm below the brand name -->
+    <!-- Subtitle under the logo: 30sp (double the 15sp body size) -->
+    <dimen name="text_dashboard_subtitle">30sp</dimen>
+    <!-- Brand state dot, moved to the page's top-right corner -->
     <dimen name="dashboard_dot_size">8dp</dimen>
-    <dimen name="dashboard_dot_gap">8dp</dimen>
-    <dimen name="dashboard_subtitle_gap">8dp</dimen>
     <!-- Minimum gap between the brand block and the bottom-anchored card group -->
     <dimen name="dashboard_card_group_min_gap">28dp</dimen>
     <!-- Bottom gap of the 2x2 card group: the 14dp baseline (section_gap) plus two 12dp lifts
