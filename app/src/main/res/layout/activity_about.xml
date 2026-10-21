@@ -38,6 +38,7 @@
                 android:layout_height="@dimen/about_logo_size"
                 android:layout_gravity="center_horizontal"
                 android:background="@drawable/bg_brand_logo_circle"
+                android:padding="@dimen/brand_logo_inset"
                 android:clipToOutline="true"
                 android:contentDescription="@string/about_app_icon_desc"
                 android:scaleType="fitCenter"

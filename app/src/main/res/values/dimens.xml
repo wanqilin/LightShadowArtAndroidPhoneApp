@@ -50,6 +50,9 @@
     <!-- About page brand mark -->
     <dimen name="about_logo_size">96dp</dimen>
 
+    <!-- Inset that keeps the logo's edge-to-edge blue ring clear of the circular clip -->
+    <dimen name="brand_logo_inset">1dp</dimen>
+
     <!-- Bind device guide: illustration size, gap below the step label, and the gap between the
          bottom action block and the page bottom. The root layout draws edge-to-edge (window frame
          reported by uiautomator ends ~47dp above the physical bottom), so the visual 44dp baseline
