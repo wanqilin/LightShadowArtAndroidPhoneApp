@@ -245,7 +245,6 @@
     <string name="network_note_no_target">还没有绑定过设备。请扫描相框屏幕上的二维码完成绑定。</string>
     <string name="network_disconnect_confirm_title">断开连接？</string>
     <string name="network_disconnect_confirm_message">确定要断开与相框的连接吗？之后可以重新连接，无需再次扫码。</string>
-    <string name="welcome_logo_mark">LS</string>
     <string name="welcome_title">欢迎使用光影艺术</string>
     <string name="welcome_subtitle">艺术点亮你的空间</string>
     <string name="welcome_choose_language">请选择你的语言</string>

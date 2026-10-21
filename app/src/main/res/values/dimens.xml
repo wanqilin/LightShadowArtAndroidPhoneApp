@@ -27,7 +27,6 @@
     <dimen name="dashboard_card_height">140dp</dimen>
     <!-- Dashboard brand disc, its mark, and the spacing around the brand block -->
     <dimen name="dashboard_logo_size">116dp</dimen>
-    <dimen name="text_dashboard_logo">36sp</dimen>
     <dimen name="text_dashboard_brand">26sp</dimen>
     <dimen name="dashboard_brand_gap">32dp</dimen>
     <dimen name="dashboard_brand_top_offset">54dp</dimen>
@@ -43,11 +42,13 @@
 
     <!-- Welcome guide brand block, language choice and bottom action -->
     <dimen name="welcome_logo_size">116dp</dimen>
-    <dimen name="text_welcome_logo">36sp</dimen>
     <dimen name="welcome_title_gap">32dp</dimen>
     <dimen name="welcome_subtitle_gap">8dp</dimen>
     <dimen name="welcome_language_gap">56dp</dimen>
     <dimen name="welcome_start_bottom_gap">24dp</dimen>
+
+    <!-- About page brand mark -->
+    <dimen name="about_logo_size">96dp</dimen>
 
     <!-- Bind device guide: illustration size, gap below the step label, and the gap between the
          bottom action block and the page bottom. The root layout draws edge-to-edge (window frame

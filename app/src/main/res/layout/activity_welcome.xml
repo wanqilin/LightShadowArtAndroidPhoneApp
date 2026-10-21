@@ -37,18 +37,17 @@
                 android:layout_height="0dp"
                 android:layout_weight="0.4" />
 
-            <!-- Brand mark: a 116dp primary disc with the LS monogram (UI PRD §3.1) -->
-            <TextView
-                android:id="@+id/tv_welcome_logo"
+            <!-- Brand mark: the 116dp round brand logo (UI PRD §3.1) -->
+            <ImageView
+                android:id="@+id/iv_welcome_logo"
                 android:layout_width="@dimen/welcome_logo_size"
                 android:layout_height="@dimen/welcome_logo_size"
                 android:layout_gravity="center_horizontal"
-                android:background="@drawable/bg_logo_disc"
-                android:gravity="center"
-                android:text="@string/welcome_logo_mark"
-                android:textColor="@color/on_primary"
-                android:textSize="@dimen/text_welcome_logo"
-                android:textStyle="bold" />
+                android:background="@drawable/bg_brand_logo_circle"
+                android:clipToOutline="true"
+                android:contentDescription="@string/app_name"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_brand_logo" />
 
             <TextView
                 android:id="@+id/tv_welcome_title"

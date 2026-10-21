@@ -34,11 +34,14 @@
             android:paddingBottom="@dimen/page_vertical_padding">
 
             <ImageView
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+                android:layout_width="@dimen/about_logo_size"
+                android:layout_height="@dimen/about_logo_size"
                 android:layout_gravity="center_horizontal"
+                android:background="@drawable/bg_brand_logo_circle"
+                android:clipToOutline="true"
                 android:contentDescription="@string/about_app_icon_desc"
-                android:src="@mipmap/ic_launcher" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_brand_logo" />
 
             <TextView
                 android:id="@+id/tv_about_app_name"

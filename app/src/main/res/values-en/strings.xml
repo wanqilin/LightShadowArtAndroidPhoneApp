@@ -250,7 +250,6 @@
     <string name="network_note_no_target">No device has been bound yet. Scan the QR code on the frame screen to bind one.</string>
     <string name="network_disconnect_confirm_title">Disconnect?</string>
     <string name="network_disconnect_confirm_message">Disconnect from the frame? You can reconnect later without scanning again.</string>
-    <string name="welcome_logo_mark">LS</string>
     <string name="welcome_title">Welcome to LightShadowArt</string>
     <string name="welcome_subtitle">Art Brings Life to Your Space</string>
     <string name="welcome_choose_language">Choose your language</string>
