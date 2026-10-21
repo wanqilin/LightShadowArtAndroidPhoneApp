@@ -68,6 +68,8 @@
                     android:layout_height="@dimen/dashboard_dot_size"
                     android:layout_alignParentEnd="true"
                     android:layout_alignParentTop="true"
+                    android:layout_marginEnd="@dimen/dashboard_dot_inset"
+                    android:layout_marginTop="@dimen/dashboard_dot_inset"
                     android:background="@drawable/dot_session" />
             </RelativeLayout>
 
