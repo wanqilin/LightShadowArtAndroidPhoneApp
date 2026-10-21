@@ -43,9 +43,6 @@
                     android:layout_width="@dimen/dashboard_logo_size"
                     android:layout_height="@dimen/dashboard_logo_size"
                     android:layout_marginTop="@dimen/dashboard_brand_top_offset"
-                    android:background="@drawable/bg_brand_logo_circle"
-                    android:padding="@dimen/brand_logo_inset"
-                    android:clipToOutline="true"
                     android:contentDescription="@null"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_brand_logo" />
