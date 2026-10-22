@@ -109,6 +109,8 @@ class NetworkConnectionActivity : DeviceActivity() {
 
         viewsReady = true
         render()
+        // The device may already be connected when the page opens: its link is what decides the ✓
+        refreshDeviceStatus()
         ensurePermissionAndScan()
     }
 
@@ -117,6 +119,7 @@ class NetworkConnectionActivity : DeviceActivity() {
         if (!viewsReady) return
         if (!SessionStore.isActive) clearDeviceNetwork()
         render()
+        refreshDeviceStatus()
     }
 
     override fun onSessionChanged() {
