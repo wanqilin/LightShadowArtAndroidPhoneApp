@@ -4,8 +4,6 @@
 
     <string name="state_connected">已连接：%1$s · %2$s</string>
 
-    <string name="action_refresh">刷新连接</string>
-    <string name="action_refresh_connecting">连接中…</string>
 
     <string name="upload_summary_empty">选择文件后自动上传到设备</string>
     <string name="upload_summary_running">正在上传 %1$d / %2$d</string>

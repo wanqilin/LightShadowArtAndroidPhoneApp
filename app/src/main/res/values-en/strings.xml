@@ -9,8 +9,6 @@
 
     <string name="state_connected">Connected: %1$s · %2$s</string>
 
-    <string name="action_refresh">Refresh</string>
-    <string name="action_refresh_connecting">Connecting…</string>
 
     <string name="upload_summary_empty">Files you choose are uploaded to the device automatically</string>
     <string name="upload_summary_running">Uploading %1$d / %2$d</string>

@@ -19,7 +19,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -48,7 +47,6 @@ class NetworkConnectionActivity : DeviceActivity() {
     private lateinit var tvState: TextView
     private lateinit var tvDevice: TextView
     private lateinit var tvNote: TextView
-    private lateinit var btnReconnect: MaterialButton
     private lateinit var btnRefresh: TextView
     private lateinit var tvListHint: TextView
     private lateinit var listNetworks: LinearLayout
@@ -95,7 +93,6 @@ class NetworkConnectionActivity : DeviceActivity() {
         tvState = findViewById(R.id.tv_network_state)
         tvDevice = findViewById(R.id.tv_network_device)
         tvNote = findViewById(R.id.tv_network_note)
-        btnReconnect = findViewById(R.id.btn_network_reconnect)
         btnRefresh = findViewById(R.id.btn_network_refresh)
         tvListHint = findViewById(R.id.tv_network_list_hint)
         listNetworks = findViewById(R.id.list_networks)
@@ -107,7 +104,6 @@ class NetworkConnectionActivity : DeviceActivity() {
             getString(R.string.network_scan_action)
         ) { openScanner() }
 
-        btnReconnect.setOnClickListener { if (!connecting) refresh() }
         btnRefresh.setOnClickListener { refreshNetworks(force = true) }
         findViewById<View>(R.id.row_network_diagnostics).setOnClickListener { showDiagnostics() }
 
@@ -165,7 +161,10 @@ class NetworkConnectionActivity : DeviceActivity() {
                 snapshot.link == ConnectionManager.Link.AP ->
                     SessionStore.lastApSsid.ifEmpty { getString(R.string.network_value_unknown) }
                 deviceSsid.isNotEmpty() -> deviceSsid
+                // The device's own answer may still be in flight; the network the phone is on is the
+                // same one the device was just switched to, so it is a truthful interim label
                 currentSsid().isNotEmpty() -> currentSsid()
+                SessionStore.lastWifiSsid.isNotEmpty() -> SessionStore.lastWifiSsid
                 else -> getString(R.string.network_value_unknown)
             }
             tvDevice.text = getString(
@@ -185,19 +184,6 @@ class NetworkConnectionActivity : DeviceActivity() {
         }
         tvNote.text = note
         tvNote.isVisible = note.isNotEmpty()
-
-        btnReconnect.isVisible = !active
-        when {
-            busy -> {
-                btnReconnect.setText(R.string.action_refresh_connecting)
-                btnReconnect.isEnabled = false
-            }
-
-            else -> {
-                btnReconnect.setText(R.string.action_refresh)
-                btnReconnect.isEnabled = hasReconnectTarget()
-            }
-        }
 
         renderNetworks()
     }
@@ -392,7 +378,8 @@ class NetworkConnectionActivity : DeviceActivity() {
             client.networkStatus(endpoint, sessionId).onSuccess {
                 deviceLink = it.link
                 deviceSsid = it.ssid
-                renderNetworks()
+                // The card shows the device's network name too; refresh it, not just the list
+                render()
             }
         }
     }

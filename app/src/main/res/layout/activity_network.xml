@@ -79,16 +79,8 @@
                     style="@style/Text.Hint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_network_reconnect"
-                    style="@style/PillButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/action_refresh" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
