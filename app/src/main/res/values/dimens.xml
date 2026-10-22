@@ -27,7 +27,11 @@
 
     <!-- Vertical breathing room of the connection state card: the card is a third taller than its
          content needs, the content stays vertically centred -->
-    <dimen name="network_state_card_vertical_padding">46dp</dimen>
+    <dimen name="network_state_card_vertical_padding">16dp</dimen>
+
+    <!-- Fixed height of the connection state card (~779px on the test phone): the card must not grow
+         with its content, so the illustration keeps a stable share of the screen -->
+    <dimen name="network_state_card_height">260dp</dimen>
     <dimen name="network_row_height">48dp</dimen>
 
     <!-- Bottom bar of the network page: the report sits 16dp below the divider and keeps 24dp of
