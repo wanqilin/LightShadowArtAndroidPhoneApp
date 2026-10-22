@@ -31,6 +31,9 @@
     <dimen name="network_bottom_bar_top_padding">16dp</dimen>
     <dimen name="network_bottom_bar_bottom_padding">24dp</dimen>
 
+    <!-- The whole diagnostics row is lifted this far above the bottom edge (requested 30dp) -->
+    <dimen name="network_bottom_bar_margin_bottom">30dp</dimen>
+
     <!-- Cards -->
     <dimen name="card_elevation">2dp</dimen>
     <dimen name="divider_width">1dp</dimen>

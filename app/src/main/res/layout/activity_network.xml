@@ -182,6 +182,7 @@
         style="@style/Settings.Row.Clickable"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/network_bottom_bar_margin_bottom"
         android:paddingStart="@dimen/page_horizontal_padding"
         android:paddingTop="@dimen/network_bottom_bar_top_padding"
         android:paddingEnd="@dimen/page_horizontal_padding"
