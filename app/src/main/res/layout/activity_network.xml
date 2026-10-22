@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Network Connection page (UI PRD §3.4, 2026-10-22 rework):
-      1. state card — illustration (4 states), state text, device + remaining time, reconnect
-      2. Wi-Fi card — nearby networks with a single ✓ (the device's current network), password,
-         "connect to network"
-      3. disconnect (destructive, confirms) and collapsible diagnostics
-    Everything is rendered from the live session / ConnectionManager state; nothing is fabricated.
+    Network Connection page (UI PRD §3.4, 2026-10-22 second pass).
+
+    The page itself never scrolls: the state card is fixed, the nearby-network list owns the
+    remaining height and scrolls internally (always-visible scrollbar), and the diagnostics sit in a
+    fixed bottom bar so they are reachable without scrolling to the end.
+
+    Connecting is a two-tap flow: tap a network → password dialog (only for secured networks) →
+    the push and the switch run automatically, there is no "connect" button.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -21,224 +23,179 @@
         android:paddingStart="8dp"
         android:paddingEnd="@dimen/card_padding" />
 
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:clipToPadding="false"
-        android:fillViewport="true">
+        android:orientation="vertical"
+        android:paddingStart="@dimen/page_horizontal_padding"
+        android:paddingTop="@dimen/item_gap"
+        android:paddingEnd="@dimen/page_horizontal_padding">
 
-        <LinearLayout
+        <!-- 1. Connection state -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/SurfaceCard"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="@dimen/page_horizontal_padding"
-            android:paddingTop="@dimen/item_gap"
-            android:paddingEnd="@dimen/page_horizontal_padding"
-            android:paddingBottom="@dimen/page_vertical_padding">
+            android:layout_height="wrap_content">
 
-            <!-- 1. Connection state -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/SurfaceCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
-                    android:padding="@dimen/card_padding">
-
-                    <!-- Decorative: the state text below carries the meaning -->
-                    <ImageView
-                        android:id="@+id/iv_network_illustration"
-                        android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:contentDescription="@null"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_network_link_off" />
-
-                    <TextView
-                        android:id="@+id/tv_network_state"
-                        style="@style/Text.TitleMedium"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:text="@string/network_state_disconnected" />
-
-                    <TextView
-                        android:id="@+id/tv_network_device"
-                        style="@style/Text.Body"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:ellipsize="middle"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/tv_network_note"
-                        style="@style/Text.Hint"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:gravity="center" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_network_reconnect"
-                        style="@style/PillButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
-                        android:text="@string/action_refresh" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- 2. Nearby networks -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/SurfaceCard"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap">
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:padding="@dimen/card_padding">
+
+                <!-- Decorative: the state text below carries the meaning -->
+                <ImageView
+                    android:id="@+id/iv_network_illustration"
+                    android:layout_width="match_parent"
+                    android:layout_height="110dp"
+                    android:contentDescription="@null"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_network_link_off" />
+
+                <TextView
+                    android:id="@+id/tv_network_state"
+                    style="@style/Text.TitleMedium"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:text="@string/network_state_disconnected" />
+
+                <TextView
+                    android:id="@+id/tv_network_device"
+                    style="@style/Text.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="middle"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tv_network_note"
+                    style="@style/Text.Hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_network_reconnect"
+                    style="@style/PillButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/item_gap"
+                    android:text="@string/action_refresh" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 2. Nearby networks: this card owns the remaining height, the list scrolls inside -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/SurfaceCard"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/section_gap"
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:paddingStart="@dimen/card_padding"
+                android:paddingTop="@dimen/card_padding"
+                android:paddingEnd="@dimen/card_padding"
+                android:paddingBottom="8dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="@dimen/card_padding">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            style="@style/Text.RowTitle"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/network_nearby_title" />
-
-                        <TextView
-                            android:id="@+id/btn_network_refresh"
-                            style="@style/Text.Body"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:minWidth="48dp"
-                            android:minHeight="48dp"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="12dp"
-                            android:text="@string/network_refresh"
-                            android:textColor="@color/primary_blue" />
-                    </LinearLayout>
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
                     <TextView
-                        style="@style/Text.Hint"
-                        android:layout_width="match_parent"
+                        style="@style/Text.RowTitle"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="@string/network_nearby_hint" />
+                        android:layout_weight="1"
+                        android:text="@string/network_nearby_title" />
 
                     <TextView
-                        android:id="@+id/tv_network_list_hint"
-                        style="@style/Text.Hint"
-                        android:layout_width="match_parent"
+                        android:id="@+id/btn_network_refresh"
+                        style="@style/Text.Body"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/item_gap"
-                        android:visibility="gone" />
+                        android:gravity="center"
+                        android:minWidth="48dp"
+                        android:minHeight="48dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="@string/network_refresh"
+                        android:textColor="@color/primary_blue" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Text.Hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/network_nearby_hint" />
+
+                <TextView
+                    android:id="@+id/tv_network_list_hint"
+                    style="@style/Text.Hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/item_gap"
+                    android:visibility="gone" />
+
+                <ScrollView
+                    android:id="@+id/scroll_networks"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_weight="1"
+                    android:fadeScrollbars="false"
+                    android:fillViewport="true"
+                    android:scrollbarStyle="insideOverlay"
+                    android:scrollbars="vertical">
 
                     <LinearLayout
                         android:id="@+id/list_networks"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
                         android:orientation="vertical" />
+                </ScrollView>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/layout_network_password"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
-                        android:hint="@string/network_password_hint"
-                        android:visibility="gone"
-                        app:endIconMode="password_toggle">
+    <!-- 3. Diagnostics: fixed bottom bar, no scrolling needed; the text opens in a dialog -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/divider_stroke" />
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_network_password"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textPassword"
-                            android:maxLines="1" />
-                    </com.google.android.material.textfield.TextInputLayout>
+    <LinearLayout
+        android:id="@+id/row_network_diagnostics"
+        style="@style/Settings.Row.Clickable"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:paddingStart="@dimen/page_horizontal_padding"
+        android:paddingEnd="@dimen/page_horizontal_padding">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_network_connect"
-                        style="@style/PillButton.Outlined"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
-                        android:enabled="false"
-                        android:text="@string/network_connect_action" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+        <TextView
+            style="@style/Text.RowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/network_diagnostics_title" />
 
-            <!-- 3. Disconnect: destructive, asks first -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_network_disconnect"
-                style="@style/PillButton.Destructive"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
-                android:text="@string/network_disconnect" />
-
-            <!-- 4. Collapsible diagnostics -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/SurfaceCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <LinearLayout
-                        android:id="@+id/row_network_diagnostics"
-                        style="@style/Settings.Row.Clickable">
-
-                        <TextView
-                            style="@style/Text.RowTitle"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/network_diagnostics_title" />
-
-                        <ImageView
-                            android:id="@+id/iv_network_diagnostics"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tv_network_diagnostics"
-                        style="@style/Text.Hint"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingStart="@dimen/card_padding"
-                        android:paddingEnd="@dimen/card_padding"
-                        android:paddingBottom="@dimen/card_padding"
-                        android:textIsSelectable="true"
-                        android:visibility="gone" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
-    </ScrollView>
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_chevron_right" />
+    </LinearLayout>
 </LinearLayout>

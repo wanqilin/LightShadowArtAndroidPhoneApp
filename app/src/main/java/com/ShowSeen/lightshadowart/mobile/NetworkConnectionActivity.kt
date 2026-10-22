@@ -10,8 +10,10 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -29,15 +31,15 @@ import com.ShowSeen.lightshadowart.mobile.scan.ScanActivity
 import kotlinx.coroutines.launch
 
 /**
- * Network Connection page (UI PRD §3.4, 2026-10-22 rework).
+ * Network Connection page (UI PRD §3.4, 2026-10-22 second pass).
  *
- * One place to read the link state and to act on it: state illustration + text, the nearby networks
- * with a single ✓ for the network the frame is on, the password for the selected network, connect /
- * reconnect / disconnect and the diagnostics.
+ * Layout: a fixed state card, a nearby-network list that scrolls inside its own card (the page
+ * itself never scrolls) and a diagnostics bar pinned at the bottom.
  *
- * The page never joins a Wi-Fi itself: a `WifiNetworkSpecifier` network is app-local and breaks the
- * phone's normal internet, so the user is sent to the system Wi-Fi panel and the page only proceeds
- * once the phone really is on the selected network (the device must end up on the same one).
+ * Interaction: tapping a network is the action. A secured network asks for its password in a dialog,
+ * then the push and the switch start automatically — there is no "connect" button and no inline
+ * password field. Disconnecting a frame is a session action (Settings → Sign out), not a network-page
+ * action, so the page has no "disconnect" button.
  */
 class NetworkConnectionActivity : DeviceActivity() {
 
@@ -50,22 +52,12 @@ class NetworkConnectionActivity : DeviceActivity() {
     private lateinit var btnRefresh: TextView
     private lateinit var tvListHint: TextView
     private lateinit var listNetworks: LinearLayout
-    private lateinit var layoutPassword: TextInputLayout
-    private lateinit var etPassword: TextInputEditText
-    private lateinit var btnConnect: MaterialButton
-    private lateinit var btnDisconnect: MaterialButton
-    private lateinit var tvDiagnostics: TextView
-    private lateinit var ivDiagnostics: ImageView
 
     /** Set once the views exist; the manager may publish before onCreate finishes */
     private var viewsReady = false
 
-    private var diagnosticsExpanded = false
-
     /** Last scan result, de-duplicated by SSID and sorted by signal strength */
     private var networks: List<NearbyNetwork> = emptyList()
-
-    private var selectedSsid: String? = null
 
     /** Link / SSID the device reported through `/network`; drives the single ✓ */
     private var deviceLink: String = ""
@@ -107,12 +99,6 @@ class NetworkConnectionActivity : DeviceActivity() {
         btnRefresh = findViewById(R.id.btn_network_refresh)
         tvListHint = findViewById(R.id.tv_network_list_hint)
         listNetworks = findViewById(R.id.list_networks)
-        layoutPassword = findViewById(R.id.layout_network_password)
-        etPassword = findViewById(R.id.et_network_password)
-        btnConnect = findViewById(R.id.btn_network_connect)
-        btnDisconnect = findViewById(R.id.btn_network_disconnect)
-        tvDiagnostics = findViewById(R.id.tv_network_diagnostics)
-        ivDiagnostics = findViewById(R.id.iv_network_diagnostics)
 
         topBar.setTitle(getString(R.string.network_title))
         topBar.setOnBackClickListener { finish() }
@@ -123,9 +109,7 @@ class NetworkConnectionActivity : DeviceActivity() {
 
         btnReconnect.setOnClickListener { if (!connecting) refresh() }
         btnRefresh.setOnClickListener { refreshNetworks(force = true) }
-        btnConnect.setOnClickListener { connectSelected() }
-        btnDisconnect.setOnClickListener { confirmDisconnect() }
-        findViewById<View>(R.id.row_network_diagnostics).setOnClickListener { toggleDiagnostics() }
+        findViewById<View>(R.id.row_network_diagnostics).setOnClickListener { showDiagnostics() }
 
         viewsReady = true
         render()
@@ -206,13 +190,8 @@ class NetworkConnectionActivity : DeviceActivity() {
                 btnReconnect.isEnabled = hasReconnectTarget()
             }
         }
-        // Nothing to disconnect when no session exists and the phone is not bound to the hotspot
-        btnDisconnect.isVisible = active || hotspotConnector.isConnected
-        btnDisconnect.isEnabled = active || hotspotConnector.isConnected
 
         renderNetworks()
-        renderPassword()
-        renderDiagnostics()
     }
 
     /** Why the last attempt failed, in words the user can act on */
@@ -252,49 +231,160 @@ class NetworkConnectionActivity : DeviceActivity() {
             row.findViewById<TextView>(R.id.tv_wifi_ssid).text = network.ssid
             row.findViewById<View>(R.id.iv_wifi_lock).isVisible = network.secured
             row.findViewById<View>(R.id.iv_wifi_check).isVisible = isDeviceCurrentNetwork(network.ssid)
-            row.alpha = if (selectedSsid == null || selectedSsid == network.ssid) 1f else 0.6f
-            row.setOnClickListener { selectNetwork(network.ssid) }
+            row.setOnClickListener { onNetworkTapped(network) }
             listNetworks.addView(row)
         }
     }
 
-    private fun selectNetwork(ssid: String) {
-        selectedSsid = ssid
-        val cached = SessionStore.wifiPasswordFor(ssid)
-        etPassword.setText(cached)
-        renderNetworks()
-        renderPassword()
+    // -----------------------------------------------------------------------
+    // Connecting
+    // -----------------------------------------------------------------------
+
+    /**
+     * Tapping a network is the whole action: the password (if any) is asked in a dialog and the
+     * push starts right after it, so there is no separate "connect" button to find.
+     */
+    private fun onNetworkTapped(network: NearbyNetwork) {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return
+        }
+        if (network.secured) {
+            askPassword(network.ssid)
+        } else {
+            connectTo(network.ssid, "")
+        }
     }
 
-    private fun renderPassword() {
-        val ssid = selectedSsid
-        layoutPassword.isVisible = ssid != null
-        if (ssid != null && etPassword.text.isNullOrEmpty()) {
-            val cached = SessionStore.wifiPasswordFor(ssid)
-            if (cached.isNotEmpty()) etPassword.setText(cached)
-        }
-        btnConnect.isEnabled = ssid != null && SessionStore.isActive && !connecting
-        btnConnect.setText(
-            if (connection.snapshot.state == ConnectionManager.State.SWITCHING) {
-                R.string.network_waiting_device
-            } else {
-                R.string.network_connect_action
+    private fun askPassword(ssid: String) {
+        val view = layoutInflater.inflate(R.layout.dialog_wifi_password, null)
+        val input = view.findViewById<TextInputEditText>(R.id.dialog_password_input)
+        val layout = view.findViewById<TextInputLayout>(R.id.dialog_password_layout)
+        val cached = SessionStore.wifiPasswordFor(ssid)
+        if (cached.isNotEmpty()) input.setText(cached)
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(ssid)
+            .setView(view)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.network_connect_confirm, null)
+            .create()
+
+        dialog.setOnShowListener {
+            // Validate before dismissing, so a typo does not close the dialog
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val password = input.text?.toString().orEmpty()
+                if (password.isEmpty()) {
+                    layout.error = getString(R.string.network_password_required)
+                    return@setOnClickListener
+                }
+                layout.error = null
+                dialog.dismiss()
+                connectTo(ssid, password)
             }
+            input.requestFocus()
+        }
+        dialog.show()
+    }
+
+    /**
+     * Push the selected network to the frame and wait for it on the LAN.
+     *
+     * The push always goes over the link that works right now (hotspot or the current LAN), and only
+     * then does the phone move to the target: the device cannot be reached once the phone leaves,
+     * so "join first, push later" is impossible for a network change.
+     */
+    private fun connectTo(ssid: String, password: String) {
+        if (!SessionStore.isActive) {
+            requireSession()
+            return
+        }
+        SessionStore.rememberWifiPassword(ssid, password)
+
+        if (currentSsid() == ssid) {
+            // Already on that network: nothing to push, just find the device again
+            connection.awaitDeviceOnLan()
+            return
+        }
+
+        connection.pushWifiConfig(ssid, password) { accepted ->
+            if (!accepted) return@pushWifiConfig
+            toast(getString(R.string.network_pushed_join, ssid))
+            openWifiPanel()
+            // Keep looking for the device: it re-appears on the LAN once both sides have switched,
+            // and the user may take a while to pick the network in the system panel
+            connection.awaitDeviceOnLan()
+        }
+    }
+
+    /** Open the system Wi-Fi panel: the app never joins a normal network by itself */
+    private fun openWifiPanel() {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Intent(Settings.Panel.ACTION_WIFI)
+        } else {
+            Intent(Settings.ACTION_WIFI_SETTINGS)
+        }
+        runCatching { startActivity(intent) }
+    }
+
+    private fun openScanner() {
+        scanLauncher.launch(
+            ScanOptions()
+                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                .setCaptureActivity(ScanActivity::class.java)
+                .setPrompt(getString(R.string.scan_prompt))
+                .setBeepEnabled(false)
+                .setOrientationLocked(true)
         )
     }
 
-    private fun renderDiagnostics() {
+    // -----------------------------------------------------------------------
+    // Diagnostics
+    // -----------------------------------------------------------------------
+
+    /** Pinned bottom bar: opens the report in a dialog instead of pushing the list off screen */
+    private fun showDiagnostics() {
         val endpoint = SessionStore.endpoint
-        tvDiagnostics.text = if (endpoint == null) {
+        val text = if (endpoint == null) {
             getString(R.string.network_note_no_target)
         } else {
             diagnostics(endpoint)
         }
+
+        val density = resources.displayMetrics.density
+        val padding = (16 * density).toInt()
+        val report = TextView(this).apply {
+            setText(text)
+            setTextIsSelectable(true)
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
+            setPadding(padding, padding / 2, padding, padding / 2)
+        }
+        val scroll = ScrollView(this).apply { addView(report) }
+        val container = FrameLayout(this).apply { addView(scroll) }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.network_diagnostics_title)
+            .setView(container)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     // -----------------------------------------------------------------------
     // Nearby networks
     // -----------------------------------------------------------------------
+
+    /** Ask the device which link / network it is on, so the ✓ reflects the device, not the phone */
+    private fun refreshDeviceStatus() {
+        val endpoint = SessionStore.endpoint ?: return
+        val sessionId = SessionStore.sessionId ?: return
+        lifecycleScope.launch {
+            client.networkStatus(endpoint, sessionId).onSuccess {
+                deviceLink = it.link
+                deviceSsid = it.ssid
+                renderNetworks()
+            }
+        }
+    }
 
     private fun ensurePermissionAndScan() {
         val missing = locationPermissions().filter {
@@ -335,113 +425,7 @@ class NetworkConnectionActivity : DeviceActivity() {
                 }
             }
         networks = best.values.sortedByDescending { it.level }.take(MAX_LISTED_NETWORKS)
-
-        // Keep the old selection when it is still around, otherwise start from the phone's network
-        val keep = selectedSsid?.takeIf { ssid -> networks.any { it.ssid == ssid } }
-        selectedSsid = keep ?: currentSsid().takeIf { ssid -> networks.any { it.ssid == ssid } }
-        etPassword.setText(selectedSsid?.let { SessionStore.wifiPasswordFor(it) }.orEmpty())
         render()
-    }
-
-    // -----------------------------------------------------------------------
-    // Actions
-    // -----------------------------------------------------------------------
-
-    /**
-     * Push the selected network to the frame.
-     *
-     * Two cases:
-     * - the frame is already on the LAN → the phone must be on the target first, otherwise the two
-     *   would end up on different networks (PRD NW-4);
-     * - the frame is in AP mode → the push has to go over the hotspot, and only then does the phone
-     *   move to the target (the page waits for that in [onResume]).
-     */
-    private fun connectSelected() {
-        val ssid = selectedSsid ?: return
-        if (!SessionStore.isActive) {
-            requireSession()
-            return
-        }
-        val phoneSsid = currentSsid()
-        val password = etPassword.text?.toString().orEmpty()
-        if (password.isEmpty() && networks.firstOrNull { it.ssid == ssid }?.secured == true) {
-            toast(getString(R.string.network_password_required))
-            return
-        }
-        SessionStore.rememberWifiPassword(ssid, password)
-
-        val deviceOnLan = SessionStore.lastLink == SessionStore.LINK_LAN
-        if (deviceOnLan && phoneSsid != ssid) {
-            toast(getString(R.string.network_join_first, ssid))
-            openWifiPanel()
-            return
-        }
-
-        connection.pushWifiConfig(ssid, password) { accepted ->
-            if (!accepted) return@pushWifiConfig
-            if (currentSsid() == ssid) {
-                connection.awaitDeviceOnLan()
-            } else {
-                toast(getString(R.string.network_pushed_join, ssid))
-                openWifiPanel()
-                // Keep polling for the phone to join: the panel may close without the page resuming,
-                // or the user may come back much later; a single onResume check is not reliable
-                connection.awaitPhoneOnTarget(ssid)
-            }
-        }
-    }
-
-    /** Open the system Wi-Fi panel: the app never joins a normal network by itself */
-    private fun openWifiPanel() {
-        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            Intent(Settings.Panel.ACTION_WIFI)
-        } else {
-            Intent(Settings.ACTION_WIFI_SETTINGS)
-        }
-        runCatching { startActivity(intent) }
-    }
-
-    private fun openScanner() {
-        scanLauncher.launch(
-            ScanOptions()
-                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                .setCaptureActivity(ScanActivity::class.java)
-                .setPrompt(getString(R.string.scan_prompt))
-                .setBeepEnabled(false)
-                .setOrientationLocked(true)
-        )
-    }
-
-    private fun confirmDisconnect() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.network_disconnect_confirm_title)
-            .setMessage(R.string.network_disconnect_confirm_message)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.network_disconnect) { _, _ -> disconnect() }
-            .show()
-    }
-
-    private fun toggleDiagnostics() {
-        diagnosticsExpanded = !diagnosticsExpanded
-        tvDiagnostics.isVisible = diagnosticsExpanded
-        ivDiagnostics.rotation = if (diagnosticsExpanded) 90f else 0f
-    }
-
-    // -----------------------------------------------------------------------
-    // Helpers
-    // -----------------------------------------------------------------------
-
-    /** Ask the device which link / network it is on, so the ✓ reflects the device, not the phone */
-    private fun refreshDeviceStatus() {
-        val endpoint = SessionStore.endpoint ?: return
-        val sessionId = SessionStore.sessionId ?: return
-        lifecycleScope.launch {
-            client.networkStatus(endpoint, sessionId).onSuccess {
-                deviceLink = it.link
-                deviceSsid = it.ssid
-                renderNetworks()
-            }
-        }
     }
 
     private fun currentSsid(): String {
@@ -471,9 +455,9 @@ class NetworkConnectionActivity : DeviceActivity() {
         const val SCAN_MIN_INTERVAL_MS = 30_000L
 
         /**
-         * How many nearby networks are listed. A dense neighbourhood can return dozens, and a long
-         * wall of SSIDs pushes the password field and the connect button far below the fold.
+         * How many nearby networks are listed. The list scrolls inside its card, so the cap is only
+         * about keeping the strongest candidates on top rather than limiting reachability.
          */
-        const val MAX_LISTED_NETWORKS = 8
+        const val MAX_LISTED_NETWORKS = 12
     }
 }

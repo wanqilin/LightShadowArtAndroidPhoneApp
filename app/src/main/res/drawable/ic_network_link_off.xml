@@ -44,11 +44,11 @@
         android:fillColor="@color/text_secondary"
         android:pathData="M154.4,66.4a2.2,2.2 0 1 1 4.4,0a2.2,2.2 0 1 1 -4.4,0z" />
 
-    <!-- Broken link -->
+    <!-- Broken link: a red cross over the dashed line -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M88,50L112,76"
+        android:pathData="M90,52L110,72 M110,52L90,72"
         android:strokeColor="@color/status_destructive"
         android:strokeLineCap="round"
-        android:strokeWidth="3" />
+        android:strokeWidth="3.5" />
 </vector>

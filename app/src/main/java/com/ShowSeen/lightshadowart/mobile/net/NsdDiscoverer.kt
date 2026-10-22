@@ -75,6 +75,9 @@ class NsdDiscoverer(context: Context) {
 
     private var resolving = false
     private var discoveryListener: NsdManager.DiscoveryListener? = null
+
+    /** True while one resolved device is enough (normal for this product: one frame per phone) */
+    private var finishOnFirstResolve = true
     private var onFinished: ((List<DiscoveredDevice>) -> Unit)? = null
 
     /**
@@ -95,6 +98,7 @@ class NsdDiscoverer(context: Context) {
     fun discover(
         timeoutMs: Long = DISCOVER_TIMEOUT_MS,
         network: Network? = null,
+        stopOnFirst: Boolean = true,
         onResult: (List<DiscoveredDevice>) -> Unit
     ) {
         val manager = nsdManager
@@ -109,6 +113,7 @@ class NsdDiscoverer(context: Context) {
         resolveQueue.clear()
         resolving = false
         foundCount = 0
+        finishOnFirstResolve = stopOnFirst
         onFinished = onResult
         acquireMulticastLock()
 
@@ -262,6 +267,12 @@ class NsdDiscoverer(context: Context) {
                     mode = attributeOf(serviceInfo, ATTR_MODE).toIntOrNull()
                         ?: DeviceEndpoint.MODE_STUDIO
                 )
+                // The device answers in well under a second on a healthy LAN: waiting for the full
+                // window would add seconds to every switch for no extra information
+                if (finishOnFirstResolve) {
+                    finish()
+                    return
+                }
             }
             resolveNext()
         }

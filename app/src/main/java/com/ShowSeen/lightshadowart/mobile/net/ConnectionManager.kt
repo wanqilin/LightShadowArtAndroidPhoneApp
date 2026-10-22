@@ -178,12 +178,10 @@ class ConnectionManager private constructor(context: Context) {
                     publish(Snapshot(State.FAILED, Failure.NO_TARGET))
                     return
                 }
-                // The device may already have been switched to the network we pushed; when the phone
-                // is on that network the hotspot is gone and looking for the device on the LAN is the
-                // only path that can succeed (a hotspot the device no longer runs cannot)
-                val pushed = SessionStore.pendingLanSsid.ifEmpty { SessionStore.lastWifiSsid }
-                if (pushed.isNotEmpty() && currentSsid() == pushed) {
-                    discoverLan(gen)
+                // A push is still pending: the device was switched, so the hotspot may be gone and
+                // the LAN is where it has to be found
+                if (SessionStore.pendingLanSsid.isNotEmpty()) {
+                    awaitDeviceOnLan()
                     return
                 }
                 if (isOnWifi(ap.apSsid)) {
@@ -246,49 +244,44 @@ class ConnectionManager private constructor(context: Context) {
     }
 
     /**
-     * Wait until the phone itself joins [ssid], then look for the device on the LAN.
+     * Look for the device on the LAN, retrying until it shows up.
      *
-     * The user leaves the app to pick the network in the system panel, so the page cannot rely on a
-     * single `onResume` check: it may return while the phone is still associating, or the app may be
-     * recreated, leaving the UI stuck on "waiting". Polling keeps the state honest and bounded.
-     */
-    fun awaitPhoneOnTarget(ssid: String) {
-        val gen = ++generation
-        cancelReconnect()
-        publish(Snapshot(State.SWITCHING, link = Link.LAN))
-        waitTargetJob = scope.launch {
-            val deadline = System.currentTimeMillis() + PHONE_JOIN_TIMEOUT_MS
-            while (System.currentTimeMillis() < deadline && isActive) {
-                if (currentSsid() == ssid) {
-                    awaitDeviceOnLan()
-                    return@launch
-                }
-                delay(PHONE_JOIN_CHECK_MS)
-            }
-            if (gen == generation) {
-                publish(Snapshot(State.FAILED, Failure.LAN_SWITCH_TIMEOUT, Link.NONE))
-            }
-        }
-    }
-
-    /**
-     * Look for the device on the LAN and move the session over (PRD NW-4).
+     * A Wi-Fi switch is asynchronous on both sides: the device leaves the hotspot and joins the LAN
+     * while the phone is still on the hotspot (or moving), so one discovery round races the switch.
+     * Each round returns as soon as the device answers; when it does not, retry within a bounded
+     * window and then report the failure.
      *
-     * Called once the phone is actually on the target network. The hotspot binding is released
-     * first: while bound to the AP, discovery and HTTP would keep using a network the device left.
+     * The phone's SSID is deliberately not consulted: Android reports `unknown` without location
+     * permission, and what matters is whether the device is reachable — not which network we are on.
      */
     fun awaitDeviceOnLan() {
         val gen = ++generation
         cancelReconnect()
         publish(Snapshot(State.SWITCHING, link = Link.LAN))
-        scope.launch {
+        waitTargetJob = scope.launch {
+            // While bound to the hotspot, discovery and HTTP would keep using a network the device left
             hotspotConnector.release()
-            val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, LAN_SWITCH_TIMEOUT_MS)
-            if (gen != generation) return@launch
-            if (found == null) {
+            val deadline = System.currentTimeMillis() + POST_SWITCH_WINDOW_MS
+            var attempt = 0
+            while (System.currentTimeMillis() < deadline && isActive) {
+                attempt++
+                val started = System.currentTimeMillis()
+                val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, DISCOVER_TIMEOUT_MS)
+                if (gen != generation) return@launch
+                Log.i(
+                    TAG,
+                    "lan discovery #$attempt took ${System.currentTimeMillis() - started}ms, found=${found != null}"
+                )
+                if (found != null) {
+                    authenticate(found, gen, sendStudioToken = false)
+                    return@launch
+                }
+                delay(POST_SWITCH_RETRY_MS)
+            }
+            if (gen == generation) {
+                // Give up on this switch; a later foreground uses the normal restore path instead
+                SessionStore.setPendingLanSsid("")
                 publish(Snapshot(State.FAILED, Failure.LAN_SWITCH_TIMEOUT))
-            } else {
-                authenticate(found, gen, sendStudioToken = false)
             }
         }
     }
@@ -352,9 +345,8 @@ class ConnectionManager private constructor(context: Context) {
             clearSession(Failure.TOKEN_REJECTED)
             return
         }
-        val pushed = SessionStore.pendingLanSsid.ifEmpty { SessionStore.lastWifiSsid }
-        if (pushed.isNotEmpty() && currentSsid() == pushed) {
-            discoverLan(++generation)
+        if (SessionStore.pendingLanSsid.isNotEmpty()) {
+            awaitDeviceOnLan()
         } else {
             publish(Snapshot(State.FAILED, Failure.UNREACHABLE, snapshot.link))
         }
@@ -387,10 +379,9 @@ class ConnectionManager private constructor(context: Context) {
      */
     private fun restoreSessionIfNeeded() {
         if (snapshot.isBusy || snapshot.state == State.CONNECTED) return
-        // A switch was pushed but never completed (the user left to pick the network): finish it
-        // as soon as the phone really is on that network
-        val pending = SessionStore.pendingLanSsid
-        if (pending.isNotEmpty() && currentSsid() == pending) {
+        // A switch was pushed but never completed (the user left to pick the network, or the process
+        // was killed): resume looking for the device on the LAN
+        if (SessionStore.pendingLanSsid.isNotEmpty()) {
             awaitDeviceOnLan()
             return
         }
@@ -569,21 +560,8 @@ class ConnectionManager private constructor(context: Context) {
      * link — the switch may have rolled back on the device.
      */
     private fun handleUnreachable() {
-        val pushed = SessionStore.pendingLanSsid.ifEmpty { SessionStore.lastWifiSsid }
-        val onPushedNetwork = pushed.isNotEmpty() && currentSsid() == pushed
-        if (SessionStore.lastLink == SessionStore.LINK_AP && onPushedNetwork) {
-            publish(Snapshot(State.SEARCHING, link = Link.LAN))
-            val gen = ++generation
-            scope.launch {
-                hotspotConnector.release()
-                val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, DISCOVER_TIMEOUT_MS)
-                if (gen != generation) return@launch
-                if (found != null) {
-                    authenticate(found, gen, sendStudioToken = false)
-                } else {
-                    markDegraded()
-                }
-            }
+        if (SessionStore.pendingLanSsid.isNotEmpty()) {
+            awaitDeviceOnLan()
         } else {
             markDegraded()
         }
@@ -682,11 +660,11 @@ class ConnectionManager private constructor(context: Context) {
         /** How long the phone waits for the device to appear on the LAN after a Wi-Fi push */
         const val LAN_SWITCH_TIMEOUT_MS = 48_000L
 
-        /** How long the user may take to join the pushed network before the switch is reported failed */
-        private const val PHONE_JOIN_TIMEOUT_MS = 120_000L
+        /** Total window for the post-switch discovery retries (device and phone switch separately) */
+        private const val POST_SWITCH_WINDOW_MS = 120_000L
 
-        /** Poll interval while waiting for the phone to join the pushed network */
-        private const val PHONE_JOIN_CHECK_MS = 1_000L
+        /** Pause between two LAN discovery rounds while waiting for the device to appear */
+        private const val POST_SWITCH_RETRY_MS = 2_000L
 
         /** Background grace before heartbeats stop; the device then times the session out (PRD 16.5) */
         const val BACKGROUND_GRACE_MS = 60_000L
