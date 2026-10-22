@@ -186,6 +186,8 @@
     <!-- 2026-10-15 mobile UI refactor: added with the Dashboard / Network / Welcome /
          Scan / Space / Settings / About / Frame Design / Line Color / Backgrounds pages. -->
     <string name="dashboard_not_connected">未连接设备</string>
+    <string name="dashboard_degraded">连接不稳定</string>
+    <string name="space_load_failed">读取失败：%1$s\n下拉可重试</string>
     <string name="dashboard_upload_media">上传媒体</string>
     <string name="dashboard_frame_settings">设置</string>
     <string name="network_title">网络连接</string>

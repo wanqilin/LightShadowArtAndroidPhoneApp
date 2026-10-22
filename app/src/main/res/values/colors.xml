@@ -29,6 +29,7 @@
 
     <!-- Semantic states: always paired with an icon or a word, never colour alone -->
     <color name="status_connected">#1B8A5A</color>
+    <color name="status_warning">#E8A33D</color>
     <color name="status_destructive">#C0392B</color>
 
     <!-- Heart markers (thumbnail + full-screen frame): white, per the 2026-10-20 UI fine-tune -->

@@ -565,9 +565,16 @@ class ConnectionManager private constructor(context: Context) {
     private fun handleUnreachable() {
         if (SessionStore.pendingLanSsid.isNotEmpty()) {
             awaitDeviceOnLan()
-        } else {
-            markDegraded()
+            return
         }
+        // A WifiNetworkSpecifier hotspot binding is owned by the system and can be torn down when the
+        // app leaves the foreground; the session then points at an address we cannot reach any more.
+        // When the last link was the hotspot, re-join it before retrying the endpoint.
+        if (SessionStore.lastLink == SessionStore.LINK_AP && !hotspotConnector.isConnected) {
+            reconnect()
+            return
+        }
+        markDegraded()
     }
 
     private fun markDegraded() {

@@ -191,6 +191,8 @@
     <!-- 2026-10-15 mobile UI refactor: added with the Dashboard / Network / Welcome /
          Scan / Space / Settings / About / Frame Design / Line Color / Backgrounds pages. -->
     <string name="dashboard_not_connected">Not connected</string>
+    <string name="dashboard_degraded">Unstable connection</string>
+    <string name="space_load_failed">Could not load: %1$s\nPull down to retry</string>
     <string name="dashboard_upload_media">Upload Media</string>
     <string name="dashboard_frame_settings">Settings</string>
     <string name="network_title">Network Connection</string>

@@ -31,6 +31,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
+import com.ShowSeen.lightshadowart.mobile.net.ConnectionManager
 import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
 import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
 import com.ShowSeen.lightshadowart.mobile.net.FileTooLargeException
@@ -91,6 +92,7 @@ class MainActivity : DeviceActivity() {
     private lateinit var galleryToolbarSelect: View
     private lateinit var galleryToolbarPlayback: View
     private lateinit var spaceEmptyState: View
+    private lateinit var tvMediaEmpty: TextView
     private lateinit var nowPlaying: View
     private lateinit var ivNowPlaying: ImageView
     private lateinit var ivNowPlayingFavourite: ImageView
@@ -302,6 +304,7 @@ class MainActivity : DeviceActivity() {
         galleryToolbarSelect = findViewById(R.id.gallery_toolbar_select)
         galleryToolbarPlayback = findViewById(R.id.gallery_toolbar_playback)
         spaceEmptyState = findViewById(R.id.space_empty_state)
+        tvMediaEmpty = findViewById(R.id.tv_media_empty)
         nowPlaying = findViewById(R.id.now_playing)
         ivNowPlaying = findViewById(R.id.iv_now_playing)
         ivNowPlayingFavourite = findViewById(R.id.iv_now_playing_favourite)
@@ -641,12 +644,15 @@ class MainActivity : DeviceActivity() {
      * and device address stay on the Network Connection page instead of the dashboard.
      */
     private fun renderDashboard() {
-        val endpoint = SessionStore.endpoint
-        val active = endpoint != null && SessionStore.isActive
+        val snapshot = connection.snapshot
+        val connected = SessionStore.isActive && snapshot.state == ConnectionManager.State.CONNECTED
+        val degraded = SessionStore.isActive && snapshot.state == ConnectionManager.State.DEGRADED
+        val busy = connecting || snapshot.isBusy
 
         val stateRes = when {
-            connecting -> R.string.network_state_connecting
-            active -> R.string.network_state_connected
+            busy -> R.string.network_state_connecting
+            connected -> R.string.network_state_connected
+            degraded -> R.string.dashboard_degraded
             else -> R.string.dashboard_not_connected
         }
         viewDashboardDot.contentDescription = getString(stateRes)
@@ -655,14 +661,15 @@ class MainActivity : DeviceActivity() {
             ContextCompat.getColor(
                 this,
                 when {
-                    connecting -> R.color.primary_blue
-                    active -> R.color.status_connected
+                    busy -> R.color.primary_blue
+                    connected -> R.color.status_connected
+                    degraded -> R.color.status_warning
                     else -> R.color.status_destructive
                 }
             )
         )
 
-        btnStudioFolder.isVisible = active && SessionStore.inStudioMode && SessionStore.isAdmin
+        btnStudioFolder.isVisible = connected && SessionStore.inStudioMode && SessionStore.isAdmin
     }
 
     private fun renderSpaceAvailability() {
@@ -695,6 +702,7 @@ class MainActivity : DeviceActivity() {
             client.listMedia(endpoint, sessionId, favouriteOnly)
                 .onSuccess {
                     adapter.submit(it)
+                    tvMediaEmpty.setText(R.string.space_empty)
                     updateMediaEmpty()
                     if (refreshing) toast(getString(R.string.space_refresh_done, it.size))
                 }
@@ -703,7 +711,11 @@ class MainActivity : DeviceActivity() {
                         handleSessionExpired()
                         return@launch
                     }
-                    // Never pretend a refresh worked: say what failed and allow another pull
+                    // Never pretend a refresh worked: say what failed and allow another pull. The
+                    // empty state carries the reason too — a silent empty gallery looks like "no
+                    // photos" instead of "the frame could not be reached".
+                    tvMediaEmpty.text = getString(R.string.space_load_failed, error.message.orEmpty())
+                    spaceEmptyState.isVisible = true
                     toast(getString(R.string.toast_media_failed, error.message.orEmpty()))
                 }
             swipeSpace.isRefreshing = false
