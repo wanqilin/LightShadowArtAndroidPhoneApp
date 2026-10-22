@@ -217,7 +217,7 @@ class NetworkConnectionActivity : DeviceActivity() {
             tvListHint.isVisible = true
             tvListHint.setText(
                 when {
-                    !hasLocationPermission() -> R.string.network_list_need_permission
+                    !hasScanPermission() -> R.string.network_list_need_permission
                     !isLocationOn() -> R.string.network_list_location_off
                     else -> R.string.network_list_empty
                 }
@@ -388,7 +388,7 @@ class NetworkConnectionActivity : DeviceActivity() {
     }
 
     private fun ensurePermissionAndScan() {
-        val missing = locationPermissions().filter {
+        val missing = requiredPermissions().filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isEmpty()) {
@@ -403,7 +403,7 @@ class NetworkConnectionActivity : DeviceActivity() {
      * refresh inside that window reuses the last result instead of failing.
      */
     private fun refreshNetworks(force: Boolean) {
-        if (!hasLocationPermission()) {
+        if (!hasScanPermission()) {
             networks = emptyList()
             renderNetworks()
             return
@@ -437,12 +437,29 @@ class NetworkConnectionActivity : DeviceActivity() {
     private fun cleanSsid(raw: String?): String? =
         raw?.trim('"')?.takeIf { it.isNotEmpty() && it != UNKNOWN_SSID }
 
-    private fun locationPermissions(): List<String> =
-        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+    /**
+     * Permissions the network list needs.
+     *
+     * Android 13 split Wi-Fi scanning out of the location group: an app targeting 33+ must hold
+     * NEARBY_WIFI_DEVICES or `getScanResults` comes back empty — the location permission alone is no
+     * longer enough (it is still needed to read the current SSID).
+     */
+    private fun requiredPermissions(): List<String> = buildList {
+        add(Manifest.permission.ACCESS_FINE_LOCATION)
+        add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            add(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+    }
 
-    private fun hasLocationPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+    private fun hasScanPermission(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
+        if (!fine) return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) ==
+            PackageManager.PERMISSION_GRANTED
+    }
 
     private fun isLocationOn(): Boolean =
         getSystemService(LocationManager::class.java)?.isLocationEnabled == true
