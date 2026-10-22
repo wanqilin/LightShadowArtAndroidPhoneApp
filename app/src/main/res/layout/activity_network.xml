@@ -48,14 +48,16 @@
                 android:paddingEnd="@dimen/card_padding_compact"
                 android:paddingBottom="@dimen/network_state_card_vertical_padding">
 
-                <!-- Decorative: the state text below carries the meaning -->
+                <!-- Decorative: the state text below carries the meaning; shifted up a little so the
+                     phone, frame and dashed link sit visually centred above the text block -->
                 <ImageView
                     android:id="@+id/iv_network_illustration"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/network_illustration_height"
                     android:contentDescription="@null"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_network_link_off" />
+                    android:src="@drawable/ic_network_link_off"
+                    android:translationY="-8dp" />
 
                 <TextView
                     android:id="@+id/tv_network_state"
