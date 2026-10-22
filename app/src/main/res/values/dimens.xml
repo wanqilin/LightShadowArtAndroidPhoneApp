@@ -20,6 +20,17 @@
     <dimen name="section_gap">14dp</dimen>
     <dimen name="item_gap">10dp</dimen>
 
+    <!-- Network page: denser card padding, a shorter illustration and a compact list row so the
+         state card and the network list leave room for each other on one screen -->
+    <dimen name="card_padding_compact">14dp</dimen>
+    <dimen name="network_illustration_height">88dp</dimen>
+    <dimen name="network_row_height">48dp</dimen>
+
+    <!-- Bottom bar of the network page: the report sits 16dp below the divider and keeps 24dp of
+         breathing room above the system navigation area (the extra whitespace below the row) -->
+    <dimen name="network_bottom_bar_top_padding">16dp</dimen>
+    <dimen name="network_bottom_bar_bottom_padding">24dp</dimen>
+
     <!-- Cards -->
     <dimen name="card_elevation">2dp</dimen>
     <dimen name="divider_width">1dp</dimen>
