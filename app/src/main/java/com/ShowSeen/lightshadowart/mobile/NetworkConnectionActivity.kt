@@ -71,9 +71,6 @@ class NetworkConnectionActivity : DeviceActivity() {
     private var deviceLink: String = ""
     private var deviceSsid: String = ""
 
-    /** Target the user pushed to the device while the device was in AP mode */
-    private var pendingTargetSsid: String? = null
-
     private var lastScanAtMs = 0L
 
     private val wifiManager: WifiManager? by lazy {
@@ -139,12 +136,6 @@ class NetworkConnectionActivity : DeviceActivity() {
         super.onResume()
         if (!viewsReady) return
         render()
-        // Back from the system Wi-Fi panel: if the phone now sits on the pushed network, continue
-        val target = pendingTargetSsid
-        if (target != null && currentSsid() == target) {
-            pendingTargetSsid = null
-            connection.awaitDeviceOnLan()
-        }
     }
 
     override fun onSessionChanged() {
@@ -196,6 +187,7 @@ class NetworkConnectionActivity : DeviceActivity() {
         val note = when {
             busy -> getString(R.string.network_note_connecting)
             active -> ""
+            snapshot.state == ConnectionManager.State.FAILED -> failureNote(snapshot.failure)
             hasReconnectTarget() -> getString(R.string.network_note_can_reconnect)
             else -> getString(R.string.network_note_no_target)
         }
@@ -221,6 +213,17 @@ class NetworkConnectionActivity : DeviceActivity() {
         renderNetworks()
         renderPassword()
         renderDiagnostics()
+    }
+
+    /** Why the last attempt failed, in words the user can act on */
+    private fun failureNote(failure: ConnectionManager.Failure): String = when (failure) {
+        ConnectionManager.Failure.LAN_SWITCH_TIMEOUT -> getString(R.string.network_switch_timeout_note)
+        ConnectionManager.Failure.LAN_NOT_FOUND -> getString(R.string.network_lan_not_found_note)
+        ConnectionManager.Failure.AP_NOT_FOUND, ConnectionManager.Failure.AP_PERMISSION ->
+            getString(R.string.network_note_can_reconnect)
+        ConnectionManager.Failure.TOKEN_REJECTED -> getString(R.string.toast_need_rescan)
+        ConnectionManager.Failure.NO_TARGET -> getString(R.string.network_note_no_target)
+        else -> getString(R.string.network_note_can_reconnect)
     }
 
     /** The single ✓ marks the network the device is on, never the phone's own network */
@@ -379,9 +382,11 @@ class NetworkConnectionActivity : DeviceActivity() {
             if (currentSsid() == ssid) {
                 connection.awaitDeviceOnLan()
             } else {
-                pendingTargetSsid = ssid
                 toast(getString(R.string.network_pushed_join, ssid))
                 openWifiPanel()
+                // Keep polling for the phone to join: the panel may close without the page resuming,
+                // or the user may come back much later; a single onResume check is not reliable
+                connection.awaitPhoneOnTarget(ssid)
             }
         }
     }

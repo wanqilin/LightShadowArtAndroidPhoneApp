@@ -36,6 +36,9 @@ object SessionStore {
     /** Link the session was last established over: [LINK_AP] or [LINK_LAN] */
     private const val KEY_LAST_LINK = "last_link"
 
+    /** Network the phone pushed to the device but has not joined yet; drives the post-switch wait */
+    private const val KEY_PENDING_LAN_SSID = "pending_lan_ssid"
+
     /** Persisted live session, so a process restart can resume without a fresh scan (PRD 16.5) */
     private const val KEY_ENDPOINT_JSON = "session_endpoint"
     private const val KEY_SESSION_ID = "session_id"
@@ -94,6 +97,17 @@ object SessionStore {
     var lastLink: String = LINK_NONE
         private set
 
+    /**
+     * Network the phone pushed to the device but has not joined yet.
+     *
+     * Persisted because the user may switch Wi-Fi through the system panel (or leave and come back)
+     * while the app is paused: on return it has to know that a switch is still in progress and where
+     * to look for the device.
+     */
+    @Volatile
+    var pendingLanSsid: String = ""
+        private set
+
     /** Role of this session: admin or viewer, returned by the device-side /auth */
     @Volatile
     var role: String = ""
@@ -144,6 +158,7 @@ object SessionStore {
         wifiPasswords.clear()
         wifiPasswords.putAll(parseWifiPasswords(store.getString(KEY_WIFI_PASSWORDS, "")))
         lastLink = store.getString(KEY_LAST_LINK, LINK_NONE).orEmpty()
+        pendingLanSsid = store.getString(KEY_PENDING_LAN_SSID, "").orEmpty()
 
         // Resume the session that was live when the process died, if it has not expired yet
         val expires = store.getLong(KEY_SESSION_EXPIRES, 0L)
@@ -193,6 +208,13 @@ object SessionStore {
         if (lastLink == link) return
         lastLink = link
         prefs()?.edit()?.putString(KEY_LAST_LINK, link)?.apply()
+    }
+
+    /** Remember (or clear, with an empty value) the network the device was switched to */
+    fun setPendingLanSsid(ssid: String) {
+        if (pendingLanSsid == ssid) return
+        pendingLanSsid = ssid
+        prefs()?.edit()?.putString(KEY_PENDING_LAN_SSID, ssid)?.apply()
     }
 
     private fun encodeEndpoint(endpoint: DeviceEndpoint): String = JSONObject()
@@ -314,12 +336,14 @@ object SessionStore {
         folder = ""
         params = DeviceParams.DEFAULT
         deviceVersion = ""
+        pendingLanSsid = ""
         prefs()?.edit()
             ?.remove(KEY_ENDPOINT_JSON)
             ?.remove(KEY_SESSION_ID)
             ?.remove(KEY_SESSION_EXPIRES)
             ?.remove(KEY_SESSION_ROLE)
             ?.remove(KEY_SESSION_FOLDER)
+            ?.remove(KEY_PENDING_LAN_SSID)
             ?.apply()
     }
 

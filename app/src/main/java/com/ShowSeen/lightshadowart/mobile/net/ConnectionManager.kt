@@ -113,6 +113,9 @@ class ConnectionManager private constructor(context: Context) {
     private var reconnectJob: Job? = null
     private var backgroundJob: Job? = null
 
+    /** Polls for the phone to join the pushed network, then looks for the device on the LAN */
+    private var waitTargetJob: Job? = null
+
     /** Guards against several silent re-auths racing on repeated 401s */
     private var reauthenticating = false
 
@@ -175,6 +178,14 @@ class ConnectionManager private constructor(context: Context) {
                     publish(Snapshot(State.FAILED, Failure.NO_TARGET))
                     return
                 }
+                // The device may already have been switched to the network we pushed; when the phone
+                // is on that network the hotspot is gone and looking for the device on the LAN is the
+                // only path that can succeed (a hotspot the device no longer runs cannot)
+                val pushed = SessionStore.pendingLanSsid.ifEmpty { SessionStore.lastWifiSsid }
+                if (pushed.isNotEmpty() && currentSsid() == pushed) {
+                    discoverLan(gen)
+                    return
+                }
                 if (isOnWifi(ap.apSsid)) {
                     val host = hotspotConnector.boundGateway() ?: ap.host
                     authenticate(ap.copy(host = host), gen, sendStudioToken = false)
@@ -225,8 +236,38 @@ class ConnectionManager private constructor(context: Context) {
                     publish(Snapshot(State.FAILED, Failure.AUTH_FAILED, snapshot.link, error.message))
                 }
             }
-            if (result.isSuccess) SessionStore.rememberWifiSsid(ssid)
+            if (result.isSuccess) {
+                SessionStore.rememberWifiSsid(ssid)
+                // The device may switch any moment now; remember where we expect to find it
+                SessionStore.setPendingLanSsid(ssid)
+            }
             onResult(result.isSuccess)
+        }
+    }
+
+    /**
+     * Wait until the phone itself joins [ssid], then look for the device on the LAN.
+     *
+     * The user leaves the app to pick the network in the system panel, so the page cannot rely on a
+     * single `onResume` check: it may return while the phone is still associating, or the app may be
+     * recreated, leaving the UI stuck on "waiting". Polling keeps the state honest and bounded.
+     */
+    fun awaitPhoneOnTarget(ssid: String) {
+        val gen = ++generation
+        cancelReconnect()
+        publish(Snapshot(State.SWITCHING, link = Link.LAN))
+        waitTargetJob = scope.launch {
+            val deadline = System.currentTimeMillis() + PHONE_JOIN_TIMEOUT_MS
+            while (System.currentTimeMillis() < deadline && isActive) {
+                if (currentSsid() == ssid) {
+                    awaitDeviceOnLan()
+                    return@launch
+                }
+                delay(PHONE_JOIN_CHECK_MS)
+            }
+            if (gen == generation) {
+                publish(Snapshot(State.FAILED, Failure.LAN_SWITCH_TIMEOUT, Link.NONE))
+            }
         }
     }
 
@@ -238,6 +279,7 @@ class ConnectionManager private constructor(context: Context) {
      */
     fun awaitDeviceOnLan() {
         val gen = ++generation
+        cancelReconnect()
         publish(Snapshot(State.SWITCHING, link = Link.LAN))
         scope.launch {
             hotspotConnector.release()
@@ -293,7 +335,28 @@ class ConnectionManager private constructor(context: Context) {
             reauthenticating = false
             if (gen != generation) return@launch
             result.onSuccess { applyAuth(endpoint, it, announceStudioFolder = false) }
-                .onFailure { clearSession(Failure.TOKEN_REJECTED) }
+                .onFailure { recoverAfterUnreachable(it) }
+        }
+    }
+
+    /**
+     * The saved endpoint could not be reached.
+     *
+     * A 401 really means the pairing was reset (the device rotates its token), so the session is
+     * dropped. Any other failure is a network problem: the device may simply have been switched to
+     * the network we pushed, so if the phone is on that network look for it on the LAN before
+     * giving up — and never wipe the token because of a timeout.
+     */
+    private fun recoverAfterUnreachable(error: Throwable) {
+        if (error is SessionExpiredException) {
+            clearSession(Failure.TOKEN_REJECTED)
+            return
+        }
+        val pushed = SessionStore.pendingLanSsid.ifEmpty { SessionStore.lastWifiSsid }
+        if (pushed.isNotEmpty() && currentSsid() == pushed) {
+            discoverLan(++generation)
+        } else {
+            publish(Snapshot(State.FAILED, Failure.UNREACHABLE, snapshot.link))
         }
     }
 
@@ -324,6 +387,13 @@ class ConnectionManager private constructor(context: Context) {
      */
     private fun restoreSessionIfNeeded() {
         if (snapshot.isBusy || snapshot.state == State.CONNECTED) return
+        // A switch was pushed but never completed (the user left to pick the network): finish it
+        // as soon as the phone really is on that network
+        val pending = SessionStore.pendingLanSsid
+        if (pending.isNotEmpty() && currentSsid() == pending) {
+            awaitDeviceOnLan()
+            return
+        }
         if (SessionStore.isActive) {
             // A session survived a process restart: show it as connected and let the heartbeat prove
             // reachability (a failure moves it to DEGRADED, then FAILED)
@@ -350,9 +420,9 @@ class ConnectionManager private constructor(context: Context) {
             val result = client.auth(target, "")
             if (gen != generation) return@launch
             result.onSuccess { applyAuth(target, it, announceStudioFolder = false) }
-                .onFailure {
-                    // No session yet: keep the page's "not connected" state and let the user reconnect
-                    publish(Snapshot(State.FAILED, Failure.UNREACHABLE))
+                .onFailure { error ->
+                    // No session yet: report the real reason; a timeout must not look like a reset
+                    recoverAfterUnreachable(error)
                 }
         }
     }
@@ -439,6 +509,10 @@ class ConnectionManager private constructor(context: Context) {
             result.deviceVersion
         )
         SessionStore.setLastLink(if (effective.hasHotspot) SessionStore.LINK_AP else SessionStore.LINK_LAN)
+        if (SessionStore.lastLink == SessionStore.LINK_LAN) {
+            // The switch completed: nothing is pending any more
+            SessionStore.setPendingLanSsid("")
+        }
         Log.i(
             TAG,
             "auth ok: ${effective.baseUrl}, session=${result.sessionId}, role=${result.role}, " +
@@ -471,7 +545,7 @@ class ConnectionManager private constructor(context: Context) {
                         if (error is SessionExpiredException) {
                             onUnauthorized()
                         } else if (snapshot.state == State.CONNECTED) {
-                            markDegraded()
+                            handleUnreachable()
                         }
                     }
                 }
@@ -486,6 +560,35 @@ class ConnectionManager private constructor(context: Context) {
     }
 
     /** A request failed while the session is alive: retry the same link for a short window */
+    /**
+     * A request failed while a session is still believed to exist.
+     *
+     * The device may have been switched to the network we pushed (that is exactly what a successful
+     * `/wifi-config` means), so when the phone is on that network the hotspot link is dead and the
+     * device has to be found on the LAN. If it is not there either, fall back to retrying the same
+     * link — the switch may have rolled back on the device.
+     */
+    private fun handleUnreachable() {
+        val pushed = SessionStore.pendingLanSsid.ifEmpty { SessionStore.lastWifiSsid }
+        val onPushedNetwork = pushed.isNotEmpty() && currentSsid() == pushed
+        if (SessionStore.lastLink == SessionStore.LINK_AP && onPushedNetwork) {
+            publish(Snapshot(State.SEARCHING, link = Link.LAN))
+            val gen = ++generation
+            scope.launch {
+                hotspotConnector.release()
+                val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, DISCOVER_TIMEOUT_MS)
+                if (gen != generation) return@launch
+                if (found != null) {
+                    authenticate(found, gen, sendStudioToken = false)
+                } else {
+                    markDegraded()
+                }
+            }
+        } else {
+            markDegraded()
+        }
+    }
+
     private fun markDegraded() {
         publish(Snapshot(State.DEGRADED, Failure.UNREACHABLE, snapshot.link))
         if (reconnectJob?.isActive == true) return
@@ -514,6 +617,8 @@ class ConnectionManager private constructor(context: Context) {
     private fun cancelReconnect() {
         reconnectJob?.cancel()
         reconnectJob = null
+        waitTargetJob?.cancel()
+        waitTargetJob = null
     }
 
     private fun clearSession(failure: Failure) {
@@ -576,6 +681,12 @@ class ConnectionManager private constructor(context: Context) {
 
         /** How long the phone waits for the device to appear on the LAN after a Wi-Fi push */
         const val LAN_SWITCH_TIMEOUT_MS = 48_000L
+
+        /** How long the user may take to join the pushed network before the switch is reported failed */
+        private const val PHONE_JOIN_TIMEOUT_MS = 120_000L
+
+        /** Poll interval while waiting for the phone to join the pushed network */
+        private const val PHONE_JOIN_CHECK_MS = 1_000L
 
         /** Background grace before heartbeats stop; the device then times the session out (PRD 16.5) */
         const val BACKGROUND_GRACE_MS = 60_000L
