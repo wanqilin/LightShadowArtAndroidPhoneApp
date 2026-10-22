@@ -91,6 +91,15 @@ data class StorageState(
     val low: Boolean
 )
 
+/** GET /network receipt: which link the device is on and its address (PRD 16.7) */
+data class DeviceNetworkStatus(
+    val link: String,
+    val ip: String,
+    val ssid: String,
+    val port: Int,
+    val staState: String
+)
+
 /** POST /heartbeat receipt: remaining lifetime + session warning + latest params */
 data class HeartbeatResult(
     val expiresInMs: Long,
@@ -621,6 +630,35 @@ class DeviceClient(private val resolver: ContentResolver) {
                     PlaybackState.DEFAULT_BROWSER_MODE_IMMERSIVE
                 ) ?: PlaybackState.DEFAULT_BROWSER_MODE_IMMERSIVE,
                 lastFile = json?.optString("last_file").orEmpty()
+            )
+        }
+    }
+
+    /**
+     * GET /api/v1/network —— which link the device is on (hotspot / LAN), its address and SSID.
+     *
+     * Read-only; the Network Connection page uses it to mark the device's current network in the
+     * Wi-Fi list (the only ✓) and to render diagnostics (PRD 16.7).
+     */
+    suspend fun networkStatus(
+        endpoint: DeviceEndpoint,
+        sessionId: String
+    ): Result<DeviceNetworkStatus> = call {
+        val request = Request.Builder()
+            .url(endpoint.urlOf("/network"))
+            .header(AUTH_HEADER, bearer(sessionId))
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val json = response.jsonOrNull()
+            ensureSuccess(response, json)
+            DeviceNetworkStatus(
+                link = json?.optString("link").orEmpty(),
+                ip = json?.optString("ip").orEmpty(),
+                ssid = json?.optString("ssid").orEmpty(),
+                port = json?.optInt("port", endpoint.port) ?: endpoint.port,
+                staState = json?.optString("sta_state").orEmpty()
             )
         }
     }

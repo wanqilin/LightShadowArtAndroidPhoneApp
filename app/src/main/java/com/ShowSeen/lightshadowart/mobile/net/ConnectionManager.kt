@@ -193,40 +193,61 @@ class ConnectionManager private constructor(context: Context) {
     }
 
     /**
-     * Push the phone's current Wi-Fi to the device and wait for it on the LAN (PRD NW-4).
+     * Push a target Wi-Fi to the device (PRD NW-4).
      *
-     * The caller has already made sure the phone is on [ssid]; this only provisions the device and
-     * switches the session over. A failure is reported as [Failure.LAN_SWITCH_TIMEOUT] — the device
-     * rolls back to its hotspot in that case, and the screen offers a retry.
+     * Split from [awaitDeviceOnLan] on purpose: when the device is in AP mode the phone has to send
+     * this **over the hotspot** and only then move to the target network, so the page must be able
+     * to wait for the phone side before asking the manager to look on the LAN.
+     *
+     * @param onResult true when the device accepted the credentials
      */
-    fun switchToLan(ssid: String, password: String) {
+    fun pushWifiConfig(ssid: String, password: String, onResult: (Boolean) -> Unit) {
         val endpoint = SessionStore.endpoint
         val sessionId = SessionStore.sessionId
         if (endpoint == null || sessionId == null) {
             publish(Snapshot(State.FAILED, Failure.NO_TARGET))
+            onResult(false)
             return
         }
         val gen = ++generation
         cancelReconnect()
-        publish(Snapshot(State.SWITCHING, link = Link.AP))
+        publish(Snapshot(State.SWITCHING, link = snapshot.link))
         scope.launch {
-            val accepted = client.wifiConfig(endpoint, sessionId, ssid, password)
-            if (gen != generation) return@launch
-            accepted.onFailure { error ->
-                if (error is SessionExpiredException) onUnauthorized() else publish(
-                    Snapshot(State.FAILED, Failure.AUTH_FAILED, Link.AP, error.message)
-                )
+            val result = client.wifiConfig(endpoint, sessionId, ssid, password)
+            if (gen != generation) {
+                onResult(false)
+                return@launch
             }
-            if (accepted.isFailure) return@launch
+            result.onFailure { error ->
+                if (error is SessionExpiredException) {
+                    onUnauthorized()
+                } else {
+                    publish(Snapshot(State.FAILED, Failure.AUTH_FAILED, snapshot.link, error.message))
+                }
+            }
+            if (result.isSuccess) SessionStore.rememberWifiSsid(ssid)
+            onResult(result.isSuccess)
+        }
+    }
 
+    /**
+     * Look for the device on the LAN and move the session over (PRD NW-4).
+     *
+     * Called once the phone is actually on the target network. The hotspot binding is released
+     * first: while bound to the AP, discovery and HTTP would keep using a network the device left.
+     */
+    fun awaitDeviceOnLan() {
+        val gen = ++generation
+        publish(Snapshot(State.SWITCHING, link = Link.LAN))
+        scope.launch {
+            hotspotConnector.release()
             val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, LAN_SWITCH_TIMEOUT_MS)
             if (gen != generation) return@launch
             if (found == null) {
-                publish(Snapshot(State.FAILED, Failure.LAN_SWITCH_TIMEOUT, Link.NONE))
-                return@launch
+                publish(Snapshot(State.FAILED, Failure.LAN_SWITCH_TIMEOUT))
+            } else {
+                authenticate(found, gen, sendStudioToken = false)
             }
-            SessionStore.rememberWifiSsid(ssid)
-            authenticate(found, gen, sendStudioToken = false)
         }
     }
 

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    One row of the nearby-network list (UI PRD §3.4): icon + SSID + lock + signal + the single ✓ that
+    marks the network the device is currently on. 56dp tall, whole row clickable.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/row_wifi"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <ImageView
+        android:id="@+id/iv_wifi_icon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_wifi"
+        app:tint="@color/text_secondary" />
+
+    <TextView
+        android:id="@+id/tv_wifi_ssid"
+        style="@style/Text.Body"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        tools:text="HOME_WIFI" />
+
+    <ImageView
+        android:id="@+id/iv_wifi_lock"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="@string/network_locked_desc"
+        android:src="@drawable/ic_lock"
+        android:visibility="gone"
+        app:tint="@color/text_secondary" />
+
+    <ImageView
+        android:id="@+id/iv_wifi_signal"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_signal"
+        app:tint="@color/text_secondary" />
+
+    <!-- The only ✓ on the page: the network the device is currently connected to -->
+    <ImageView
+        android:id="@+id/iv_wifi_check"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="@string/network_current_badge"
+        android:src="@drawable/ic_check"
+        android:visibility="gone"
+        app:tint="@color/primary_blue" />
+</LinearLayout>

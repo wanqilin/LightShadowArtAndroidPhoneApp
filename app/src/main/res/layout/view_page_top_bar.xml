@@ -43,4 +43,15 @@
         android:layout_marginStart="8dp"
         android:visibility="gone"
         tools:ignore="RelativeOverlap" />
+
+    <!-- Optional right-side action (48dp touch target); pages set its icon and description in code -->
+    <ImageButton
+        android:id="@+id/top_bar_action"
+        android:layout_width="@dimen/icon_touch_size"
+        android:layout_height="@dimen/icon_touch_size"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="10dp"
+        android:scaleType="centerInside"
+        android:visibility="gone"
+        tools:ignore="ContentDescription" />
 </merge>

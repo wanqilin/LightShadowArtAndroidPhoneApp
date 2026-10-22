@@ -2,7 +2,6 @@ package com.ShowSeen.lightshadowart.mobile
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
@@ -376,12 +375,6 @@ abstract class DeviceActivity : AppCompatActivity(), ConnectionManager.Listener 
             }
         )
         return listOfNotNull(ssid, outcome, hotspotConnector.hotspotIpv4).joinToString(" · ")
-    }
-
-    /** Open the Wi-Fi provisioning page; every entry point checks the session first. */
-    protected fun openWifiConfig() {
-        if (!requireSession()) return
-        startActivity(Intent(this, WifiConfigActivity::class.java))
     }
 
     protected companion object {

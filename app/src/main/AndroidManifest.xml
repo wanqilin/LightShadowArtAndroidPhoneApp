@@ -91,11 +91,6 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <activity
-            android:name=".WifiConfigActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-
         <!-- 语言选择二级页面（F-3）：由设置页「语言」入口进入，选中即生效 -->
         <activity
             android:name=".LanguageActivity"

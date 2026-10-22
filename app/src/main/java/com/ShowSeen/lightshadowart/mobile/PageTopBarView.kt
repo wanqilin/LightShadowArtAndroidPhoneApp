@@ -26,6 +26,7 @@ class PageTopBarView @JvmOverloads constructor(
     private val backButton: ImageButton
     private val titleView: TextView
     private val trailingView: TextView
+    private val actionButton: ImageButton
 
     init {
         orientation = HORIZONTAL
@@ -38,6 +39,7 @@ class PageTopBarView @JvmOverloads constructor(
         backButton = findViewById(R.id.top_bar_back)
         titleView = findViewById(R.id.top_bar_title)
         trailingView = findViewById(R.id.top_bar_trailing)
+        actionButton = findViewById(R.id.top_bar_action)
     }
 
     fun setTitle(text: CharSequence) {
@@ -65,5 +67,18 @@ class PageTopBarView @JvmOverloads constructor(
 
     fun hideTrailingPill() {
         trailingView.visibility = GONE
+    }
+
+    /**
+     * Show a right-side action button (48dp touch target).
+     *
+     * Used by the Network Connection page for its "scan again" entry; the icon alone is not enough
+     * information for a screen reader, so the caller must pass a description too (UI PRD §5).
+     */
+    fun showTrailingAction(@DrawableRes iconRes: Int, description: CharSequence, onClick: OnClickListener) {
+        actionButton.visibility = VISIBLE
+        actionButton.setImageResource(iconRes)
+        actionButton.contentDescription = description
+        actionButton.setOnClickListener(onClick)
     }
 }
