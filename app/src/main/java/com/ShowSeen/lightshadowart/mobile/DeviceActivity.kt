@@ -255,8 +255,7 @@ abstract class DeviceActivity : AppCompatActivity() {
                         getString(
                             R.string.toast_hotspot_failed,
                             endpoint.apSsid,
-                            error.message.orEmpty(),
-                            endpoint.host
+                            error.message.orEmpty()
                         ),
                         endpoint
                     )
@@ -421,7 +420,16 @@ abstract class DeviceActivity : AppCompatActivity() {
             return
         }
 
-        val password = saved?.apPassword?.takeIf { it.isNotEmpty() } ?: AP_PASSWORD
+        // The hotspot password is per device and only known from the QR code; a pairing reset
+        // rotates it, so guessing the old fixed value would just fail silently.
+        val password = saved?.apPassword.orEmpty()
+        if (password.isEmpty()) {
+            connecting = false
+            onSessionChanged()
+            Log.i(TAG, "reconnectHotspot: no saved credentials for $ssid, a new scan is required")
+            toast(getString(R.string.toast_hotspot_needs_rescan, ssid))
+            return
+        }
         val knownHost = saved?.host.orEmpty()
         Log.i(TAG, "reconnectHotspot: ssid=$ssid, knownHost=$knownHost")
         hotspotConnector.connect(ssid, password) { result ->
@@ -461,16 +469,7 @@ abstract class DeviceActivity : AppCompatActivity() {
                         apPassword = password
                     )
                     showConnectError(
-                        if (knownHost.isEmpty()) {
-                            getString(R.string.toast_hotspot_failed_brief, ssid, error.message.orEmpty())
-                        } else {
-                            getString(
-                                R.string.toast_hotspot_failed,
-                                ssid,
-                                error.message.orEmpty(),
-                                knownHost
-                            )
-                        },
+                        getString(R.string.toast_hotspot_failed, ssid, error.message.orEmpty()),
                         endpoint
                     )
                 }
@@ -775,9 +774,6 @@ abstract class DeviceActivity : AppCompatActivity() {
 
         /** Device hotspot SSID prefix, matching ServerConfig.AP_SSID_PREFIX */
         const val AP_SSID_PREFIX = "LightShadowArt-"
-
-        /** Device hotspot default password, matching ServerConfig.AP_PASSWORD */
-        const val AP_PASSWORD = "lightshadowart"
 
         /** Store session token length, matching DeviceConfig.STUDIO_TOKEN_MAX_LENGTH */
         const val STUDIO_TOKEN_LENGTH = 6

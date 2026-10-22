@@ -52,8 +52,8 @@
 
     <string name="dialog_error_title">连接失败</string>
     <string name="toast_connect_failed">连接失败：%1$s</string>
-    <string name="toast_hotspot_failed">接入热点 %1$s 失败：%2$s。可在系统 Wi‑Fi 里手动连接该热点，再用「手动连接」填入设备地址 %3$s</string>
-    <string name="toast_hotspot_failed_brief">接入热点 %1$s 失败：%2$s。可在系统 Wi‑Fi 里手动连接该热点后重试。</string>
+    <string name="toast_hotspot_failed">接入热点 %1$s 失败：%2$s。请确认相框热点已开启后重试，或扫描相框屏幕上的二维码重新配对。</string>
+    <string name="toast_hotspot_needs_rescan">缺少热点密码，无法自动重连。请扫描相框屏幕上的二维码重新配对。</string>
     <string name="toast_hotspot_gateway_unknown">已接入热点 %1$s，但没拿到设备地址。请确认设备仍处于出码（热点）状态后重试，或重新扫码连接。</string>
     <string name="toast_hotspot_permission_denied">需要「附近的设备」权限才能自动接入设备热点</string>
     <string name="toast_upload_busy">正在上传，请稍候</string>
