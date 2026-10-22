@@ -23,7 +23,7 @@
     <!-- Network page: denser card padding, a shorter illustration and a compact list row so the
          state card and the network list leave room for each other on one screen -->
     <dimen name="card_padding_compact">14dp</dimen>
-    <dimen name="network_illustration_height">117dp</dimen>
+    <dimen name="network_illustration_height">156dp</dimen>
 
     <!-- Vertical breathing room of the connection state card: the card is a third taller than its
          content needs, the content stays vertically centred -->
