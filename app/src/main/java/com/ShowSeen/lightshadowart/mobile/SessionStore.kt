@@ -210,6 +210,26 @@ object SessionStore {
         prefs()?.edit()?.putString(KEY_LAST_LINK, link)?.apply()
     }
 
+    /**
+     * Forget the paired device after a sign-out.
+     *
+     * A sign-out makes the device rotate its token and hotspot password, so the stored token can only
+     * ever produce a 401: keeping it would offer a "reconnect" that is guaranteed to fail instead of
+     * telling the user to scan the new QR code.
+     */
+    fun forgetDeviceToken() {
+        lastDeviceToken = ""
+        lastApSsid = ""
+        lastApPassword = ""
+        lastApHost = ""
+        prefs()?.edit()
+            ?.remove(KEY_LAST_DEVICE_TOKEN)
+            ?.remove(KEY_LAST_AP_SSID)
+            ?.remove(KEY_LAST_AP_PASSWORD)
+            ?.remove(KEY_LAST_AP_HOST)
+            ?.apply()
+    }
+
     /** Remember (or clear, with an empty value) the network the device was switched to */
     fun setPendingLanSsid(ssid: String) {
         if (pendingLanSsid == ssid) return
@@ -337,6 +357,8 @@ object SessionStore {
         params = DeviceParams.DEFAULT
         deviceVersion = ""
         pendingLanSsid = ""
+        // No session means no last link: a reconnect must not keep targeting the old one
+        lastLink = LINK_NONE
         prefs()?.edit()
             ?.remove(KEY_ENDPOINT_JSON)
             ?.remove(KEY_SESSION_ID)
@@ -344,6 +366,7 @@ object SessionStore {
             ?.remove(KEY_SESSION_ROLE)
             ?.remove(KEY_SESSION_FOLDER)
             ?.remove(KEY_PENDING_LAN_SSID)
+            ?.putString(KEY_LAST_LINK, LINK_NONE)
             ?.apply()
     }
 

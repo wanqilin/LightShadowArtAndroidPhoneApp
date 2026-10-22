@@ -212,6 +212,7 @@
     <string name="network_list_location_off">请打开系统定位开关后刷新</string>
     <string name="network_switch_timeout_note">设备未能在局域网内出现，或手机还没连上该 Wi-Fi。请确认手机已连接该网络后点「刷新连接」。</string>
     <string name="network_lan_not_found_note">已在这个网络里，但没有找到设备。请确认相框与手机连接的是同一个 Wi-Fi。</string>
+    <string name="network_qr_stale_note">未能接入相框热点。请确认相框屏幕上正显示二维码；若刚重新出过码，请扫描当前这张。</string>
     <string name="network_state_connecting">连接中…</string>
     <string name="network_state_connected">已连接</string>
     <string name="network_state_disconnected">未连接</string>
@@ -219,7 +220,7 @@
     <string name="network_diagnostics_title">诊断信息</string>
     <string name="network_note_connecting">正在查找设备…</string>
     <string name="network_note_can_reconnect">当前没有有效会话。点「重新连接」即可恢复，无需重新扫码。</string>
-    <string name="network_note_no_target">还没有绑定过设备。请扫描相框屏幕上的二维码完成绑定。</string>
+    <string name="network_note_no_target">还没有可重连的设备。请扫描相框屏幕上的二维码重新连接。</string>
     <string name="welcome_title">欢迎使用光影艺术</string>
     <string name="welcome_subtitle">艺术点亮你的空间</string>
     <string name="welcome_choose_language">请选择你的语言</string>

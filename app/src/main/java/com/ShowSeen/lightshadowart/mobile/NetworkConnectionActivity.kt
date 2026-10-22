@@ -119,13 +119,21 @@ class NetworkConnectionActivity : DeviceActivity() {
     override fun onResume() {
         super.onResume()
         if (!viewsReady) return
+        if (!SessionStore.isActive) clearDeviceNetwork()
         render()
     }
 
     override fun onSessionChanged() {
         if (!viewsReady) return
+        if (!SessionStore.isActive) clearDeviceNetwork()
         render()
         refreshDeviceStatus()
+    }
+
+    /** The device's link is unknown once the session ends; keep no stale check mark around */
+    private fun clearDeviceNetwork() {
+        deviceLink = ""
+        deviceSsid = ""
     }
 
     // -----------------------------------------------------------------------
@@ -199,17 +207,20 @@ class NetworkConnectionActivity : DeviceActivity() {
         ConnectionManager.Failure.LAN_SWITCH_TIMEOUT -> getString(R.string.network_switch_timeout_note)
         ConnectionManager.Failure.LAN_NOT_FOUND -> getString(R.string.network_lan_not_found_note)
         ConnectionManager.Failure.AP_NOT_FOUND, ConnectionManager.Failure.AP_PERMISSION ->
-            getString(R.string.network_note_can_reconnect)
+            getString(R.string.network_qr_stale_note)
         ConnectionManager.Failure.TOKEN_REJECTED -> getString(R.string.toast_need_rescan)
         ConnectionManager.Failure.NO_TARGET -> getString(R.string.network_note_no_target)
         else -> getString(R.string.network_note_can_reconnect)
     }
 
-    /** The single ✓ marks the network the device is on, never the phone's own network */
-    private fun isDeviceCurrentNetwork(ssid: String): Boolean {
-        if (deviceLink == DEVICE_LINK_LAN && deviceSsid.isNotEmpty()) return deviceSsid == ssid
-        return SessionStore.lastLink == SessionStore.LINK_LAN && SessionStore.lastWifiSsid == ssid
-    }
+    /**
+     * The single ✓ marks the network the device is on.
+     *
+     * Only the device's own answer (`GET /network`) counts: a remembered link is not evidence, and
+     * after signing out the previous session's LAN must not keep its check mark.
+     */
+    private fun isDeviceCurrentNetwork(ssid: String): Boolean =
+        deviceLink == DEVICE_LINK_LAN && deviceSsid.isNotEmpty() && deviceSsid == ssid
 
     private fun renderNetworks() {
         listNetworks.removeAllViews()

@@ -307,6 +307,9 @@ class ConnectionManager private constructor(context: Context) {
             stopHeartbeat()
             hotspotConnector.release()
             SessionStore.clear()
+            // Signing out rotates the device credentials: the stored token is dead, so drop it and
+            // let the page ask for the new QR code instead of offering a reconnect that cannot work
+            if (handover) SessionStore.forgetDeviceToken()
             publish(Snapshot(State.IDLE))
             listeners.forEach { it.onSessionGone() }
             listeners.forEach { it.onDisconnectFinished(handover, error) }
