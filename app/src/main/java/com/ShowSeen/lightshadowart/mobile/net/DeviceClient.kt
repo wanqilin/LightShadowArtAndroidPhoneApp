@@ -73,6 +73,8 @@ data class AuthResult(
     val role: String,
     val folder: String,
     val mode: Int,
+    /** Session lifetime reported by the device; 0 when the device did not send it */
+    val expiresInMs: Long,
     val params: DeviceParams,
     /** Device app version; empty string when the device does not report it */
     val deviceVersion: String
@@ -158,6 +160,7 @@ class DeviceClient(private val resolver: ContentResolver) {
                 role = json?.optString("role").orEmpty(),
                 folder = json?.optString("folder").orEmpty(),
                 mode = json?.optInt("mode", endpoint.mode) ?: endpoint.mode,
+                expiresInMs = json?.optLong("expires_in_ms") ?: 0L,
                 params = json?.optJSONObject("params").toParams(),
                 deviceVersion = json?.optString("device_version").orEmpty()
             )

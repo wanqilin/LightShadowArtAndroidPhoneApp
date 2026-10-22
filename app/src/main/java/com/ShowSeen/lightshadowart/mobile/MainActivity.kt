@@ -200,6 +200,8 @@ class MainActivity : DeviceActivity() {
     private val pickLauncher = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK_COUNT)
     ) { uris ->
+        // The picker is back (or was cancelled): release the foreground hold taken in launchPicker()
+        AppVisibility.release()
         if (uris.isNotEmpty()) startUpload(uris)
     }
 
@@ -215,7 +217,6 @@ class MainActivity : DeviceActivity() {
         updateUploadSummary()
         renderSession()
         showPage(Page.DASHBOARD)
-        startHeartbeat()
 
         handleScannedEndpoint(intent)
     }
@@ -232,7 +233,6 @@ class MainActivity : DeviceActivity() {
         // The session can end while another page is on top (the Wi-Fi page clears it on a 401):
         // drop the thumbnail cache so a reconnect cannot show the previous session's pictures.
         if (!SessionStore.isActive) thumbCache.evictAll()
-        migrateToLan()
         if (currentPage == Page.SPACE) startPlaybackPolling()
     }
 
@@ -627,8 +627,6 @@ class MainActivity : DeviceActivity() {
         loadGalleryView(viewIndex)
         showPage(Page.SPACE)
     }
-
-    override fun canMigrateToLan(): Boolean = currentPage == Page.DASHBOARD
 
     private fun renderSession() {
         renderDashboard()
@@ -1388,6 +1386,9 @@ class MainActivity : DeviceActivity() {
     }
 
     private fun launchPicker() {
+        // The system picker is app-initiated: hold the foreground token so the session is not
+        // dropped while the user browses their gallery (PRD NW-5)
+        AppVisibility.acquire()
         pickLauncher.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
         )
@@ -1425,6 +1426,9 @@ class MainActivity : DeviceActivity() {
         if (tooLarge) showFileTooLargeDialog()
 
         cardUpload.isEnabled = false
+        // An upload in progress must survive a brief background switch, so hold the foreground token
+        // until the job finishes (PRD NW-5)
+        AppVisibility.acquire()
         uploadJob = lifecycleScope.launch {
             var success = 0
             var failed = 0
@@ -1492,6 +1496,8 @@ class MainActivity : DeviceActivity() {
                 updateUploadSummary()
             }
         }
+        // Fires on completion and on cancellation, so the token can never be leaked
+        uploadJob?.invokeOnCompletion { AppVisibility.release() }
     }
 
     private fun updateUploadSummary() {

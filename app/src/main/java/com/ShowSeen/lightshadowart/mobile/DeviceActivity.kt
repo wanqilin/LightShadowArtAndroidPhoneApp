@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
@@ -18,62 +17,43 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.ShowSeen.lightshadowart.mobile.net.AuthResult
+import com.ShowSeen.lightshadowart.mobile.net.ConnectionManager
 import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
 import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
-import com.ShowSeen.lightshadowart.mobile.net.DiscoveredDevice
 import com.ShowSeen.lightshadowart.mobile.net.HotspotConnector
-import com.ShowSeen.lightshadowart.mobile.net.NsdDiscoverer
 import com.ShowSeen.lightshadowart.mobile.net.SessionExpiredException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.Inet4Address
-import java.util.UUID
-import kotlin.coroutines.resume
 
 /**
- * Shared device-session behaviour for the pages that drive the connection: the Dashboard and the
- * Network Connection page.
+ * Shared device-session behaviour for the screens that drive the connection (dashboard and network
+ * page).
  *
- * Everything here is about *reaching and keeping* a device session (discovery, hotspot hand-off,
- * authenticate, heartbeat, reconnect, disconnect, diagnostics). Pages contribute only what they
- * render through [onSessionChanged] and a few hooks, so the connection rules exist once.
+ * Ownership moved into [ConnectionManager]: the state machine, heartbeat, reconnect and the
+ * hotspot binding all live there, so two screens always see the same state (PRD 16.4). This class
+ * only translates user actions into manager intents, subscribes to the state, and keeps the pieces
+ * that are genuinely UI: permission requests, dialogs and diagnostics.
  */
-abstract class DeviceActivity : AppCompatActivity() {
+abstract class DeviceActivity : AppCompatActivity(), ConnectionManager.Listener {
 
-    protected lateinit var client: DeviceClient
-    protected lateinit var hotspotConnector: HotspotConnector
-    protected lateinit var nsdDiscoverer: NsdDiscoverer
+    protected val connection: ConnectionManager get() = ConnectionManager.get(this)
+    protected val client: DeviceClient get() = connection.client
+    protected val hotspotConnector: HotspotConnector get() = connection.hotspotConnector
 
-    /** True while "reconnect" is scanning the LAN / handing over to the device hotspot */
-    protected var connecting = false
-
-    /** True while an expired hotspot address is being migrated to the LAN address */
-    protected var migratingToLan = false
-
-    /** Rate limit for the heartbeat-driven LAN migration, so it cannot spin */
-    private var lastLanMigrateAtMs = 0L
+    /** True while a connect / reconnect / switch is in flight */
+    protected val connecting: Boolean get() = connection.snapshot.isBusy
 
     /** Device waiting for the hotspot permissions granted in the permission callback */
     private var pendingEndpoint: DeviceEndpoint? = null
-
-    /** Silent reconnect task (UI PRD / T-5): retry auth for a short window after a failed request */
-    private var autoReconnectJob: Job? = null
 
     private lateinit var wifiPermissionLauncher: ActivityResultLauncher<Array<String>>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SessionStore.init(this)
-        client = DeviceClient(contentResolver)
-        hotspotConnector = HotspotConnector.get(this)
-        nsdDiscoverer = NsdDiscoverer(this)
-
+        connection.addListener(this)
         wifiPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { grants ->
@@ -81,7 +61,7 @@ abstract class DeviceActivity : AppCompatActivity() {
             pendingEndpoint = null
             if (endpoint == null) return@registerForActivityResult
             if (grants.values.all { it }) {
-                connectHotspot(endpoint)
+                connection.connect(endpoint)
             } else {
                 toast(getString(R.string.toast_hotspot_permission_denied))
             }
@@ -89,7 +69,7 @@ abstract class DeviceActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        nsdDiscoverer.cancel()
+        connection.removeListener(this)
         super.onDestroy()
     }
 
@@ -100,7 +80,7 @@ abstract class DeviceActivity : AppCompatActivity() {
     /** The session state (or the parameters) changed: re-render this page. */
     protected abstract fun onSessionChanged()
 
-    /** The session is gone for good (401 / expired / user disconnect): drop page-scoped caches. */
+    /** The session is gone for good (expired / rejected token / user disconnect): drop page caches. */
     protected open fun onSessionCleared() = Unit
 
     /** A session was (re)established: refresh page content that depends on it. */
@@ -109,87 +89,54 @@ abstract class DeviceActivity : AppCompatActivity() {
     /** Store mode: the photographer confirmed the folder, the page may navigate to the gallery. */
     protected open fun onStudioSelectionConfirmed() = Unit
 
-    /** Whether the heartbeat may move an expired hotspot address to the LAN address. */
-    protected open fun canMigrateToLan(): Boolean = true
-
     // -----------------------------------------------------------------------
-    // Session lifetime
+    // ConnectionManager.Listener (always delivered on the main thread)
     // -----------------------------------------------------------------------
 
-    /**
-     * Heartbeat loop: refreshes the remaining session time and the latest parameters.
-     *
-     * Runs on [lifecycleScope] on purpose, not on the RESUMED state: a page opened on top (the
-     * Wi-Fi config page can take close to a minute) would otherwise stop the heartbeat, and with a
-     * 60s device-side disconnect timeout the device would drop the session while the user is still
-     * configuring it.
-     */
-    protected fun startHeartbeat() {
-        lifecycleScope.launch {
-            while (true) {
-                val endpoint = SessionStore.endpoint
-                val sessionId = SessionStore.sessionId
-                if (endpoint != null && sessionId != null) {
-                    client.heartbeat(endpoint, sessionId)
-                        .onSuccess {
-                            SessionStore.touch(it.expiresInMs)
-                            SessionStore.updateParams(it.params)
-                        }
-                        .onFailure {
-                            if (it is SessionExpiredException) {
-                                handleSessionExpired()
-                            } else {
-                                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                                    migrateToLan()
-                                }
-                                if (!migratingToLan) scheduleAutoReconnect()
-                            }
-                        }
-                    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) onSessionChanged()
-                }
-                delay(HEARTBEAT_INTERVAL_MS)
+    override fun onConnectionChanged(snapshot: ConnectionManager.Snapshot) {
+        onSessionChanged()
+        when (snapshot.state) {
+            ConnectionManager.State.NEED_BIND -> {
+                onSessionCleared()
+                toast(getString(R.string.toast_need_rescan))
             }
+
+            ConnectionManager.State.FAILED -> {
+                // Only explicit failures carry a message; silent retries stay quiet
+                val reason = snapshot.error
+                if (!reason.isNullOrEmpty()) {
+                    val endpoint = SessionStore.endpoint ?: SessionStore.apEndpoint()
+                    if (endpoint != null) showConnectError(reason, endpoint) else showError(reason)
+                }
+            }
+
+            else -> Unit
         }
     }
 
-    /** The device rejected our session: clear everything and let the page render the offline state. */
-    protected fun handleSessionExpired() {
-        SessionStore.clear()
-        autoReconnectJob?.cancel()
+    override fun onSessionReady() {
+        onSessionEstablished()
+        onSessionChanged()
+    }
+
+    override fun onSessionGone() {
         onSessionCleared()
         onSessionChanged()
-        toast(getString(R.string.toast_session_expired))
     }
 
-    /**
-     * Silent reconnect: the session exists but the device is momentarily unreachable (reboot, Wi-Fi
-     * flap, just switched networks). Retry auth for [AUTO_RECONNECT_WINDOW_MS] so the user does not
-     * have to press reconnect.
-     *
-     * No studio token is sent: the folder for this session already exists on the device, and
-     * re-sending the token would create a new empty folder on every retry.
-     */
-    private fun scheduleAutoReconnect() {
-        if (autoReconnectJob?.isActive == true) return
-        val endpoint = SessionStore.endpoint ?: return
-        autoReconnectJob = lifecycleScope.launch {
-            val deadline = System.currentTimeMillis() + AUTO_RECONNECT_WINDOW_MS
-            Log.i(TAG, "autoReconnect: window open, target ${endpoint.baseUrl}")
-            while (System.currentTimeMillis() < deadline) {
-                delay(AUTO_RECONNECT_RETRY_MS)
-                val result = client.auth(endpoint).getOrNull() ?: continue
-                applyAuthResult(endpoint, result, announceStudioFolder = false)
-                Log.i(TAG, "autoReconnect: session restored ${result.sessionId}")
-                toast(getString(R.string.toast_auto_reconnected))
-                return@launch
+    override fun onStudioFolderReady(folder: String) {
+        promptStudioFolder(folder)
+    }
+
+    override fun onDisconnectFinished(handover: Boolean, error: Throwable?) {
+        // A 401 means the device session was already gone; that is the same outcome, not an error
+        toast(
+            when {
+                error == null || error is SessionExpiredException ->
+                    getString(if (handover) R.string.toast_logout_done else R.string.toast_disconnected)
+                else -> getString(R.string.toast_disconnect_failed, error.message.orEmpty())
             }
-            Log.i(TAG, "autoReconnect: window closed without a response, back to the user")
-        }
-    }
-
-    /** Cancel any running silent reconnect (user pressed disconnect / reconnect explicitly). */
-    protected fun cancelAutoReconnect() {
-        autoReconnectJob?.cancel()
+        )
     }
 
     // -----------------------------------------------------------------------
@@ -197,8 +144,8 @@ abstract class DeviceActivity : AppCompatActivity() {
     // -----------------------------------------------------------------------
 
     /**
-     * Connect entry point for a scanned endpoint: join the device hotspot first when the QR code
-     * carries its credentials (Android 13+ needs NEARBY_WIFI_DEVICES, older versions location).
+     * Connect entry point for a scanned endpoint: the hotspot permission is requested here (UI
+     * concern), the join + auth themselves are the manager's job.
      */
     protected fun connect(endpoint: DeviceEndpoint) {
         val missing = requiredWifiPermissions().filter {
@@ -209,321 +156,28 @@ abstract class DeviceActivity : AppCompatActivity() {
             wifiPermissionLauncher.launch(missing.toTypedArray())
             return
         }
-        connectHotspot(endpoint)
+        connection.connect(endpoint)
     }
 
-    private fun connectHotspot(endpoint: DeviceEndpoint) {
-        if (!endpoint.hasHotspot) {
-            authenticate(endpoint)
-            return
-        }
-        // Already on the device hotspot: asking the system for a network we are already on pops a
-        // system sheet and only answers after ~60s on this platform, so just use the current link.
-        if (isOnWifi(endpoint.apSsid)) {
-            Log.i(TAG, "already on hotspot ${endpoint.apSsid}, skip requestNetwork")
-            lifecycleScope.launch {
-                if (!client.probe(endpoint)) {
-                    Log.w(TAG, "hotspot ${endpoint.apSsid} not reachable yet, authenticate anyway")
-                }
-                SessionStore.rememberWifiSsid(endpoint.apSsid)
-                SessionStore.rememberApCredentials(endpoint)
-                authenticate(endpoint)
-            }
-            return
-        }
-        requestHotspot(endpoint)
-    }
-
-    /** Ask the system to join the device hotspot and then exchange the session (normal path). */
-    protected fun requestHotspot(endpoint: DeviceEndpoint) {
-        connecting = true
-        onSessionChanged()
-        Log.i(TAG, "requestHotspot: ssid=${endpoint.apSsid}, device=${endpoint.baseUrl}")
-        hotspotConnector.connect(endpoint.apSsid, endpoint.apPassword) { result ->
-            result
-                .onSuccess {
-                    Log.i(TAG, "hotspot ok: ${endpoint.apSsid}")
-                    SessionStore.rememberWifiSsid(endpoint.apSsid)
-                    SessionStore.rememberApCredentials(endpoint)
-                    authenticate(endpoint)
-                }
-                .onFailure { error ->
-                    Log.e(TAG, "hotspot failed: ${endpoint.apSsid}", error)
-                    connecting = false
-                    onSessionChanged()
-                    showConnectError(
-                        getString(
-                            R.string.toast_hotspot_failed,
-                            endpoint.apSsid,
-                            error.message.orEmpty()
-                        ),
-                        endpoint
-                    )
-                }
-        }
-    }
-
-    /** Exchange the device token for a session, then hand the result to [applyAuthResult]. */
-    protected fun authenticate(endpoint: DeviceEndpoint) {
-        connecting = true
-        onSessionChanged()
-        lifecycleScope.launch {
-            // Store mode: this selection session's own token goes up with the auth call so the
-            // device creates "<yyyyMMdd><seq><token>" and returns it as the session folder.
-            val studioToken =
-                if (endpoint.mode == DeviceEndpoint.MODE_STUDIO) newStudioToken() else ""
-            val result = client.auth(endpoint, studioToken).getOrElse { error ->
-                Log.e(TAG, "auth failed: ${endpoint.baseUrl}", error)
-                connecting = false
-                onSessionChanged()
-                showConnectError(getString(R.string.toast_connect_failed, error.message.orEmpty()), endpoint)
-                return@launch
-            }
-            applyAuthResult(endpoint, result, announceStudioFolder = true)
-        }
-    }
-
-    /**
-     * Common tail of a successful auth, shared by scan / reconnect / silent reconnect.
-     *
-     * @param announceStudioFolder whether to show the "photographer, put the photos in this folder"
-     *        dialog. True for a fresh scan or an explicit reconnect; false for the silent retry,
-     *        which would otherwise nag with a folder the user has already been told about.
-     */
-    protected suspend fun applyAuthResult(
-        endpoint: DeviceEndpoint,
-        result: AuthResult,
-        announceStudioFolder: Boolean
-    ) {
-        Log.i(TAG, "auth ok: ${endpoint.baseUrl}, session=${result.sessionId}, role=${result.role}")
-        // The device owns the interaction mode (compile-time switch), so its answer wins over the
-        // mode recorded from an older QR code: reconnecting then heals without a new scan.
-        val effective = if (result.mode == DeviceEndpoint.MODE_PERSONAL ||
-            result.mode == DeviceEndpoint.MODE_STUDIO
-        ) {
-            endpoint.copy(mode = result.mode)
-        } else {
-            endpoint
-        }
-        SessionStore.save(
-            effective,
-            result.sessionId,
-            DEFAULT_SESSION_TTL_MS,
-            result.role,
-            result.folder,
-            result.params,
-            result.deviceVersion
-        )
-        client.heartbeat(effective, result.sessionId).onSuccess { heartbeat ->
-            SessionStore.touch(heartbeat.expiresInMs)
-            SessionStore.updateParams(heartbeat.params)
-        }
-        connecting = false
-        onSessionEstablished()
-        onSessionChanged()
-        if (announceStudioFolder && SessionStore.inStudioMode) promptStudioFolder(result.folder)
-    }
-
-    /**
-     * Reconnect: look for the device on the LAN first (it joined the Wi-Fi the phone configured),
-     * otherwise fall back to the device hotspot using the remembered credentials — no new scan.
-     */
+    /** Reconnect: the manager retries the link the last session ran over (no cross-link fallback) */
     protected fun refresh() {
         if (connecting) return
-        cancelAutoReconnect()
-
-        // Still attached to the device hotspot: reuse the remembered address instead of asking the
-        // system to join a network we are already on (that pops a confirmation sheet again).
-        val apEndpoint = SessionStore.apEndpoint()
-        if (apEndpoint != null && hotspotConnector.isConnected) {
-            authenticate(apEndpoint)
-            return
-        }
-
-        connecting = true
-        onSessionChanged()
-
-        // The device drops its own hotspot when it joins the target Wi-Fi, so release the binding
-        // first; otherwise requests stay bound to a network that no longer exists.
-        hotspotConnector.release()
-
-        lifecycleScope.launch {
-            val devices = probeLan(DISCOVER_TIMEOUT_MS)
-            val device = devices.firstOrNull { it.deviceToken == SessionStore.lastDeviceToken }
-                ?: devices.firstOrNull()
-            if (device != null) {
-                currentSsid().takeIf { it.isNotEmpty() }?.let { SessionStore.rememberWifiSsid(it) }
-                authenticate(device.toEndpoint())
-                return@launch
-            }
-            reconnectHotspot()
-        }
+        connection.reconnect()
     }
 
-    /**
-     * Move an expired hotspot address to the LAN address.
-     *
-     * Only when the page is in the foreground, the phone is not on the device hotspot any more and
-     * a cooldown has passed. If the device is not found nothing happens: it may still be an access
-     * point, and reconnecting on its own would pop a system sheet at the user for no reason.
-     */
-    protected fun migrateToLan() {
-        if (!canMigrateToLan() || connecting || migratingToLan) return
-
-        val endpoint = SessionStore.endpoint ?: return
-        if (!endpoint.hasHotspot) return
-        if (hotspotConnector.isConnected) return
-
-        val now = System.currentTimeMillis()
-        if (now - lastLanMigrateAtMs < LAN_MIGRATE_COOLDOWN_MS) return
-        lastLanMigrateAtMs = now
-
-        migratingToLan = true
-        Log.i(TAG, "migrateToLan: ${endpoint.baseUrl} may be stale, looking on the LAN")
-        lifecycleScope.launch {
-            hotspotConnector.release()
-            val devices = probeLan(DISCOVER_TIMEOUT_MS)
-            migratingToLan = false
-
-            val device = devices.firstOrNull { it.deviceToken == SessionStore.lastDeviceToken }
-                ?: devices.firstOrNull()
-            if (device == null) {
-                Log.i(TAG, "migrateToLan: not on the LAN, keeping ${endpoint.baseUrl}")
-                return@launch
-            }
-            Log.i(TAG, "migrateToLan: found ${device.host}:${device.port}")
-            currentSsid().takeIf { it.isNotEmpty() }?.let { SessionStore.rememberWifiSsid(it) }
-            authenticate(device.toEndpoint())
-        }
-    }
-
-    /**
-     * Nothing on the LAN: reconnect to the device hotspot using the remembered credentials (and the
-     * hotspot gateway for the address — Android re-randomises the hotspot subnet on every boot).
-     */
-    private fun reconnectHotspot() {
-        val saved = SessionStore.apEndpoint()
-        val ssid = saved?.apSsid
-            ?: SessionStore.lastWifiSsid.takeIf { it.startsWith(AP_SSID_PREFIX) }.orEmpty()
-
-        if (ssid.isEmpty()) {
-            connecting = false
-            onSessionChanged()
-            Log.i(TAG, "reconnectHotspot: no hotspot to use (lastWifiSsid=${SessionStore.lastWifiSsid})")
-            toast(
-                if (SessionStore.lastWifiSsid.isEmpty()) {
-                    getString(R.string.toast_refresh_not_found_without_wifi)
-                } else {
-                    getString(R.string.toast_refresh_not_found, SessionStore.lastWifiSsid)
-                }
-            )
-            return
-        }
-
-        // The hotspot password is per device and only known from the QR code; a pairing reset
-        // rotates it, so guessing the old fixed value would just fail silently.
-        val password = saved?.apPassword.orEmpty()
-        if (password.isEmpty()) {
-            connecting = false
-            onSessionChanged()
-            Log.i(TAG, "reconnectHotspot: no saved credentials for $ssid, a new scan is required")
-            toast(getString(R.string.toast_hotspot_needs_rescan, ssid))
-            return
-        }
-        val knownHost = saved?.host.orEmpty()
-        Log.i(TAG, "reconnectHotspot: ssid=$ssid, knownHost=$knownHost")
-        hotspotConnector.connect(ssid, password) { result ->
-            result
-                .onSuccess {
-                    val host = hotspotConnector.boundGateway() ?: knownHost.ifEmpty { null }
-                    if (host == null) {
-                        Log.e(TAG, "reconnectHotspot: joined $ssid but no device address")
-                        connecting = false
-                        onSessionChanged()
-                        showError(getString(R.string.toast_hotspot_gateway_unknown, ssid))
-                        return@onSuccess
-                    }
-                    val endpoint = DeviceEndpoint(
-                        host = host,
-                        port = DeviceEndpoint.DEFAULT_PORT,
-                        deviceToken = SessionStore.lastDeviceToken,
-                        mode = SessionStore.lastDeviceMode,
-                        apSsid = ssid,
-                        apPassword = password
-                    )
-                    Log.i(TAG, "reconnectHotspot ok: ssid=$ssid, device=${endpoint.baseUrl}")
-                    SessionStore.rememberApCredentials(endpoint)
-                    SessionStore.rememberWifiSsid(ssid)
-                    authenticate(endpoint)
-                }
-                .onFailure { error ->
-                    Log.e(TAG, "reconnectHotspot failed: $ssid", error)
-                    connecting = false
-                    onSessionChanged()
-                    val endpoint = saved ?: DeviceEndpoint(
-                        host = knownHost,
-                        port = DeviceEndpoint.DEFAULT_PORT,
-                        deviceToken = SessionStore.lastDeviceToken,
-                        mode = SessionStore.lastDeviceMode,
-                        apSsid = ssid,
-                        apPassword = password
-                    )
-                    showConnectError(
-                        getString(R.string.toast_hotspot_failed, ssid, error.message.orEmpty()),
-                        endpoint
-                    )
-                }
-        }
-    }
-
-    /**
-     * Leave the session: end it on the device so its standby page goes back to the QR code, then
-     * clear the local state.
-     *
-     * @param handover administrator "sign out": also unbind the device and make it show the QR code
-     *        again so somebody else can take over the administrator role.
-     */
+    /** Leave the session; [handover] also unbinds the device and makes it show a fresh QR code */
     protected fun disconnect(handover: Boolean = false) {
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-        connecting = false
+        connection.disconnect(handover)
+    }
 
-        lifecycleScope.launch {
-            val error = if (endpoint != null && sessionId != null) {
-                if (handover) {
-                    client.handoverSession(endpoint, sessionId).exceptionOrNull()
-                } else {
-                    client.endSession(endpoint, sessionId).exceptionOrNull()
-                }
-            } else {
-                null
-            }
-
-            hotspotConnector.release()
-            SessionStore.clear()
-            autoReconnectJob?.cancel()
-            onSessionCleared()
-            onSessionChanged()
-
-            // A 401 means the device session was already gone; that is the same outcome, not an error
-            toast(
-                when {
-                    endpoint == null || sessionId == null -> getString(R.string.toast_disconnected_local)
-                    error == null || error is SessionExpiredException ->
-                        getString(if (handover) R.string.toast_logout_done else R.string.toast_disconnected)
-                    else -> getString(R.string.toast_disconnect_failed, error.message.orEmpty())
-                }
-            )
-        }
+    /** The device rejected a request (401): try one silent re-auth before asking for a new scan */
+    protected fun handleSessionExpired() {
+        connection.onUnauthorized()
     }
 
     // -----------------------------------------------------------------------
     // Store-mode folder hand-off
     // -----------------------------------------------------------------------
-
-    /** This selection session's own token: a UUID prefix matching the device-side length limit. */
-    private fun newStudioToken(): String =
-        UUID.randomUUID().toString().replace("-", "").take(STUDIO_TOKEN_LENGTH)
 
     private fun promptStudioFolder(folder: String) {
         if (folder.isEmpty()) return
@@ -603,28 +257,6 @@ abstract class DeviceActivity : AppCompatActivity() {
         return false
     }
 
-    /** Current Wi-Fi name, or an empty string when not on Wi-Fi / not readable. */
-    protected fun currentSsid(): String {
-        val manager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-        val raw = runCatching { manager?.connectionInfo?.ssid }.getOrNull() ?: return ""
-        return raw.trim('"').takeIf { it.isNotEmpty() && it != UNKNOWN_SSID }.orEmpty()
-    }
-
-    /**
-     * Whether the phone is already on [ssid]. Asking the system for a network we are already on
-     * pops a sheet and answers only after ~60s, so every connection path checks this first.
-     */
-    protected fun isOnWifi(ssid: String): Boolean = ssid.isNotEmpty() && currentSsid() == ssid
-
-    /** One LAN discovery pass, bounded by [timeoutMs]; never a background scan. */
-    protected suspend fun probeLan(timeoutMs: Long): List<DiscoveredDevice> =
-        suspendCancellableCoroutine { continuation ->
-            nsdDiscoverer.discover(timeoutMs) { devices ->
-                if (continuation.isActive) continuation.resume(devices)
-            }
-            continuation.invokeOnCancellation { nsdDiscoverer.cancel() }
-        }
-
     protected fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
@@ -665,7 +297,7 @@ abstract class DeviceActivity : AppCompatActivity() {
         showError("$message\n\n${diagnostics(endpoint)}")
     }
 
-    /** Default network, process-bound network, VPN and hotspot outcome for [endpoint]. */
+    /** Current SSID, the process binding and hotspot outcome for [endpoint]. */
     protected fun diagnostics(endpoint: DeviceEndpoint): String {
         val manager = getSystemService(ConnectivityManager::class.java)
         return buildString {
@@ -754,29 +386,9 @@ abstract class DeviceActivity : AppCompatActivity() {
 
     protected companion object {
         const val TAG = "DeviceActivity"
-        const val HEARTBEAT_INTERVAL_MS = 5_000L
-        const val DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000L
-
-        /** Reconnect discovery window, matching NsdDiscoverer's default */
-        const val DISCOVER_TIMEOUT_MS = 5_000L
-
-        /** Silent reconnect window after a failed request */
-        const val AUTO_RECONNECT_WINDOW_MS = 30_000L
-
-        /** Silent reconnect retry interval, same as the heartbeat period */
-        const val AUTO_RECONNECT_RETRY_MS = 5_000L
-
-        /** Minimum interval between heartbeat-driven LAN migrations */
-        const val LAN_MIGRATE_COOLDOWN_MS = 20_000L
-
-        /** Placeholder the system returns when the Wi-Fi name cannot be read */
-        const val UNKNOWN_SSID = "<unknown ssid>"
 
         /** Device hotspot SSID prefix, matching ServerConfig.AP_SSID_PREFIX */
         const val AP_SSID_PREFIX = "LightShadowArt-"
-
-        /** Store session token length, matching DeviceConfig.STUDIO_TOKEN_MAX_LENGTH */
-        const val STUDIO_TOKEN_LENGTH = 6
 
         /** Thumbnail cache entry count */
         const val THUMB_CACHE_ITEMS = 60

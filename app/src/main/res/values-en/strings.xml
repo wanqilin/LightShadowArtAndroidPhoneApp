@@ -67,6 +67,7 @@
     <string name="dialog_continue_upload">Continue uploading</string>
     <string name="toast_need_session">Please connect to the device first</string>
     <string name="toast_session_expired">Session ended. Tap “Refresh connection” to reconnect</string>
+    <string name="toast_need_rescan">The device was reset. Scan the QR code on the frame again.</string>
     <string name="toast_auto_reconnected">Connection was interrupted and has been restored automatically</string>
     <string name="toast_disconnected">Disconnected. The device is back on its standby page and others can scan to connect</string>
     <string name="toast_disconnected_local">Disconnected and local state cleared; you can scan again to connect</string>

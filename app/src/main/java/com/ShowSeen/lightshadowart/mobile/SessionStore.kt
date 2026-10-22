@@ -19,6 +19,11 @@ import org.json.JSONObject
  */
 object SessionStore {
 
+    /** Links a session can run over; kept in one place so persistence and UI agree */
+    const val LINK_NONE = "none"
+    const val LINK_AP = "ap"
+    const val LINK_LAN = "lan"
+
     private const val PREFS_NAME = "light_shadow_session_store"
     private const val KEY_LAST_WIFI_SSID = "last_wifi_ssid"
     private const val KEY_LAST_DEVICE_TOKEN = "last_device_token"
@@ -27,6 +32,16 @@ object SessionStore {
     private const val KEY_LAST_AP_PASSWORD = "last_ap_password"
     private const val KEY_LAST_AP_HOST = "last_ap_host"
     private const val KEY_WIFI_PASSWORDS = "wifi_passwords"
+
+    /** Link the session was last established over: [LINK_AP] or [LINK_LAN] */
+    private const val KEY_LAST_LINK = "last_link"
+
+    /** Persisted live session, so a process restart can resume without a fresh scan (PRD 16.5) */
+    private const val KEY_ENDPOINT_JSON = "session_endpoint"
+    private const val KEY_SESSION_ID = "session_id"
+    private const val KEY_SESSION_EXPIRES = "session_expires_at"
+    private const val KEY_SESSION_ROLE = "session_role"
+    private const val KEY_SESSION_FOLDER = "session_folder"
 
     private var appContext: Context? = null
 
@@ -72,6 +87,11 @@ object SessionStore {
     /** Device address used for the last hotspot connection (IP on the hotspot subnet) */
     @Volatile
     var lastApHost: String = ""
+        private set
+
+    /** Link the last successful session used: [LINK_AP] / [LINK_LAN] / [LINK_NONE] */
+    @Volatile
+    var lastLink: String = LINK_NONE
         private set
 
     /** Role of this session: admin or viewer, returned by the device-side /auth */
@@ -123,6 +143,19 @@ object SessionStore {
         lastApHost = store.getString(KEY_LAST_AP_HOST, "").orEmpty()
         wifiPasswords.clear()
         wifiPasswords.putAll(parseWifiPasswords(store.getString(KEY_WIFI_PASSWORDS, "")))
+        lastLink = store.getString(KEY_LAST_LINK, LINK_NONE).orEmpty()
+
+        // Resume the session that was live when the process died, if it has not expired yet
+        val expires = store.getLong(KEY_SESSION_EXPIRES, 0L)
+        val savedEndpoint = parseEndpoint(store.getString(KEY_ENDPOINT_JSON, ""))
+        val savedSession = store.getString(KEY_SESSION_ID, "").orEmpty()
+        if (savedEndpoint != null && savedSession.isNotEmpty() && expires > System.currentTimeMillis()) {
+            endpoint = savedEndpoint
+            sessionId = savedSession
+            expiresAtMs = expires
+            role = store.getString(KEY_SESSION_ROLE, "").orEmpty()
+            folder = store.getString(KEY_SESSION_FOLDER, "").orEmpty()
+        }
     }
 
     fun save(
@@ -147,7 +180,49 @@ object SessionStore {
         prefs()?.edit()
             ?.putString(KEY_LAST_DEVICE_TOKEN, lastDeviceToken)
             ?.putInt(KEY_LAST_DEVICE_MODE, lastDeviceMode)
+            ?.putString(KEY_ENDPOINT_JSON, encodeEndpoint(endpoint))
+            ?.putString(KEY_SESSION_ID, sessionId)
+            ?.putLong(KEY_SESSION_EXPIRES, expiresAtMs)
+            ?.putString(KEY_SESSION_ROLE, role)
+            ?.putString(KEY_SESSION_FOLDER, folder)
             ?.apply()
+    }
+
+    /** Record which link the current session runs over; a reconnect retries only this link (PRD NW-5) */
+    fun setLastLink(link: String) {
+        if (lastLink == link) return
+        lastLink = link
+        prefs()?.edit()?.putString(KEY_LAST_LINK, link)?.apply()
+    }
+
+    private fun encodeEndpoint(endpoint: DeviceEndpoint): String = JSONObject()
+        .put("host", endpoint.host)
+        .put("port", endpoint.port)
+        .put("token", endpoint.deviceToken)
+        .put("mode", endpoint.mode)
+        .put("apSsid", endpoint.apSsid)
+        .put("apPassword", endpoint.apPassword)
+        .put("role", endpoint.role)
+        .put("folder", endpoint.folder)
+        .toString()
+
+    private fun parseEndpoint(raw: String?): DeviceEndpoint? {
+        if (raw.isNullOrEmpty()) return null
+        return runCatching {
+            val json = JSONObject(raw)
+            val host = json.optString("host")
+            if (host.isEmpty()) return null
+            DeviceEndpoint(
+                host = host,
+                port = json.optInt("port", DeviceEndpoint.DEFAULT_PORT),
+                deviceToken = json.optString("token"),
+                mode = json.optInt("mode", DeviceEndpoint.MODE_STUDIO),
+                apSsid = json.optString("apSsid"),
+                apPassword = json.optString("apPassword"),
+                role = json.optString("role"),
+                folder = json.optString("folder")
+            )
+        }.getOrNull()
     }
 
     /** Refreshes the local cache after a heartbeat or config read returns the latest parameters */
@@ -239,6 +314,13 @@ object SessionStore {
         folder = ""
         params = DeviceParams.DEFAULT
         deviceVersion = ""
+        prefs()?.edit()
+            ?.remove(KEY_ENDPOINT_JSON)
+            ?.remove(KEY_SESSION_ID)
+            ?.remove(KEY_SESSION_EXPIRES)
+            ?.remove(KEY_SESSION_ROLE)
+            ?.remove(KEY_SESSION_FOLDER)
+            ?.apply()
     }
 
     private fun prefs(context: Context): SharedPreferences =

@@ -67,9 +67,6 @@ class NetworkConnectionActivity : DeviceActivity() {
         onSessionChanged()
     }
 
-    /** Reconnection is a user action on this page; the heartbeat owns LAN migration. */
-    override fun canMigrateToLan(): Boolean = false
-
     override fun onSessionChanged() {
         val endpoint = SessionStore.endpoint
         val active = endpoint != null && SessionStore.isActive
