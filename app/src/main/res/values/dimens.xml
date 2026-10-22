@@ -24,6 +24,10 @@
          state card and the network list leave room for each other on one screen -->
     <dimen name="card_padding_compact">14dp</dimen>
     <dimen name="network_illustration_height">117dp</dimen>
+
+    <!-- Vertical breathing room of the connection state card: the card is a third taller than its
+         content needs, the content stays vertically centred -->
+    <dimen name="network_state_card_vertical_padding">46dp</dimen>
     <dimen name="network_row_height">48dp</dimen>
 
     <!-- Bottom bar of the network page: the report sits 16dp below the divider and keeps 24dp of
