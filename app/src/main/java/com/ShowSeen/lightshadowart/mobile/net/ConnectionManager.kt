@@ -231,12 +231,16 @@ class ConnectionManager private constructor(context: Context) {
         publish(Snapshot(State.SWITCHING, link = snapshot.link))
         scope.launch {
             val result = client.wifiConfig(endpoint, sessionId, ssid, password)
-            switchInFlight = false
+            // Keep switchInFlight until the switch resolves: the device stops its hotspot only after
+            // the response, so clearing it here let the first heartbeat failure look like an unstable
+            // link and the card flashed "连接不稳定".
             if (gen != generation) {
+                switchInFlight = false
                 onResult(false)
                 return@launch
             }
             result.onFailure { error ->
+                switchInFlight = false
                 if (error is SessionExpiredException) {
                     onUnauthorized()
                 } else {
@@ -297,6 +301,7 @@ class ConnectionManager private constructor(context: Context) {
             }
             if (gen == generation) {
                 // Give up on this switch; a later foreground uses the normal restore path instead
+                switchInFlight = false
                 SessionStore.setPendingLanSsid("")
                 publish(Snapshot(State.FAILED, Failure.LAN_SWITCH_TIMEOUT))
             }
@@ -333,9 +338,9 @@ class ConnectionManager private constructor(context: Context) {
             } else {
                 null
             }
-            // Only now may the process leave the hotspot: releasing it earlier would cut the very
-            // request that asks the frame to show its QR code, and the sign-out would look silent.
-            hotspotConnector.release()
+            // Only now may the process leave the hotspot; skip it when the user already started a
+            // new hotspot request (releasing would cancel it)
+            hotspotConnector.releaseIfIdle()
             if (gen != generation) return@launch
             listeners.forEach { it.onDisconnectFinished(handover, error) }
         }
@@ -459,17 +464,11 @@ class ConnectionManager private constructor(context: Context) {
 
     private fun joinAp(endpoint: DeviceEndpoint, gen: Int) {
         publish(Snapshot(State.JOINING_AP, link = Link.AP))
-        connectHotspot(endpoint, gen, retried = false)
+        connectHotspot(endpoint, gen)
     }
 
-    /**
-     * Join the hotspot, retrying once.
-     *
-     * The first request can race the device as it restarts its hotspot after a pairing reset (the
-     * system answers "unavailable" although the AP is up a moment later). One retry covers that
-     * without making a real failure feel endless.
-     */
-    private fun connectHotspot(endpoint: DeviceEndpoint, gen: Int, retried: Boolean) {
+    /** Join the hotspot; one request only, so the system dialog is never cancelled by a retry */
+    private fun connectHotspot(endpoint: DeviceEndpoint, gen: Int) {
         hotspotConnector.join(endpoint.apSsid, endpoint.apPassword) { result ->
             if (gen != generation) return@join
             result.onSuccess {
@@ -478,14 +477,6 @@ class ConnectionManager private constructor(context: Context) {
                 SessionStore.rememberApCredentials(joined)
                 authenticate(joined, gen, sendStudioToken = false)
             }.onFailure { error ->
-                if (!retried && error !is UnsupportedOperationException) {
-                    Log.i(TAG, "hotspot join failed, retrying once: ${error.message}")
-                    mainHandler.postDelayed(
-                        { if (gen == generation) connectHotspot(endpoint, gen, retried = true) },
-                        AP_RETRY_DELAY_MS
-                    )
-                    return@join
-                }
                 publish(
                     Snapshot(
                         State.FAILED,
@@ -575,6 +566,7 @@ class ConnectionManager private constructor(context: Context) {
         if (SessionStore.lastLink == SessionStore.LINK_LAN) {
             // The switch completed: nothing is pending any more
             SessionStore.setPendingLanSsid("")
+            switchInFlight = false
         }
         Log.i(
             TAG,

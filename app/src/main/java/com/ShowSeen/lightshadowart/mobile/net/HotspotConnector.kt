@@ -245,6 +245,21 @@ class HotspotConnector private constructor(context: Context) {
         return if (lastDot > 0) own.substring(0, lastDot + 1) + HOST_SUFFIX else null
     }
 
+    /**
+     * Release the hotspot binding unless a new join is in flight.
+     *
+     * Releasing a pending [WifiNetworkSpecifier] request makes the system report "the app cancelled
+     * the request"; delayed callers (sign-out finishing after the user scanned again) must not do
+     * that to a request they did not start.
+     */
+    fun releaseIfIdle() {
+        if (lastOutcome == Outcome.REQUESTING) {
+            Log.i(TAG, "release skipped: a hotspot request is in flight")
+            return
+        }
+        release()
+    }
+
     /** Leave the hotspot, restore the default process network (call before refreshing) */
     fun release() {
         val manager = connectivityManager
