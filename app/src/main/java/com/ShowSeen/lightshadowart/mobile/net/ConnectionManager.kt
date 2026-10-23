@@ -113,8 +113,11 @@ class ConnectionManager private constructor(context: Context) {
     private var reconnectJob: Job? = null
     private var backgroundJob: Job? = null
 
-    /** Polls for the phone to join the pushed network, then looks for the device on the LAN */
+    /** The single post-switch discovery window (see [awaitDeviceOnLan]) */
     private var waitTargetJob: Job? = null
+
+    /** Monotonic deadline of the running window; 0 when no window is active */
+    private var switchDeadlineMs = 0L
 
     /** Guards against several silent re-auths racing on repeated 401s */
     private var reauthenticating = false
@@ -255,15 +258,21 @@ class ConnectionManager private constructor(context: Context) {
      * permission, and what matters is whether the device is reachable — not which network we are on.
      */
     fun awaitDeviceOnLan() {
+        // Keep one authoritative window: a second call while it is running (a failed heartbeat, a
+        // foreground bounce) must not restart the deadline, otherwise the timeout never fires.
+        val running = waitTargetJob?.isActive == true &&
+            System.currentTimeMillis() < switchDeadlineMs
+        if (running) return
+
         val gen = ++generation
         cancelReconnect()
         publish(Snapshot(State.SWITCHING, link = Link.LAN))
+        switchDeadlineMs = System.currentTimeMillis() + POST_SWITCH_WINDOW_MS
         waitTargetJob = scope.launch {
             // While bound to the hotspot, discovery and HTTP would keep using a network the device left
             hotspotConnector.release()
-            val deadline = System.currentTimeMillis() + POST_SWITCH_WINDOW_MS
             var attempt = 0
-            while (System.currentTimeMillis() < deadline && isActive) {
+            while (System.currentTimeMillis() < switchDeadlineMs && isActive) {
                 attempt++
                 val started = System.currentTimeMillis()
                 val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, DISCOVER_TIMEOUT_MS)
