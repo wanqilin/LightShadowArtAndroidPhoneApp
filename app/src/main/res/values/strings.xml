@@ -219,7 +219,7 @@
     <string name="network_value_unknown">未获取</string>
     <string name="network_diagnostics_title">诊断信息</string>
     <string name="network_note_connecting">正在查找设备…</string>
-    <string name="network_note_can_reconnect">当前没有有效会话。点「重新连接」即可恢复，无需重新扫码。</string>
+    <string name="network_note_can_reconnect">当前没有有效会话。请重新点选网络，或扫描相框上的二维码。</string>
     <string name="network_note_no_target">还没有可重连的设备。请扫描相框屏幕上的二维码重新连接。</string>
     <string name="welcome_title">欢迎使用光影艺术</string>
     <string name="welcome_subtitle">艺术点亮你的空间</string>

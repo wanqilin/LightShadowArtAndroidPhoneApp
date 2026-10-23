@@ -224,7 +224,7 @@
     <string name="network_value_unknown">Not available</string>
     <string name="network_diagnostics_title">Diagnostics</string>
     <string name="network_note_connecting">Looking for the device…</string>
-    <string name="network_note_can_reconnect">No active session. Tap Reconnect to resume without scanning again.</string>
+    <string name="network_note_can_reconnect">No active session. Pick a network again, or scan the QR code on the frame.</string>
     <string name="network_note_no_target">No device to reconnect to. Scan the QR code on the frame to connect again.</string>
     <string name="welcome_title">Welcome to LightShadowArt</string>
     <string name="welcome_subtitle">Art Brings Life to Your Space</string>
