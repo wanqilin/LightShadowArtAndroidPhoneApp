@@ -147,12 +147,18 @@ class NetworkConnectionActivity : DeviceActivity() {
         val degraded = SessionStore.isActive && snapshot.state == ConnectionManager.State.DEGRADED
         val busy = snapshot.isBusy
 
+        // The device's own report wins: a LAN endpoint can still be reachable through a stale
+        // address while the frame itself is serving its hotspot, and the card must not claim "LAN"
+        // with the hotspot's name next to it.
+        val lanLink = if (deviceLink.isNotEmpty()) deviceLink == DEVICE_LINK_LAN
+        else snapshot.link == ConnectionManager.Link.LAN
+        val apLink = if (deviceLink.isNotEmpty()) !lanLink
+        else snapshot.link == ConnectionManager.Link.AP
+
         val stateText = when {
             busy -> getString(R.string.network_state_connecting)
-            active && snapshot.link == ConnectionManager.Link.AP ->
-                getString(R.string.network_state_connected_ap)
-            active && snapshot.link == ConnectionManager.Link.LAN ->
-                getString(R.string.network_state_connected_lan)
+            active && apLink -> getString(R.string.network_state_connected_ap)
+            active && lanLink -> getString(R.string.network_state_connected_lan)
             active -> getString(R.string.network_state_connected)
             degraded -> getString(R.string.dashboard_degraded)
             else -> getString(R.string.network_state_disconnected)
@@ -165,8 +171,8 @@ class NetworkConnectionActivity : DeviceActivity() {
 
         if (active) {
             val label = when {
-                snapshot.link == ConnectionManager.Link.AP ->
-                    SessionStore.lastApSsid.ifEmpty { getString(R.string.network_value_unknown) }
+                apLink && deviceSsid.isNotEmpty() -> deviceSsid
+                apLink -> SessionStore.lastApSsid.ifEmpty { getString(R.string.network_value_unknown) }
                 deviceSsid.isNotEmpty() -> deviceSsid
                 // The device's own answer may still be in flight; the network the phone is on is the
                 // same one the device was just switched to, so it is a truthful interim label
