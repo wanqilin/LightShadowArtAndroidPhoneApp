@@ -141,7 +141,10 @@ class NetworkConnectionActivity : DeviceActivity() {
 
     private fun render() {
         val snapshot = connection.snapshot
-        val active = SessionStore.isActive && snapshot.state != ConnectionManager.State.DISCONNECTING
+        // Only a healthy link counts as connected: a persisted session whose heartbeat is failing
+        // (DEGRADED) or that already failed must not show the green "已连接" card.
+        val active = SessionStore.isActive && snapshot.state == ConnectionManager.State.CONNECTED
+        val degraded = SessionStore.isActive && snapshot.state == ConnectionManager.State.DEGRADED
         val busy = snapshot.isBusy
 
         val stateText = when {
@@ -151,6 +154,7 @@ class NetworkConnectionActivity : DeviceActivity() {
             active && snapshot.link == ConnectionManager.Link.LAN ->
                 getString(R.string.network_state_connected_lan)
             active -> getString(R.string.network_state_connected)
+            degraded -> getString(R.string.dashboard_degraded)
             else -> getString(R.string.network_state_disconnected)
         }
         tvState.text = stateText

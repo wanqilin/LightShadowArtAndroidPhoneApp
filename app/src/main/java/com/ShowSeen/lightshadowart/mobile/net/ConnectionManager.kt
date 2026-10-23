@@ -409,6 +409,13 @@ class ConnectionManager private constructor(context: Context) {
     private fun reauthenticateSaved(endpoint: DeviceEndpoint?) {
         val target = endpoint ?: SessionStore.apEndpoint() ?: return
         val gen = ++generation
+        // A saved hotspot session is useless without the hotspot binding (the system drops it when
+        // the app leaves the foreground). Re-join first instead of failing against an address we
+        // cannot route to.
+        if (target.hasHotspot && !isOnWifi(target.apSsid)) {
+            joinAp(target, gen)
+            return
+        }
         publish(Snapshot(State.SEARCHING, link = linkOf(target)))
         scope.launch {
             val result = client.auth(target, "")
