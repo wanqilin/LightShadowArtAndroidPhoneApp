@@ -213,6 +213,7 @@
     <string name="network_switch_timeout_note">等待超时：相框没有出现在局域网内。请确认手机已连上目标 Wi-Fi，然后重新点选该网络。</string>
     <string name="network_lan_not_found_note">已在这个网络里，但没有找到设备。请确认相框与手机连接的是同一个 Wi-Fi。</string>
     <string name="network_qr_stale_note">未能接入相框热点。请确认相框屏幕上正显示二维码；若刚重新出过码，请扫描当前这张。</string>
+    <string name="network_ap_dialog_hint">请在系统弹窗中点击「连接」以加入相框热点</string>
     <string name="network_state_connecting">连接中…</string>
     <string name="network_state_connected">已连接</string>
     <string name="network_state_disconnected">未连接</string>

@@ -189,6 +189,8 @@ class NetworkConnectionActivity : DeviceActivity() {
         tvDevice.isVisible = active
 
         val note = when {
+            snapshot.state == ConnectionManager.State.JOINING_AP ->
+                getString(R.string.network_ap_dialog_hint)
             busy -> getString(R.string.network_note_connecting)
             active -> ""
             snapshot.state == ConnectionManager.State.FAILED -> failureNote(snapshot.failure)

@@ -100,36 +100,17 @@ class HotspotConnector private constructor(context: Context) {
     /**
      * Join the hotspot, preferring a Wi-Fi suggestion.
      *
-     * A suggestion is associated by the system without the "connect to this network?" dialog, so a
-     * scan reaches the frame in seconds. Some OEM builds ignore app suggestions, so when the phone is
-     * still not on [ssid] after [SUGGESTION_TIMEOUT_MS] the specifier path (with its dialog) is used.
+     * The system confirmation dialog is unavoidable while the phone has another network with
+     * internet (a hotspot without internet is never chosen automatically). The page therefore tells
+     * the user to confirm it instead of waiting silently.
      */
     fun join(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
-        if (isOnWifi(ssid)) {
-            lastOutcome = Outcome.CONNECTED
-            notify(onResult, Result.success(Unit))
-            return
-        }
-        if (!addSuggestion(ssid, password)) {
-            connect(ssid, password, onResult)
-            return
-        }
-        Thread {
-            val deadline = System.currentTimeMillis() + SUGGESTION_TIMEOUT_MS
-            while (System.currentTimeMillis() < deadline) {
-                if (isOnWifi(ssid)) {
-                    lastOutcome = Outcome.CONNECTED
-                    Log.i(TAG, "suggestion join ok: $ssid")
-                    notify(onResult, Result.success(Unit))
-                    return@Thread
-                }
-                runCatching { Thread.sleep(400) }
-            }
-            Log.i(TAG, "suggestion did not associate in ${SUGGESTION_TIMEOUT_MS}ms, falling back")
-            mainHandler.post { connect(ssid, password, onResult) }
-        }.start()
+        // A Wi-Fi suggestion is only associated when the system thinks it is the best network; while
+        // the phone is on a network with internet (home Wi-Fi, mobile data) a suggestion without
+        // internet never wins, so waiting for it just delays the unavoidable confirmation dialog.
+        // The specifier path is therefore used directly; the page tells the user to tap "connect".
+        connect(ssid, password, onResult)
     }
-
     /** Withdraw the suggestion again so the phone does not auto-join the frame later */
     fun removeSuggestion(ssid: String, password: String) {
         if (ssid.isEmpty()) return
@@ -290,9 +271,6 @@ class HotspotConnector private constructor(context: Context) {
 
         /** System connection timeout, including time the user spends on the confirmation dialog */
         private const val REQUEST_TIMEOUT_MS = 30_000
-
-        /** How long a Wi-Fi suggestion may take before falling back to the specifier dialog */
-        private const val SUGGESTION_TIMEOUT_MS = 12_000L
 
         /** Fallback: turn the phone's hotspot-subnet address into the device address (last octet is always 1) */
         private const val HOST_SUFFIX = "1"

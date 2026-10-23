@@ -218,6 +218,7 @@
     <string name="network_switch_timeout_note">Timed out: the frame did not appear on the LAN. Make sure the phone is on the target Wi-Fi, then tap that network again.</string>
     <string name="network_lan_not_found_note">You are on this network but no frame was found. Make sure the frame and the phone use the same Wi-Fi.</string>
     <string name="network_qr_stale_note">Could not join the frame’s hotspot. Make sure the frame is showing its QR code — if it was just re-generated, scan the current one.</string>
+    <string name="network_ap_dialog_hint">Tap “Connect” in the system dialog to join the frame hotspot</string>
     <string name="network_state_connecting">Connecting…</string>
     <string name="network_state_connected">Connected</string>
     <string name="network_state_disconnected">Not connected</string>
