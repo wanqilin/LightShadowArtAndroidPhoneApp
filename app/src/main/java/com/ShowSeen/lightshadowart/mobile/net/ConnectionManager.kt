@@ -282,8 +282,10 @@ class ConnectionManager private constructor(context: Context) {
                     "lan discovery #$attempt took ${System.currentTimeMillis() - started}ms, found=${found != null}"
                 )
                 if (found != null) {
-                    authenticate(found, gen, sendStudioToken = false)
-                    return@launch
+                    // Only a device that reports itself on the LAN is a finished switch: the frame
+                    // can answer over a transient address while its own link is still coming up,
+                    // which made the card flash connected → disconnected → connected.
+                    if (authenticateForSwitch(found, gen)) return@launch
                 }
                 delay(POST_SWITCH_RETRY_MS)
             }
@@ -477,6 +479,25 @@ class ConnectionManager private constructor(context: Context) {
                 authenticate(found, gen, sendStudioToken = false)
             }
         }
+    }
+
+    /**
+     * Authenticate the device found during a switch, but only accept it once the device itself says
+     * it is on the LAN.
+     *
+     * @return true when the session was adopted (caller can stop looking); false means the device was
+     *         reachable but not settled yet, so the caller keeps scanning
+     */
+    private suspend fun authenticateForSwitch(endpoint: DeviceEndpoint, gen: Int): Boolean {
+        val result = client.auth(endpoint, "").getOrNull() ?: return false
+        if (gen != generation) return false
+        val status = client.networkStatus(endpoint, result.sessionId).getOrNull()
+        if (status == null || status.link != "lan") {
+            Log.i(TAG, "switch: device reachable but not on the LAN yet (link=${status?.link})")
+            return false
+        }
+        applyAuth(endpoint, result, announceStudioFolder = false)
+        return true
     }
 
     private fun authenticate(endpoint: DeviceEndpoint, gen: Int, sendStudioToken: Boolean) {
