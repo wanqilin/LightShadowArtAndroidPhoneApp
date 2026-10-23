@@ -215,7 +215,7 @@
     <string name="network_list_need_permission">Location permission is required to list nearby Wi-Fi networks</string>
     <string name="network_list_empty">No Wi-Fi networks found</string>
     <string name="network_list_location_off">Turn on system location, then refresh</string>
-    <string name="network_switch_timeout_note">The frame did not appear on the LAN, or the phone has not joined that Wi-Fi yet. Make sure the phone is on that network, then tap “Refresh connection”.</string>
+    <string name="network_switch_timeout_note">Timed out: the frame did not appear on the LAN. Make sure the phone is on the target Wi-Fi, then tap that network again.</string>
     <string name="network_lan_not_found_note">You are on this network but no frame was found. Make sure the frame and the phone use the same Wi-Fi.</string>
     <string name="network_qr_stale_note">Could not join the frame’s hotspot. Make sure the frame is showing its QR code — if it was just re-generated, scan the current one.</string>
     <string name="network_state_connecting">Connecting…</string>
