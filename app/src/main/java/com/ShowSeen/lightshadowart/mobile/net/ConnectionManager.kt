@@ -144,7 +144,7 @@ class ConnectionManager private constructor(context: Context) {
         cancelReconnect()
         if (endpoint.hasHotspot && !isOnWifi(endpoint.apSsid)) {
             publish(Snapshot(State.JOINING_AP, link = Link.AP))
-            hotspotConnector.connect(endpoint.apSsid, endpoint.apPassword) { result ->
+            hotspotConnector.join(endpoint.apSsid, endpoint.apPassword) { result ->
                 if (gen == generation) {
                     result.onSuccess {
                         SessionStore.rememberWifiSsid(endpoint.apSsid)
@@ -314,6 +314,8 @@ class ConnectionManager private constructor(context: Context) {
         // LAN alike. The device side (handover / QR) is confirmed afterwards and only feeds the
         // completion callback — waiting for it here kept the page on "connecting" for many seconds.
         stopHeartbeat()
+        // Stop auto-joining the frame hotspot once this session is over
+        hotspotConnector.removeSuggestion(SessionStore.lastApSsid, SessionStore.lastApPassword)
         SessionStore.clear()
         // Signing out rotates the device credentials: the stored token is dead, so drop it and let
         // the page ask for the new QR code instead of offering a reconnect that cannot work
@@ -468,8 +470,8 @@ class ConnectionManager private constructor(context: Context) {
      * without making a real failure feel endless.
      */
     private fun connectHotspot(endpoint: DeviceEndpoint, gen: Int, retried: Boolean) {
-        hotspotConnector.connect(endpoint.apSsid, endpoint.apPassword) { result ->
-            if (gen != generation) return@connect
+        hotspotConnector.join(endpoint.apSsid, endpoint.apPassword) { result ->
+            if (gen != generation) return@join
             result.onSuccess {
                 val host = hotspotConnector.boundGateway() ?: endpoint.host
                 val joined = endpoint.copy(host = host)
@@ -482,7 +484,7 @@ class ConnectionManager private constructor(context: Context) {
                         { if (gen == generation) connectHotspot(endpoint, gen, retried = true) },
                         AP_RETRY_DELAY_MS
                     )
-                    return@connect
+                    return@join
                 }
                 publish(
                     Snapshot(

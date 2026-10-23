@@ -6,7 +6,10 @@ import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.net.wifi.SupplicantState
+import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
+import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -94,6 +97,69 @@ class HotspotConnector private constructor(context: Context) {
      * Below Android 10 there is no [WifiNetworkSpecifier], so this fails right away
      * and the caller prompts the user to connect manually.
      */
+    /**
+     * Join the hotspot, preferring a Wi-Fi suggestion.
+     *
+     * A suggestion is associated by the system without the "connect to this network?" dialog, so a
+     * scan reaches the frame in seconds. Some OEM builds ignore app suggestions, so when the phone is
+     * still not on [ssid] after [SUGGESTION_TIMEOUT_MS] the specifier path (with its dialog) is used.
+     */
+    fun join(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
+        if (isOnWifi(ssid)) {
+            lastOutcome = Outcome.CONNECTED
+            notify(onResult, Result.success(Unit))
+            return
+        }
+        if (!addSuggestion(ssid, password)) {
+            connect(ssid, password, onResult)
+            return
+        }
+        Thread {
+            val deadline = System.currentTimeMillis() + SUGGESTION_TIMEOUT_MS
+            while (System.currentTimeMillis() < deadline) {
+                if (isOnWifi(ssid)) {
+                    lastOutcome = Outcome.CONNECTED
+                    Log.i(TAG, "suggestion join ok: $ssid")
+                    notify(onResult, Result.success(Unit))
+                    return@Thread
+                }
+                runCatching { Thread.sleep(400) }
+            }
+            Log.i(TAG, "suggestion did not associate in ${SUGGESTION_TIMEOUT_MS}ms, falling back")
+            mainHandler.post { connect(ssid, password, onResult) }
+        }.start()
+    }
+
+    /** Withdraw the suggestion again so the phone does not auto-join the frame later */
+    fun removeSuggestion(ssid: String, password: String) {
+        if (ssid.isEmpty()) return
+        val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return
+        runCatching {
+            val builder = WifiNetworkSuggestion.Builder().setSsid(ssid)
+            if (password.isNotEmpty()) builder.setWpa2Passphrase(password)
+            val status = wifiManager.removeNetworkSuggestions(listOf(builder.build()))
+            Log.i(TAG, "removeNetworkSuggestions($ssid) status=$status")
+        }.onFailure { Log.w(TAG, "removeNetworkSuggestions failed: ${it.message}") }
+    }
+
+    private fun addSuggestion(ssid: String, password: String): Boolean {
+        val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return false
+        return runCatching {
+            val builder = WifiNetworkSuggestion.Builder().setSsid(ssid)
+            if (password.isNotEmpty()) builder.setWpa2Passphrase(password)
+            val status = wifiManager.addNetworkSuggestions(listOf(builder.build()))
+            Log.i(TAG, "addNetworkSuggestions($ssid) status=$status")
+            status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS
+        }.getOrDefault(false)
+    }
+
+    private fun isOnWifi(ssid: String): Boolean {
+        val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return false
+        val info = runCatching { wifiManager.connectionInfo }.getOrNull() ?: return false
+        val current = info.ssid?.trim('"').orEmpty()
+        return current == ssid && info.supplicantState == SupplicantState.COMPLETED
+    }
+
     fun connect(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
         val manager = connectivityManager
         if (manager == null) {
@@ -224,6 +290,9 @@ class HotspotConnector private constructor(context: Context) {
 
         /** System connection timeout, including time the user spends on the confirmation dialog */
         private const val REQUEST_TIMEOUT_MS = 30_000
+
+        /** How long a Wi-Fi suggestion may take before falling back to the specifier dialog */
+        private const val SUGGESTION_TIMEOUT_MS = 12_000L
 
         /** Fallback: turn the phone's hotspot-subnet address into the device address (last octet is always 1) */
         private const val HOST_SUFFIX = "1"
