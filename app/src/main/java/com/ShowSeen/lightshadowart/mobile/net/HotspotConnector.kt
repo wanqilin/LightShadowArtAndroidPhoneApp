@@ -223,7 +223,7 @@ class HotspotConnector private constructor(context: Context) {
         private const val TAG = "HotspotConnector"
 
         /** System connection timeout, including time the user spends on the confirmation dialog */
-        private const val REQUEST_TIMEOUT_MS = 60_000
+        private const val REQUEST_TIMEOUT_MS = 30_000
 
         /** Fallback: turn the phone's hotspot-subnet address into the device address (last octet is always 1) */
         private const val HOST_SUFFIX = "1"

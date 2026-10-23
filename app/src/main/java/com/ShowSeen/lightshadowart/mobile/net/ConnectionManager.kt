@@ -91,6 +91,10 @@ class ConnectionManager private constructor(context: Context) {
     private val app = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** A Wi-Fi push is in flight: the link is expected to drop, do not turn that into "unstable" */
+    @Volatile
+    private var switchInFlight = false
     private val listeners = CopyOnWriteArrayList<Listener>()
 
     /** HTTP client shared with the screens (they still call media / control endpoints themselves) */
@@ -223,9 +227,11 @@ class ConnectionManager private constructor(context: Context) {
         }
         val gen = ++generation
         cancelReconnect()
+        switchInFlight = true
         publish(Snapshot(State.SWITCHING, link = snapshot.link))
         scope.launch {
             val result = client.wifiConfig(endpoint, sessionId, ssid, password)
+            switchInFlight = false
             if (gen != generation) {
                 onResult(false)
                 return@launch
@@ -451,23 +457,41 @@ class ConnectionManager private constructor(context: Context) {
 
     private fun joinAp(endpoint: DeviceEndpoint, gen: Int) {
         publish(Snapshot(State.JOINING_AP, link = Link.AP))
+        connectHotspot(endpoint, gen, retried = false)
+    }
+
+    /**
+     * Join the hotspot, retrying once.
+     *
+     * The first request can race the device as it restarts its hotspot after a pairing reset (the
+     * system answers "unavailable" although the AP is up a moment later). One retry covers that
+     * without making a real failure feel endless.
+     */
+    private fun connectHotspot(endpoint: DeviceEndpoint, gen: Int, retried: Boolean) {
         hotspotConnector.connect(endpoint.apSsid, endpoint.apPassword) { result ->
-            if (gen == generation) {
-                result.onSuccess {
-                    val host = hotspotConnector.boundGateway() ?: endpoint.host
-                    val joined = endpoint.copy(host = host)
-                    SessionStore.rememberApCredentials(joined)
-                    authenticate(joined, gen, sendStudioToken = false)
-                }.onFailure { error ->
-                    publish(
-                        Snapshot(
-                            State.FAILED,
-                            failure = if (error is UnsupportedOperationException) Failure.AP_PERMISSION else Failure.AP_NOT_FOUND,
-                            link = Link.NONE,
-                            error = error.message
-                        )
+            if (gen != generation) return@connect
+            result.onSuccess {
+                val host = hotspotConnector.boundGateway() ?: endpoint.host
+                val joined = endpoint.copy(host = host)
+                SessionStore.rememberApCredentials(joined)
+                authenticate(joined, gen, sendStudioToken = false)
+            }.onFailure { error ->
+                if (!retried && error !is UnsupportedOperationException) {
+                    Log.i(TAG, "hotspot join failed, retrying once: ${error.message}")
+                    mainHandler.postDelayed(
+                        { if (gen == generation) connectHotspot(endpoint, gen, retried = true) },
+                        AP_RETRY_DELAY_MS
                     )
+                    return@connect
                 }
+                publish(
+                    Snapshot(
+                        State.FAILED,
+                        failure = if (error is UnsupportedOperationException) Failure.AP_PERMISSION else Failure.AP_NOT_FOUND,
+                        link = Link.NONE,
+                        error = error.message
+                    )
+                )
             }
         }
     }
@@ -606,6 +630,9 @@ class ConnectionManager private constructor(context: Context) {
      * link — the switch may have rolled back on the device.
      */
     private fun handleUnreachable() {
+        // The hotspot is stopped by the device right after a push; a heartbeat failure here is the
+        // expected hand-over, not an unstable link
+        if (switchInFlight) return
         if (SessionStore.pendingLanSsid.isNotEmpty()) {
             awaitDeviceOnLan()
             return
@@ -715,6 +742,9 @@ class ConnectionManager private constructor(context: Context) {
 
         /** Total window for the post-switch discovery retries (device and phone switch separately) */
         private const val POST_SWITCH_WINDOW_MS = 120_000L
+
+        /** Delay before retrying a failed hotspot join once */
+        private const val AP_RETRY_DELAY_MS = 1_500L
 
         /** Pause between two LAN discovery rounds while waiting for the device to appear */
         private const val POST_SWITCH_RETRY_MS = 2_000L
