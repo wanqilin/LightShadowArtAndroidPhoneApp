@@ -303,7 +303,19 @@ class ConnectionManager private constructor(context: Context) {
         val sessionId = SessionStore.sessionId
         val gen = ++generation
         cancelReconnect()
-        publish(Snapshot(State.DISCONNECTING))
+
+        // Reset the local state first: signing out must show "not connected" at once, on AP and on
+        // LAN alike. The device side (handover / QR) is confirmed afterwards and only feeds the
+        // completion callback — waiting for it here kept the page on "connecting" for many seconds.
+        stopHeartbeat()
+        hotspotConnector.release()
+        SessionStore.clear()
+        // Signing out rotates the device credentials: the stored token is dead, so drop it and let
+        // the page ask for the new QR code instead of offering a reconnect that cannot work
+        if (handover) SessionStore.forgetDeviceToken()
+        publish(Snapshot(State.IDLE))
+        listeners.forEach { it.onSessionGone() }
+
         scope.launch {
             val error = if (endpoint != null && sessionId != null) {
                 if (handover) {
@@ -315,14 +327,6 @@ class ConnectionManager private constructor(context: Context) {
                 null
             }
             if (gen != generation) return@launch
-            stopHeartbeat()
-            hotspotConnector.release()
-            SessionStore.clear()
-            // Signing out rotates the device credentials: the stored token is dead, so drop it and
-            // let the page ask for the new QR code instead of offering a reconnect that cannot work
-            if (handover) SessionStore.forgetDeviceToken()
-            publish(Snapshot(State.IDLE))
-            listeners.forEach { it.onSessionGone() }
             listeners.forEach { it.onDisconnectFinished(handover, error) }
         }
     }
