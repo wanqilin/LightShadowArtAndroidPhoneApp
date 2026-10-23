@@ -308,7 +308,6 @@ class ConnectionManager private constructor(context: Context) {
         // LAN alike. The device side (handover / QR) is confirmed afterwards and only feeds the
         // completion callback — waiting for it here kept the page on "connecting" for many seconds.
         stopHeartbeat()
-        hotspotConnector.release()
         SessionStore.clear()
         // Signing out rotates the device credentials: the stored token is dead, so drop it and let
         // the page ask for the new QR code instead of offering a reconnect that cannot work
@@ -326,6 +325,9 @@ class ConnectionManager private constructor(context: Context) {
             } else {
                 null
             }
+            // Only now may the process leave the hotspot: releasing it earlier would cut the very
+            // request that asks the frame to show its QR code, and the sign-out would look silent.
+            hotspotConnector.release()
             if (gen != generation) return@launch
             listeners.forEach { it.onDisconnectFinished(handover, error) }
         }
