@@ -151,7 +151,22 @@ class ConnectionManager private constructor(context: Context) {
     fun connect(endpoint: DeviceEndpoint) {
         val gen = ++generation
         cancelReconnect()
-        if (endpoint.hasHotspot && !isOnWifi(endpoint.apSsid)) {
+
+        // A different token means a new pairing took over (the frame was strongly reset and shows a
+        // fresh code). The old link and session are void even when the phone still reports the same
+        // hotspot as connected — scanning the new code must replace the whole connection, not
+        // authenticate over the dead one.
+        val takeover = endpoint.deviceToken.isNotEmpty() &&
+            SessionStore.lastDeviceToken.isNotEmpty() &&
+            endpoint.deviceToken != SessionStore.lastDeviceToken
+        if (takeover) {
+            Log.i(TAG, "new pairing takes over: resetting the old link and session")
+            stopHeartbeat()
+            hotspotConnector.release()
+            SessionStore.clear()
+        }
+
+        if (endpoint.hasHotspot && (takeover || !isOnWifi(endpoint.apSsid))) {
             publish(Snapshot(State.JOINING_AP, link = Link.AP))
             hotspotConnector.join(endpoint.apSsid, endpoint.apPassword) { result ->
                 if (gen == generation) {
