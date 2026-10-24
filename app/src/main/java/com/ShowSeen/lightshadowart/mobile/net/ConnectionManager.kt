@@ -1,6 +1,7 @@
 package com.ShowSeen.lightshadowart.mobile.net
 
 import android.content.Context
+import android.os.SystemClock
 import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
@@ -95,6 +96,14 @@ class ConnectionManager private constructor(context: Context) {
     /** A Wi-Fi push is in flight: the link is expected to drop, do not turn that into "unstable" */
     @Volatile
     private var switchInFlight = false
+
+    /**
+     * When the current link was adopted (monotonic). A freshly adopted link gets [LINK_SETTLE_MS]
+     * before a failed heartbeat may declare it unstable: during a hotspot → LAN hand-over the first
+     * heartbeats can still hit the network transition, and flashing "unstable" there is wrong.
+     */
+    @Volatile
+    private var linkSettledAtMs = 0L
     private val listeners = CopyOnWriteArrayList<Listener>()
 
     /** HTTP client shared with the screens (they still call media / control endpoints themselves) */
@@ -578,6 +587,7 @@ class ConnectionManager private constructor(context: Context) {
             SessionStore.updateParams(heartbeat.params)
         }
         publish(Snapshot(State.CONNECTED, link = linkOf(effective)))
+        linkSettledAtMs = SystemClock.elapsedRealtime()
         startHeartbeat()
         listeners.forEach { it.onSessionReady() }
         if (announceStudioFolder && SessionStore.inStudioMode) {
@@ -600,7 +610,12 @@ class ConnectionManager private constructor(context: Context) {
                         if (error is SessionExpiredException) {
                             onUnauthorized()
                         } else if (snapshot.state == State.CONNECTED) {
-                            handleUnreachable()
+                            val settling = SystemClock.elapsedRealtime() - linkSettledAtMs < LINK_SETTLE_MS
+                            if (settling) {
+                                Log.i(TAG, "heartbeat failed while the new link is settling, retrying")
+                            } else {
+                                handleUnreachable()
+                            }
                         }
                     }
                 }
@@ -736,6 +751,9 @@ class ConnectionManager private constructor(context: Context) {
 
         /** Total window for the post-switch discovery retries (device and phone switch separately) */
         private const val POST_SWITCH_WINDOW_MS = 120_000L
+
+        /** A newly adopted link is not declared unstable for this long */
+        private const val LINK_SETTLE_MS = 15_000L
 
         /** Delay before retrying a failed hotspot join once */
         private const val AP_RETRY_DELAY_MS = 1_500L
