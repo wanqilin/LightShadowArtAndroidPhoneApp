@@ -99,6 +99,14 @@ class ConnectionManager private constructor(context: Context) {
     private var switchInFlight = false
 
     /**
+     * A pairing (scan) is driving the connection. Foreground restore must not start its own hotspot
+     * join meanwhile: that second request cancels the one the scan just started, and the system tells
+     * the user "the app cancelled the request".
+     */
+    @Volatile
+    private var pairingInProgress = false
+
+    /**
      * When the current link was adopted (monotonic). A freshly adopted link gets [LINK_SETTLE_MS]
      * before a failed heartbeat may declare it unstable: during a hotspot → LAN hand-over the first
      * heartbeats can still hit the network transition, and flashing "unstable" there is wrong.
@@ -151,6 +159,7 @@ class ConnectionManager private constructor(context: Context) {
     /** Scan result: join the device hotspot if needed, then exchange the token for a session */
     fun connect(endpoint: DeviceEndpoint) {
         val gen = ++generation
+        pairingInProgress = true
         cancelReconnect()
 
         // A different token means a new pairing took over (the frame was strongly reset and shows a
@@ -171,6 +180,7 @@ class ConnectionManager private constructor(context: Context) {
             publish(Snapshot(State.JOINING_AP, link = Link.AP))
             hotspotConnector.join(endpoint.apSsid, endpoint.apPassword) { result ->
                 if (gen == generation) {
+                    pairingInProgress = false
                     result.onSuccess {
                         SessionStore.rememberWifiSsid(endpoint.apSsid)
                         SessionStore.rememberApCredentials(endpoint)
@@ -188,6 +198,7 @@ class ConnectionManager private constructor(context: Context) {
                 }
             }
         } else {
+            pairingInProgress = false
             if (endpoint.hasHotspot) {
                 SessionStore.rememberWifiSsid(endpoint.apSsid)
                 SessionStore.rememberApCredentials(endpoint)
@@ -436,6 +447,7 @@ class ConnectionManager private constructor(context: Context) {
      * restart is reused when it has not expired; otherwise the last link is retried silently.
      */
     private fun restoreSessionIfNeeded() {
+        if (pairingInProgress) return
         if (snapshot.isBusy || snapshot.state == State.CONNECTED) return
         // A switch was pushed but never completed (the user left to pick the network, or the process
         // was killed): resume looking for the device on the LAN
