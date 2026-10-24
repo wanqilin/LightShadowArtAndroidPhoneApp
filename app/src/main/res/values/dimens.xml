@@ -52,7 +52,7 @@
     <dimen name="dashboard_brand_gap">32dp</dimen>
     <dimen name="dashboard_brand_top_offset">54dp</dimen>
     <!-- Subtitle under the logo -->
-    <dimen name="text_dashboard_subtitle">18sp</dimen>
+    <dimen name="text_dashboard_subtitle">16sp</dimen>
     <!-- Brand state dot, moved to the page's top-right corner and nudged inwards -->
     <dimen name="dashboard_dot_size">8dp</dimen>
     <dimen name="dashboard_dot_inset">12dp</dimen>
