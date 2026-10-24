@@ -107,12 +107,33 @@ class HotspotConnector private constructor(context: Context) {
      * the user to confirm it instead of waiting silently.
      */
     fun join(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
-        // A Wi-Fi suggestion is only associated when the system thinks it is the best network; while
-        // the phone is on a network with internet (home Wi-Fi, mobile data) a suggestion without
-        // internet never wins, so waiting for it just delays the unavoidable confirmation dialog.
-        // The specifier path is therefore used directly; the page tells the user to tap "connect".
-        connect(ssid, password, onResult)
+        if (isOnWifi(ssid)) {
+            notify(onResult, Result.success(Unit))
+            return
+        }
+        // Right after a pairing reset the hotspot has just restarted: a specifier request made before
+        // its SSID is in the scan cache fails at once ("out of range"), which is why the first scan
+        // after a strong pull failed while the second worked. Wait until it is visible, then ask.
+        Thread {
+            val visible = awaitSsidVisible(ssid, SSID_VISIBLE_TIMEOUT_MS)
+            Log.i(TAG, "join $ssid: visible=$visible")
+            mainHandler.post { connect(ssid, password, onResult) }
+        }.start()
     }
+
+    /** Poll the scan results until [ssid] shows up; true when seen (or when it cannot be checked) */
+    private fun awaitSsidVisible(ssid: String, timeoutMs: Long): Boolean {
+        val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return true
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            val results = runCatching { wifiManager.scanResults }.getOrNull()
+            if (results?.any { it.SSID?.trim('"') == ssid } == true) return true
+            runCatching { wifiManager.startScan() }
+            runCatching { Thread.sleep(600) }
+        }
+        return false
+    }
+
     /** Withdraw the suggestion again so the phone does not auto-join the frame later */
     fun removeSuggestion(ssid: String, password: String) {
         if (ssid.isEmpty()) return
@@ -143,7 +164,7 @@ class HotspotConnector private constructor(context: Context) {
         return current == ssid && info.supplicantState == SupplicantState.COMPLETED
     }
 
-    fun connect(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
+    fun connect(ssid: String, password: String, onResult: (Result<Unit>) -> Unit, retried: Boolean = false) {
         val manager = connectivityManager
         if (manager == null) {
             notify(onResult, Result.failure(IllegalStateException("系统不支持 Wi-Fi 连接")))
@@ -201,6 +222,16 @@ class HotspotConnector private constructor(context: Context) {
             }
 
             override fun onUnavailable() {
+                // The request completed (not cancelled), so one retry is safe and covers a hotspot
+                // that was still settling when the first attempt ran
+                if (!retried) {
+                    Log.i(TAG, "hotspot unavailable, retrying once: $ssid")
+                    mainHandler.postDelayed(
+                        { connect(ssid, password, onResult, retried = true) },
+                        HOTSPOT_RETRY_DELAY_MS
+                    )
+                    return
+                }
                 lastOutcome = Outcome.UNAVAILABLE
                 Log.w(TAG, "hotspot unavailable: $ssid")
                 finish(Result.failure(IllegalStateException("未连接到设备热点")))
@@ -305,6 +336,12 @@ class HotspotConnector private constructor(context: Context) {
 
         /** System connection timeout, including time the user spends on the confirmation dialog */
         private const val REQUEST_TIMEOUT_MS = 30_000
+
+        /** Give the hotspot time to appear in the scan results after a pairing reset */
+        private const val SSID_VISIBLE_TIMEOUT_MS = 8_000L
+
+        /** Delay before retrying a completed-but-unavailable hotspot request */
+        private const val HOTSPOT_RETRY_DELAY_MS = 2_000L
 
         /** Fallback: turn the phone's hotspot-subnet address into the device address (last octet is always 1) */
         private const val HOST_SUFFIX = "1"
