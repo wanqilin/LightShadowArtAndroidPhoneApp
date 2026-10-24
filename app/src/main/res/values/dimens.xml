@@ -102,8 +102,9 @@
     <dimen name="gallery_bottom_inset">116dp</dimen>
     <!-- Bottom bar gap: the 10dp baseline (item_gap) plus the requested 24dp lift -->
     <dimen name="gallery_toolbar_bottom_gap">34dp</dimen>
-    <!-- Breathing room under the gallery grid: the last visible row must not sit on the screen edge -->
-    <dimen name="gallery_grid_bottom_gap">10dp</dimen>
+    <!-- Breathing room under the gallery grid: the last visible row must not sit on the screen edge
+         (10dp baseline plus the 10dp increase requested on 2026-10-24) -->
+    <dimen name="gallery_grid_bottom_gap">20dp</dimen>
     <!-- Compact bottom bar: the pill hugs its items (no full-width stretch) -->
     <dimen name="gallery_toolbar_padding">6dp</dimen>
     <dimen name="gallery_toolbar_item_width">72dp</dimen>
