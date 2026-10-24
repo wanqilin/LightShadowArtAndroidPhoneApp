@@ -2,11 +2,11 @@ package com.ShowSeen.lightshadowart.mobile.net
 
 import android.content.Context
 import android.os.SystemClock
-import android.net.wifi.SupplicantState
 import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.ShowSeen.lightshadowart.mobile.AppConfig
 import com.ShowSeen.lightshadowart.mobile.SessionStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +42,13 @@ class ConnectionManager private constructor(context: Context) {
         DEGRADED,
         DISCONNECTING,
         FAILED,
+
+        /**
+         * Another phone is driving the frame: a silent recovery was refused (409 `occupied`) and must
+         * not be retried, otherwise two paired phones kick each other out on every foreground
+         * (PRD 16.2 NW-18). Only a scan takes the seat back.
+         */
+        OCCUPIED,
         NEED_BIND
     }
 
@@ -54,7 +61,8 @@ class ConnectionManager private constructor(context: Context) {
         LAN_SWITCH_TIMEOUT,
         AUTH_FAILED,
         TOKEN_REJECTED,
-        UNREACHABLE
+        UNREACHABLE,
+        OCCUPIED
     }
 
     enum class Link { NONE, AP, LAN }
@@ -141,6 +149,31 @@ class ConnectionManager private constructor(context: Context) {
     /** Monotonic deadline of the running window; 0 when no window is active */
     private var switchDeadlineMs = 0L
 
+    /** The whole app is in the foreground: [establish] and the recheck only run then */
+    @Volatile
+    private var foreground = false
+
+    /** A hotspot join was already requested during this foreground visit (PRD 16.2 NW-16) */
+    private var joinAttempted = false
+
+    /**
+     * A hotspot join is being prepared or is in flight.
+     *
+     * Nothing may start a second one or release the binding meanwhile: the system reports the first
+     * one as cancelled by the app ("该应用已取消选择设备的请求") and the pairing fails.
+     */
+    @Volatile
+    private var joinInFlight = false
+
+    /** Last successful heartbeat / auth (monotonic): a "connected" older than this is not trusted */
+    @Volatile
+    private var lastOkAtMs = 0L
+
+    /** Throttle for repeated establish attempts (network callbacks can arrive in bursts) */
+    private var lastEstablishAtMs = 0L
+
+    private var recheckJob: Job? = null
+
     /** Guards against several silent re-auths racing on repeated 401s */
     private var reauthenticating = false
 
@@ -208,41 +241,11 @@ class ConnectionManager private constructor(context: Context) {
     }
 
     /**
-     * User pressed "reconnect": retry the last link only (PRD NW-5). Without a recorded link, use the
-     * saved endpoint once, then fall back to LAN discovery.
+     * User pressed "reconnect"-equivalent intent: rebuild the connection now.
+     *
+     * Kept as a thin alias of [establish] so no screen has to know about discovery order.
      */
-    fun reconnect() {
-        val gen = ++generation
-        cancelReconnect()
-        when (SessionStore.lastLink) {
-            SessionStore.LINK_AP -> {
-                val ap = SessionStore.apEndpoint()
-                if (ap == null) {
-                    publish(Snapshot(State.FAILED, Failure.NO_TARGET))
-                    return
-                }
-                // A push is still pending: the device was switched, so the hotspot may be gone and
-                // the LAN is where it has to be found
-                if (SessionStore.pendingLanSsid.isNotEmpty()) {
-                    awaitDeviceOnLan()
-                    return
-                }
-                if (isOnWifi(ap.apSsid)) {
-                    val host = hotspotConnector.boundGateway() ?: ap.host
-                    authenticate(ap.copy(host = host), gen, sendStudioToken = false)
-                } else {
-                    joinAp(ap, gen)
-                }
-            }
-
-            SessionStore.LINK_LAN -> discoverLan(gen)
-
-            else -> {
-                val endpoint = SessionStore.endpoint
-                if (endpoint != null) authenticate(endpoint, gen, sendStudioToken = false) else publish(Snapshot(State.FAILED, Failure.NO_TARGET))
-            }
-        }
-    }
+    fun reconnect() = establish()
 
     /**
      * Push a target Wi-Fi to the device (PRD NW-4).
@@ -392,12 +395,19 @@ class ConnectionManager private constructor(context: Context) {
         }
         reauthenticating = true
         val gen = generation
+        val link = snapshot.link
         scope.launch {
-            val result = client.auth(endpoint, "")
+            val result = client.auth(
+                endpoint,
+                "",
+                AppConfig.AUTH_INTENT_RECOVER,
+                SessionStore.clientId
+            )
             reauthenticating = false
             if (gen != generation) return@launch
-            result.onSuccess { applyAuth(endpoint, it, announceStudioFolder = false) }
-                .onFailure { recoverAfterUnreachable(it) }
+            result.onSuccess {
+                applyAuth(endpoint, it, announceStudioFolder = false, link = link)
+            }.onFailure { recoverAfterUnreachable(it) }
         }
     }
 
@@ -405,13 +415,18 @@ class ConnectionManager private constructor(context: Context) {
      * The saved endpoint could not be reached.
      *
      * A 401 really means the pairing was reset (the device rotates its token), so the session is
-     * dropped. Any other failure is a network problem: the device may simply have been switched to
-     * the network we pushed, so if the phone is on that network look for it on the LAN before
-     * giving up — and never wipe the token because of a timeout.
+     * dropped. 409 means another phone owns the seat and must not be displaced. Any other failure is a
+     * network problem: the device may simply have been switched to the network we pushed, so if the
+     * phone is on that network look for it on the LAN before giving up — and never wipe the token
+     * because of a timeout.
      */
     private fun recoverAfterUnreachable(error: Throwable) {
         if (error is SessionExpiredException) {
             clearSession(Failure.TOKEN_REJECTED)
+            return
+        }
+        if (error is DeviceOccupiedException) {
+            publish(Snapshot(State.OCCUPIED, Failure.OCCUPIED, snapshot.link))
             return
         }
         if (SessionStore.pendingLanSsid.isNotEmpty()) {
@@ -428,11 +443,16 @@ class ConnectionManager private constructor(context: Context) {
     fun onForeground() {
         backgroundJob?.cancel()
         backgroundJob = null
-        restoreSessionIfNeeded()
+        foreground = true
+        joinAttempted = false
+        establish()
         startHeartbeat()
+        startRecheck()
     }
 
     fun onBackground() {
+        foreground = false
+        stopRecheck()
         if (backgroundJob?.isActive == true) return
         backgroundJob = scope.launch {
             // Grace covers the frames the user does not perceive as "leaving" (system pickers and
@@ -442,77 +462,147 @@ class ConnectionManager private constructor(context: Context) {
         }
     }
 
+    /** A network became usable again (Wi-Fi rejoined, mobile data back): rebuild right away */
+    fun onNetworkAvailable() {
+        if (!foreground) return
+        // A new network is a genuinely new opportunity: the one hotspot join per foreground may run
+        joinAttempted = false
+        establish()
+    }
+
     /**
-     * Resume the persisted session without user action (PRD NW-6): a session saved across a process
-     * restart is reused when it has not expired; otherwise the last link is retried silently.
+     * Rebuild the connection without user action (PRD 16.2 NW-15 / NW-16, architecture 14.2).
+     *
+     * Ordered by how much it disturbs the user, because the frame is reachable in three different
+     * ways and only the last one needs a system dialog:
+     * 1. the hotspot we are already on (bind the process, use its gateway);
+     * 2. LAN discovery — a frame that rebooted may hold a different DHCP address, so the saved
+     *    endpoint is worthless and the pairing token is the only identity that matters;
+     * 3. one system-confirmed hotspot join per foreground visit.
+     *
+     * @param quiet used by the periodic recheck: it must not flash "connecting" on an idle screen
      */
-    private fun restoreSessionIfNeeded() {
+    fun establish(quiet: Boolean = false) {
         if (pairingInProgress) return
-        if (snapshot.isBusy || snapshot.state == State.CONNECTED) return
-        // A switch was pushed but never completed (the user left to pick the network, or the process
-        // was killed): resume looking for the device on the LAN
+        if (snapshot.isBusy) return
+        // A join is being prepared: a second attempt (or a release) would make the system reject it
+        if (joinInFlight) return
+        // Another phone is driving the frame; only a scan may take the seat back (NW-18)
+        if (snapshot.state == State.OCCUPIED) return
+        // The pairing token was rejected: retrying silently can only fail again, the user has to scan
+        if (snapshot.state == State.NEED_BIND) return
+        if (!SessionStore.hasTarget) {
+            // Signed out / pairing reset: there is no identity left to recover with
+            if (snapshot.state != State.IDLE) publish(Snapshot(State.IDLE))
+            return
+        }
+        // A switch is still pending: the device has left the hotspot, so keep looking on the LAN
         if (SessionStore.pendingLanSsid.isNotEmpty()) {
             awaitDeviceOnLan()
             return
         }
-        if (SessionStore.isActive) {
-            // A session survived a process restart: show it as connected and let the heartbeat prove
-            // reachability (a failure moves it to DEGRADED, then FAILED)
-            publish(Snapshot(State.CONNECTED, link = linkFromLastSession()))
-            startHeartbeat()
+        // A link younger than one heartbeat round trip is trusted; an older one is re-verified
+        if (snapshot.state == State.CONNECTED &&
+            SystemClock.elapsedRealtime() - lastOkAtMs < LINK_STALE_MS
+        ) {
             return
         }
-        if (SessionStore.lastDeviceToken.isEmpty()) return
-        val endpoint = SessionStore.endpoint
-        if (endpoint != null) reauthenticateSaved(endpoint)
-    }
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastEstablishAtMs < ESTABLISH_THROTTLE_MS) return
+        lastEstablishAtMs = now
 
-    private fun linkFromLastSession(): Link = when (SessionStore.lastLink) {
-        SessionStore.LINK_AP -> Link.AP
-        SessionStore.LINK_LAN -> Link.LAN
-        else -> Link.NONE
-    }
-
-    private fun reauthenticateSaved(endpoint: DeviceEndpoint?) {
-        val target = endpoint ?: SessionStore.apEndpoint() ?: return
         val gen = ++generation
-        // A saved hotspot session is useless without the hotspot binding (the system drops it when
-        // the app leaves the foreground). Re-join first instead of failing against an address we
-        // cannot route to.
-        if (target.hasHotspot && !isOnWifi(target.apSsid)) {
-            joinAp(target, gen)
-            return
-        }
-        publish(Snapshot(State.SEARCHING, link = linkOf(target)))
+        cancelReconnect()
+        if (!quiet) publish(Snapshot(State.SEARCHING, link = Link.LAN))
         scope.launch {
-            val result = client.auth(target, "")
+            val ap = SessionStore.apEndpoint()
+            // 1. Still on the frame hotspot: cheapest and completely silent
+            if (ap != null && SessionStore.lastLink == SessionStore.LINK_AP && isOnWifi(ap.apSsid)) {
+                val host = hotspotConnector.bindToCurrentWifi(ap.apSsid) ?: ap.host
+                authenticate(ap.copy(host = host), gen, false, AppConfig.AUTH_INTENT_RECOVER, Link.AP)
+                return@launch
+            }
+            // Discovery must search the LAN, so drop a hotspot binding that points at another network
+            if (hotspotConnector.isConnected) hotspotConnector.release()
+            // 2. LAN discovery (mDNS, then the local /24): no dialog, survives an address change
+            val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, DISCOVER_TIMEOUT_MS)
             if (gen != generation) return@launch
-            result.onSuccess { applyAuth(target, it, announceStudioFolder = false) }
-                .onFailure { error ->
-                    // No session yet: report the real reason; a timeout must not look like a reset
-                    recoverAfterUnreachable(error)
-                }
+            if (found != null) {
+                authenticate(found, gen, false, AppConfig.AUTH_INTENT_RECOVER, Link.LAN)
+                return@launch
+            }
+            if (ap == null) {
+                if (!quiet) publish(Snapshot(State.FAILED, Failure.NO_TARGET))
+                return@launch
+            }
+            // 3. On the hotspot SSID but not bound to it: bind, still silent
+            if (isOnWifi(ap.apSsid)) {
+                val host = hotspotConnector.bindToCurrentWifi(ap.apSsid) ?: ap.host
+                authenticate(ap.copy(host = host), gen, false, AppConfig.AUTH_INTENT_RECOVER, Link.AP)
+                return@launch
+            }
+            // 4. Ask the system to join, at most once per foreground visit. Only when the hotspot is
+            // actually broadcasting: a LAN-only frame has none, and the dialog would be pure noise.
+            val visible = hotspotConnector.isSsidVisible(ap.apSsid)
+            if (joinAttempted || !visible) {
+                if (!visible) Log.i(TAG, "hotspot ${ap.apSsid} not in the scan results, skip the join")
+                if (!quiet) publish(Snapshot(State.FAILED, Failure.AP_NOT_FOUND))
+                return@launch
+            }
+            joinAttempted = true
+            joinAp(ap, gen, AppConfig.AUTH_INTENT_RECOVER)
         }
+    }
+
+    /**
+     * Slow recheck while the app stays in the foreground.
+     *
+     * Discovery is free to retry — it never shows a system dialog — so a frame that comes back a
+     * minute after the phone (reboot, router rejoin) is picked up without the user doing anything.
+     */
+    private fun startRecheck() {
+        if (recheckJob?.isActive == true) return
+        recheckJob = scope.launch {
+            while (isActive) {
+                delay(RECHECK_INTERVAL_MS)
+                if (!foreground) continue
+                when (snapshot.state) {
+                    State.FAILED, State.IDLE, State.DEGRADED -> establish(quiet = true)
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    private fun stopRecheck() {
+        recheckJob?.cancel()
+        recheckJob = null
     }
 
     // ------------------------------------------------------------------
     // Internals
     // ------------------------------------------------------------------
 
-    private fun joinAp(endpoint: DeviceEndpoint, gen: Int) {
+    private fun joinAp(
+        endpoint: DeviceEndpoint,
+        gen: Int,
+        intent: String = AppConfig.AUTH_INTENT_BIND
+    ) {
+        joinInFlight = true
         publish(Snapshot(State.JOINING_AP, link = Link.AP))
-        connectHotspot(endpoint, gen)
+        connectHotspot(endpoint, gen, intent)
     }
 
     /** Join the hotspot; one request only, so the system dialog is never cancelled by a retry */
-    private fun connectHotspot(endpoint: DeviceEndpoint, gen: Int) {
+    private fun connectHotspot(endpoint: DeviceEndpoint, gen: Int, intent: String) {
         hotspotConnector.join(endpoint.apSsid, endpoint.apPassword) { result ->
+            joinInFlight = false
             if (gen != generation) return@join
             result.onSuccess {
                 val host = hotspotConnector.boundGateway() ?: endpoint.host
                 val joined = endpoint.copy(host = host)
                 SessionStore.rememberApCredentials(joined)
-                authenticate(joined, gen, sendStudioToken = false)
+                authenticate(joined, gen, sendStudioToken = false, intent = intent, link = Link.AP)
             }.onFailure { error ->
                 publish(
                     Snapshot(
@@ -522,21 +612,6 @@ class ConnectionManager private constructor(context: Context) {
                         error = error.message
                     )
                 )
-            }
-        }
-    }
-
-    private fun discoverLan(gen: Int) {
-        publish(Snapshot(State.SEARCHING, link = Link.LAN))
-        scope.launch {
-            // The hotspot request may still be binding this process; drop it so discovery runs on the LAN
-            hotspotConnector.release()
-            val found = locator.findLanEndpoint(SessionStore.lastDeviceToken, DISCOVER_TIMEOUT_MS)
-            if (gen != generation) return@launch
-            if (found == null) {
-                publish(Snapshot(State.FAILED, Failure.LAN_NOT_FOUND))
-            } else {
-                authenticate(found, gen, sendStudioToken = false)
             }
         }
     }
@@ -556,30 +631,52 @@ class ConnectionManager private constructor(context: Context) {
             Log.i(TAG, "switch: device reachable but not on the LAN yet (link=${status?.link})")
             return false
         }
-        applyAuth(endpoint, result, announceStudioFolder = false)
+        applyAuth(endpoint, result, announceStudioFolder = false, link = Link.LAN)
         return true
     }
 
-    private fun authenticate(endpoint: DeviceEndpoint, gen: Int, sendStudioToken: Boolean) {
-        publish(Snapshot(State.AUTHENTICATING, link = linkOf(endpoint)))
+    /**
+     * Exchange the pairing token for a session.
+     *
+     * @param intent [AppConfig.AUTH_INTENT_BIND] only when the user scanned the code; a silent
+     *               recovery must never displace another phone (PRD 16.2 NW-18)
+     * @param link   the transport this attempt actually uses; the device cannot tell us, and deriving
+     *               it from the endpoint's `apSsid` is what used to mislabel a LAN session as AP
+     */
+    private fun authenticate(
+        endpoint: DeviceEndpoint,
+        gen: Int,
+        sendStudioToken: Boolean,
+        intent: String = AppConfig.AUTH_INTENT_BIND,
+        link: Link = linkOf(endpoint)
+    ) {
+        publish(Snapshot(State.AUTHENTICATING, link = link))
         scope.launch {
-            val result = client.auth(endpoint, if (sendStudioToken) studioTokenFor(endpoint) else "" )
+            val result = client.auth(
+                endpoint,
+                if (sendStudioToken) studioTokenFor(endpoint) else "",
+                intent,
+                SessionStore.clientId
+            )
             if (gen != generation) return@launch
-            result.onSuccess { applyAuth(endpoint, it, announceStudioFolder = true) }
-                .onFailure { error ->
-                    if (error is SessionExpiredException) {
-                        clearSession(Failure.TOKEN_REJECTED)
-                    } else {
-                        publish(Snapshot(State.FAILED, Failure.AUTH_FAILED, Link.NONE, error.message))
-                    }
+            result.onSuccess {
+                applyAuth(endpoint, it, announceStudioFolder = intent == AppConfig.AUTH_INTENT_BIND, link = link)
+            }.onFailure { error ->
+                when (error) {
+                    is DeviceOccupiedException ->
+                        publish(Snapshot(State.OCCUPIED, Failure.OCCUPIED, link))
+                    is SessionExpiredException -> clearSession(Failure.TOKEN_REJECTED)
+                    else -> publish(Snapshot(State.FAILED, Failure.AUTH_FAILED, link, error.message))
                 }
+            }
         }
     }
 
     private suspend fun applyAuth(
         endpoint: DeviceEndpoint,
         result: AuthResult,
-        announceStudioFolder: Boolean
+        announceStudioFolder: Boolean,
+        link: Link
     ) {
         // The device owns the interaction mode, so its answer wins over the mode recorded from an
         // older QR code: reconnecting then heals without a new scan
@@ -599,7 +696,12 @@ class ConnectionManager private constructor(context: Context) {
             result.params,
             result.deviceVersion
         )
-        SessionStore.setLastLink(if (effective.hasHotspot) SessionStore.LINK_AP else SessionStore.LINK_LAN)
+        // The link is what this attempt actually used, not what the endpoint happens to carry: a LAN
+        // discovered endpoint keeps the QR's apSsid when a session was injected or restored, and reading
+        // that as "AP" sent later recoveries down the hotspot path (the 2026-10-24 dead end).
+        SessionStore.setLastLink(
+            if (link == Link.AP) SessionStore.LINK_AP else SessionStore.LINK_LAN
+        )
         if (SessionStore.lastLink == SessionStore.LINK_LAN) {
             // The switch completed: nothing is pending any more
             SessionStore.setPendingLanSsid("")
@@ -614,8 +716,9 @@ class ConnectionManager private constructor(context: Context) {
             SessionStore.touch(heartbeat.expiresInMs)
             SessionStore.updateParams(heartbeat.params)
         }
-        publish(Snapshot(State.CONNECTED, link = linkOf(effective)))
+        publish(Snapshot(State.CONNECTED, link = link))
         linkSettledAtMs = SystemClock.elapsedRealtime()
+        lastOkAtMs = SystemClock.elapsedRealtime()
         startHeartbeat()
         listeners.forEach { it.onSessionReady() }
         if (announceStudioFolder && SessionStore.inStudioMode) {
@@ -634,6 +737,7 @@ class ConnectionManager private constructor(context: Context) {
                     result.onSuccess {
                         SessionStore.touch(it.expiresInMs)
                         SessionStore.updateParams(it.params)
+                        lastOkAtMs = SystemClock.elapsedRealtime()
                     }.onFailure { error ->
                         if (error is SessionExpiredException) {
                             onUnauthorized()
@@ -661,32 +765,15 @@ class ConnectionManager private constructor(context: Context) {
     /**
      * A request failed while a session is still believed to exist.
      *
-     * The device may have been switched to the network we pushed (that is exactly what a successful
-     * `/wifi-config` means), so when the phone is on that network the hotspot link is dead and the
-     * device has to be found on the LAN. If it is not there either, fall back to retrying the same
-     * link — the switch may have rolled back on the device.
+     * The switch case is handled first: a successful `/wifi-config` means the device is moving to the
+     * network the phone pushed, so the hotspot link is expected to die. Everything else degrades and
+     * is then handed back to [establish], which can discover the device on a new address — retrying
+     * the saved endpoint alone could never recover from a device reboot (DHCP change).
      */
     private fun handleUnreachable() {
-        // The hotspot is stopped by the device right after a push; a heartbeat failure here is the
-        // expected hand-over, not an unstable link
         if (switchInFlight) return
         if (SessionStore.pendingLanSsid.isNotEmpty()) {
             awaitDeviceOnLan()
-            return
-        }
-        // A WifiNetworkSpecifier hotspot binding is owned by the system and can be torn down when the
-        // app leaves the foreground; the session then points at an address we cannot reach any more.
-        // When the last link was the hotspot, re-join it before retrying the endpoint.
-        if (SessionStore.lastLink == SessionStore.LINK_AP && !hotspotConnector.isConnected) {
-            // Only a still-associated hotspot is worth re-joining: when the frame was reset (strong
-            // pull) its passphrase has rotated, and the phone is no longer associated. Re-joining
-            // then fails and, worse, races the user who is about to scan the new code.
-            if (!isAssociatedWith(SessionStore.lastApSsid)) {
-                Log.i(TAG, "hotspot lost and the phone left the AP: waiting for a new scan")
-                publish(Snapshot(State.FAILED, Failure.AP_NOT_FOUND, Link.NONE))
-                return
-            }
-            reconnect()
             return
         }
         markDegraded()
@@ -707,6 +794,7 @@ class ConnectionManager private constructor(context: Context) {
                         SessionStore.touch(it.expiresInMs)
                         SessionStore.updateParams(it.params)
                     }
+                    lastOkAtMs = SystemClock.elapsedRealtime()
                     publish(Snapshot(State.CONNECTED, link = snapshot.link))
                     return@launch
                 }
@@ -722,10 +810,12 @@ class ConnectionManager private constructor(context: Context) {
         reconnectJob = null
         waitTargetJob?.cancel()
         waitTargetJob = null
+        joinInFlight = false
     }
 
     private fun clearSession(failure: Failure) {
         stopHeartbeat()
+        joinInFlight = false
         hotspotConnector.release()
         SessionStore.clear()
         publish(
@@ -762,15 +852,6 @@ class ConnectionManager private constructor(context: Context) {
     /** Whether the phone is already on [ssid]; asking the system for a network we are on pops a sheet */
     fun isOnWifi(ssid: String): Boolean = ssid.isNotEmpty() && currentSsid() == ssid
 
-    /** Whether the phone is actually associated with [ssid]: the name alone can be a stale echo */
-    private fun isAssociatedWith(ssid: String): Boolean {
-        if (ssid.isEmpty()) return false
-        val manager = app.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return false
-        val info = runCatching { manager.connectionInfo }.getOrNull() ?: return false
-        val name = info.ssid?.trim('"').orEmpty()
-        return name == ssid && info.supplicantState == SupplicantState.COMPLETED
-    }
-
     /** Current Wi-Fi name, or an empty string when not on Wi-Fi / not readable */
     fun currentSsid(): String {
         val manager = app.getSystemService(Context.WIFI_SERVICE) as? WifiManager
@@ -799,6 +880,19 @@ class ConnectionManager private constructor(context: Context) {
 
         /** A newly adopted link is not declared unstable for this long */
         private const val LINK_SETTLE_MS = 15_000L
+
+        /**
+         * A "connected" state older than this is re-verified before it is trusted again: one heartbeat
+         * interval plus its whole-call timeout, so a link that stopped working in the background is
+         * never shown as healthy on the next foreground.
+         */
+        private const val LINK_STALE_MS = HEARTBEAT_INTERVAL_MS + 8_000L
+
+        /** Minimum gap between two [establish] runs (network callbacks arrive in bursts) */
+        private const val ESTABLISH_THROTTLE_MS = 3_000L
+
+        /** Slow foreground recheck: discovery only, never a system dialog (PRD 16.2 NW-16) */
+        private const val RECHECK_INTERVAL_MS = 30_000L
 
         /** Delay before retrying a failed hotspot join once */
         private const val AP_RETRY_DELAY_MS = 1_500L

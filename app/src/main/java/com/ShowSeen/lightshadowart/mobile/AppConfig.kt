@@ -27,6 +27,13 @@ object AppConfig {
     const val DEFAULT_AUTO_PLAY_INTERVAL_MS = 3 * 60_000L
 
     /**
+     * `/auth` 的 intent：`bind` = 用户扫码（可以接管席位），`recover` = 静默恢复（不得接管他人席位）。
+     * 与设备端 `ApiRoutes` 的 `intent` 取值保持一致。
+     */
+    const val AUTH_INTENT_BIND = "bind"
+    const val AUTH_INTENT_RECOVER = "recover"
+
+    /**
      * 单文件上传上限（字节）：与设备端 `DeviceConfig.MAX_UPLOAD_FILE_BYTES` 保持一致，
      * 上传前据此预检，超过即拦截并提示「超过4G无法写入」，避免白传一遍再被服务端拒绝。
      */

@@ -222,6 +222,9 @@
     <string name="network_state_connecting">Connecting…</string>
     <string name="network_state_connected">Connected</string>
     <string name="network_state_disconnected">Not connected</string>
+    <string name="network_state_occupied">In use by another phone</string>
+    <string name="network_occupied_note">Another phone is controlling the frame, so this phone stopped reconnecting. Scan the QR code on the frame to take over.</string>
+    <string name="toast_device_occupied">Another phone is controlling the frame; auto-reconnect paused</string>
     <string name="network_value_unknown">Not available</string>
     <string name="network_diagnostics_title">Diagnostics</string>
     <string name="network_note_connecting">Looking for the device…</string>

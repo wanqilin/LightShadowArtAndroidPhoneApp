@@ -26,6 +26,7 @@ object SessionStore {
 
     private const val PREFS_NAME = "light_shadow_session_store"
     private const val KEY_LAST_WIFI_SSID = "last_wifi_ssid"
+    private const val KEY_CLIENT_ID = "client_id"
     private const val KEY_LAST_DEVICE_TOKEN = "last_device_token"
     private const val KEY_LAST_DEVICE_MODE = "last_device_mode"
     private const val KEY_LAST_AP_SSID = "last_ap_ssid"
@@ -70,6 +71,17 @@ object SessionStore {
     /** Token of the most recently connected device */
     @Volatile
     var lastDeviceToken: String = ""
+        private set
+
+    /**
+     * This phone's stable identity, sent as `device_id` with `/auth`.
+     *
+     * The device persists it as the seat owner and refuses a silent recovery (`intent=recover`) that
+     * would displace another phone's session (PRD 16.2 NW-18). A random value stored on first use is
+     * enough: it only has to be stable on this phone, not globally unique forever.
+     */
+    @Volatile
+    var clientId: String = ""
         private set
 
     /** Interaction mode of the most recently connected device */
@@ -137,7 +149,17 @@ object SessionStore {
         get() = (endpoint?.mode ?: lastDeviceMode) == DeviceEndpoint.MODE_STUDIO
 
     val isActive: Boolean
-        get() = endpoint != null && !sessionId.isNullOrEmpty()
+        get() = endpoint != null && !sessionId.isNullOrEmpty() &&
+            expiresAtMs > System.currentTimeMillis()
+
+    /**
+     * Whether this phone still has a pairing identity to recover with.
+     *
+     * Kept separate from [isActive]: the session dies with a device reboot or a 12 h TTL, while the
+     * pairing survives both — that is exactly the case a foreground reconnect has to cover.
+     */
+    val hasTarget: Boolean
+        get() = lastDeviceToken.isNotEmpty()
 
     val remainingMs: Long
         get() = (expiresAtMs - System.currentTimeMillis()).coerceAtLeast(0L)
@@ -149,6 +171,12 @@ object SessionStore {
         appContext = appCtx
 
         val store = prefs(appCtx)
+        // Stable per-phone identity for the seat check; generated once and kept forever
+        clientId = store.getString(KEY_CLIENT_ID, "").orEmpty()
+        if (clientId.isEmpty()) {
+            clientId = java.util.UUID.randomUUID().toString()
+            store.edit().putString(KEY_CLIENT_ID, clientId).apply()
+        }
         lastWifiSsid = store.getString(KEY_LAST_WIFI_SSID, "").orEmpty()
         lastDeviceToken = store.getString(KEY_LAST_DEVICE_TOKEN, "").orEmpty()
         lastDeviceMode = store.getInt(KEY_LAST_DEVICE_MODE, DeviceEndpoint.MODE_STUDIO)

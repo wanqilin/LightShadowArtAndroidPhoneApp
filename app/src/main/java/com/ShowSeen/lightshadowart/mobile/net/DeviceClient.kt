@@ -33,6 +33,12 @@ class SessionExpiredException(message: String) : ApiException(401, message)
 /** Device returned 413: a single file exceeds the 4G limit and was rejected (req 4.5 / T-4) */
 class FileTooLargeException(message: String) : ApiException(413, message)
 
+/**
+ * Device returned 409 `occupied`: another phone is driving the frame, so a silent recovery must not
+ * take the seat from it (PRD 16.2 NW-18). The session on the device is untouched.
+ */
+class DeviceOccupiedException(message: String) : ApiException(409, message)
+
 /** Local media waiting to be uploaded */
 data class UploadSource(
     val uri: Uri,
@@ -144,12 +150,27 @@ class DeviceClient(private val resolver: ContentResolver) {
      * @param studioToken token unique to this session in studio selection mode (req 3.4 / T-12):
      *                    the device builds a `date+serial+token` folder from it and returns that
      *                    folder in the receipt. Pass an empty string in home mode.
+     * @param intent      [AppConfig.AUTH_INTENT_BIND] when the user scanned the code, otherwise
+     *                    [AppConfig.AUTH_INTENT_RECOVER]. The device refuses a recovery that would
+     *                    displace the phone currently driving the frame (409 → [DeviceOccupiedException]).
+     * @param clientId    this phone's stable identity, so the device can tell "my own recovery" from
+     *                    "another phone wants the seat".
      */
-    suspend fun auth(endpoint: DeviceEndpoint, studioToken: String = ""): Result<AuthResult> = call {
+    suspend fun auth(
+        endpoint: DeviceEndpoint,
+        studioToken: String = "",
+        intent: String = AppConfig.AUTH_INTENT_BIND,
+        clientId: String = ""
+    ): Result<AuthResult> = call {
         val payload = JSONObject()
             .put("device_token", endpoint.deviceToken)
-        // Sent when the QR code declares role=admin (manual wake-up / admin handover); the device uses it to decide admin
-        if (endpoint.role.isNotEmpty()) payload.put("role", endpoint.role)
+            .put("intent", intent)
+        // Only a scan declares the admin role from the QR code; a silent recovery must never look like
+        // a takeover to the device (that was how a returning phone kicked the current one off)
+        if (intent == AppConfig.AUTH_INTENT_BIND && endpoint.role.isNotEmpty()) {
+            payload.put("role", endpoint.role)
+        }
+        if (clientId.isNotEmpty()) payload.put("device_id", clientId)
         if (studioToken.isNotEmpty()) payload.put("studio_token", studioToken)
         val body = jsonBody(payload)
         val request = Request.Builder()
@@ -690,6 +711,7 @@ class DeviceClient(private val resolver: ContentResolver) {
         if (response.isSuccessful) return
         val message = json?.optString("message").orEmpty().ifEmpty { "HTTP ${response.code}" }
         if (response.code == 401) throw SessionExpiredException(message)
+        if (response.code == 409) throw DeviceOccupiedException(message)
         if (response.code == 413) throw FileTooLargeException(message)
         throw ApiException(response.code, message)
     }

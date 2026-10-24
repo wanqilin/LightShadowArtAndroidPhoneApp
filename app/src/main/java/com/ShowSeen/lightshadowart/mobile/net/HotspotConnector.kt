@@ -7,6 +7,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.SupplicantState
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.net.wifi.WifiNetworkSuggestion
@@ -14,6 +15,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.Inet4Address
 
 /**
@@ -106,10 +109,32 @@ class HotspotConnector private constructor(context: Context) {
      * internet (a hotspot without internet is never chosen automatically). The page therefore tells
      * the user to confirm it instead of waiting silently.
      */
+    /** SSID of the join that is still being prepared (before the system request is made) */
+    @Volatile
+    private var joiningSsid: String? = null
+
     fun join(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
         if (isOnWifi(ssid)) {
+            // Already associated: no system dialog is needed, but the process has to be bound to that
+            // network — an unbound socket uses the default (internet) network and never reaches a
+            // hotspot that has none (2026-10-24 incident: the phone was on the frame hotspot while
+            // every request went over the home network).
+            bindToCurrentWifi(ssid)
             notify(onResult, Result.success(Unit))
             return
+        }
+        // Single flight from the very first moment: two callers waiting for the scan would each start
+        // a request, and the second one releases the first — the system then reports "the app
+        // cancelled the selection request" (PRD 16.2 NW-16: one join per foreground)
+        synchronized(pending) {
+            if (joiningSsid == ssid) {
+                pending += onResult
+                Log.i(TAG, "join already being prepared for $ssid, sharing its result")
+                return
+            }
+            pending.clear()
+            pending += onResult
+            joiningSsid = ssid
         }
         // Right after a pairing reset the hotspot has just restarted: a specifier request made before
         // its SSID is in the scan cache fails at once ("out of range"), which is why the first scan
@@ -146,17 +171,6 @@ class HotspotConnector private constructor(context: Context) {
         }.onFailure { Log.w(TAG, "removeNetworkSuggestions failed: ${it.message}") }
     }
 
-    private fun addSuggestion(ssid: String, password: String): Boolean {
-        val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return false
-        return runCatching {
-            val builder = WifiNetworkSuggestion.Builder().setSsid(ssid)
-            if (password.isNotEmpty()) builder.setWpa2Passphrase(password)
-            val status = wifiManager.addNetworkSuggestions(listOf(builder.build()))
-            Log.i(TAG, "addNetworkSuggestions($ssid) status=$status")
-            status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS
-        }.getOrDefault(false)
-    }
-
     private fun isOnWifi(ssid: String): Boolean {
         val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return false
         val info = runCatching { wifiManager.connectionInfo }.getOrNull() ?: return false
@@ -164,7 +178,7 @@ class HotspotConnector private constructor(context: Context) {
         return current == ssid && info.supplicantState == SupplicantState.COMPLETED
     }
 
-    fun connect(ssid: String, password: String, onResult: (Result<Unit>) -> Unit, retried: Boolean = false) {
+    fun connect(ssid: String, password: String, onResult: (Result<Unit>) -> Unit) {
         val manager = connectivityManager
         if (manager == null) {
             notify(onResult, Result.failure(IllegalStateException("系统不支持 Wi-Fi 连接")))
@@ -222,16 +236,10 @@ class HotspotConnector private constructor(context: Context) {
             }
 
             override fun onUnavailable() {
-                // The request completed (not cancelled), so one retry is safe and covers a hotspot
-                // that was still settling when the first attempt ran
-                if (!retried) {
-                    Log.i(TAG, "hotspot unavailable, retrying once: $ssid")
-                    mainHandler.postDelayed(
-                        { connect(ssid, password, onResult, retried = true) },
-                        HOTSPOT_RETRY_DELAY_MS
-                    )
-                    return
-                }
+                // The request completed without joining (the user dismissed the dialog, or the hotspot
+                // was out of range). Retrying here would be a second request in the same foreground
+                // attempt, which the system reports as "the app cancelled the selection request"; the
+                // caller decides when to try again (one join per foreground, PRD 16.2 NW-16).
                 lastOutcome = Outcome.UNAVAILABLE
                 Log.w(TAG, "hotspot unavailable: $ssid")
                 finish(Result.failure(IllegalStateException("未连接到设备热点")))
@@ -269,6 +277,70 @@ class HotspotConnector private constructor(context: Context) {
      * device address (hotspot subnets vary by model, so the IP cannot be hardcoded).
      * Returns null when not bound or when it cannot be read.
      */
+    /**
+     * Whether the hotspot [ssid] is currently visible to the scanner.
+     *
+     * A frame that was switched to the LAN has no hotspot at all, so asking the system to join it only
+     * pops a confirmation dialog for a network that does not exist. Scans are throttled and need the
+     * location permission, so an unreadable scan result must not block a pairing that may be valid:
+     * only "scans work and the SSID is absent" counts as invisible.
+     */
+    suspend fun isSsidVisible(ssid: String): Boolean {
+        if (ssid.isEmpty()) return false
+        val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return true
+        return withContext(Dispatchers.IO) {
+            runCatching { wifiManager.startScan() }
+            val deadline = System.currentTimeMillis() + SSID_SCAN_TIMEOUT_MS
+            var sawResults = false
+            while (System.currentTimeMillis() < deadline) {
+                val results = runCatching { wifiManager.scanResults }.getOrNull()
+                if (!results.isNullOrEmpty()) {
+                    sawResults = true
+                    if (results.any { it.SSID?.trim('"') == ssid }) return@withContext true
+                }
+                runCatching { Thread.sleep(SSID_SCAN_POLL_MS) }
+            }
+            !sawResults
+        }
+    }
+
+    /**
+     * Bind this process to the Wi-Fi network we are already associated with and return its gateway.
+     *
+     * "Associated" and "reachable" are different things on Android: until the process is bound it
+     * keeps using the system default network, so a hotspot without internet is never on the path even
+     * while the phone sits on it. Rejoining is not needed — only binding.
+     *
+     * @return the device address on that network (its gateway), or null when the network is not found
+     */
+    fun bindToCurrentWifi(ssid: String): String? {
+        val manager = connectivityManager ?: return null
+        val wifiNetworks = runCatching {
+            manager.allNetworks.filter { network ->
+                manager.getNetworkCapabilities(network)
+                    ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            }
+        }.getOrDefault(emptyList())
+        if (wifiNetworks.isEmpty()) return null
+
+        val target = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            wifiNetworks.firstOrNull { network ->
+                val name = (manager.getNetworkCapabilities(network)?.transportInfo as? WifiInfo)
+                    ?.ssid?.trim('"')
+                name == ssid
+            }
+        } else {
+            // Below Q the transport info is not exposed; a phone has a single client Wi-Fi network
+            wifiNetworks.firstOrNull()
+        } ?: return null
+
+        runCatching { manager.bindProcessToNetwork(target) }
+        boundNetwork = target
+        val gateway = boundGateway()
+        Log.i(TAG, "bound to the current wifi $ssid: network=$target gateway=$gateway")
+        return gateway
+    }
+
     fun boundGateway(): String? {
         val manager = connectivityManager ?: return null
         val network = boundNetwork ?: return null
@@ -306,6 +378,7 @@ class HotspotConnector private constructor(context: Context) {
 
     /** Leave the hotspot, restore the default process network (call before refreshing) */
     fun release() {
+        joiningSsid = null
         val manager = connectivityManager
         callback?.let { runCatching { manager?.unregisterNetworkCallback(it) } }
         callback = null
@@ -327,6 +400,7 @@ class HotspotConnector private constructor(context: Context) {
 
     /** Answer every caller that is waiting for the single in-flight request */
     private fun finish(result: Result<Unit>) {
+        joiningSsid = null
         val waiting = synchronized(pending) { pending.toList().also { pending.clear() } }
         waiting.forEach { notify(it, result) }
     }
@@ -340,9 +414,14 @@ class HotspotConnector private constructor(context: Context) {
         /** Give the hotspot time to appear in the scan results after a pairing reset */
         private const val SSID_VISIBLE_TIMEOUT_MS = 8_000L
 
+        /** How long [isSsidVisible] keeps looking for the hotspot before deciding it is not there */
+        private const val SSID_SCAN_TIMEOUT_MS = 4_000L
+
+        /** Poll interval while waiting for the scan results */
+        private const val SSID_SCAN_POLL_MS = 400L
+
         /** Delay before retrying a completed-but-unavailable hotspot request */
         private const val HOTSPOT_RETRY_DELAY_MS = 2_000L
-
         /** Fallback: turn the phone's hotspot-subnet address into the device address (last octet is always 1) */
         private const val HOST_SUFFIX = "1"
 

@@ -160,6 +160,8 @@ class NetworkConnectionActivity : DeviceActivity() {
             active && apLink -> getString(R.string.network_state_connected_ap)
             active && lanLink -> getString(R.string.network_state_connected_lan)
             active -> getString(R.string.network_state_connected)
+            snapshot.state == ConnectionManager.State.OCCUPIED ->
+                getString(R.string.network_state_occupied)
             degraded -> getString(R.string.dashboard_degraded)
             else -> getString(R.string.network_state_disconnected)
         }
@@ -193,6 +195,8 @@ class NetworkConnectionActivity : DeviceActivity() {
                 getString(R.string.network_ap_dialog_hint)
             busy -> getString(R.string.network_note_connecting)
             active -> ""
+            snapshot.state == ConnectionManager.State.OCCUPIED ->
+                getString(R.string.network_occupied_note)
             snapshot.state == ConnectionManager.State.FAILED -> failureNote(snapshot.failure)
             hasReconnectTarget() -> getString(R.string.network_note_can_reconnect)
             else -> getString(R.string.network_note_no_target)

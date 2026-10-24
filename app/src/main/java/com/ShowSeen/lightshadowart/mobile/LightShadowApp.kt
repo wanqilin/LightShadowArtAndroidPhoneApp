@@ -1,6 +1,8 @@
 package com.ShowSeen.lightshadowart.mobile
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.Network
 import com.ShowSeen.lightshadowart.mobile.net.ConnectionManager
 
 /**
@@ -12,6 +14,16 @@ import com.ShowSeen.lightshadowart.mobile.net.ConnectionManager
  */
 class LightShadowApp : Application() {
 
+    /**
+     * Network availability is a recovery trigger, not just a status: when the phone rejoins Wi-Fi the
+     * frame may be reachable again, and without this callback nothing would look for it (PRD 16.2 NW-15).
+     */
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            ConnectionManager.get(this@LightShadowApp).onNetworkAvailable()
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         SessionStore.init(this)
@@ -20,5 +32,13 @@ class LightShadowApp : Application() {
             val manager = ConnectionManager.get(this)
             if (foreground) manager.onForeground() else manager.onBackground()
         }
+        registerNetworkCallback()
+    }
+
+    private fun registerNetworkCallback() {
+        val manager = getSystemService(ConnectivityManager::class.java) ?: return
+        // A device without ACCESS_NETWORK_STATE would throw; the app declares it, so this only guards
+        // against a platform that refuses the callback
+        runCatching { manager.registerDefaultNetworkCallback(networkCallback) }
     }
 }

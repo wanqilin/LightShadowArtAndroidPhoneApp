@@ -217,6 +217,9 @@
     <string name="network_state_connecting">连接中…</string>
     <string name="network_state_connected">已连接</string>
     <string name="network_state_disconnected">未连接</string>
+    <string name="network_state_occupied">正被另一台手机使用</string>
+    <string name="network_occupied_note">相框正被另一台手机使用，本机不再自动回连。若要在本机操作，请扫描相框屏幕上的二维码接管。</string>
+    <string name="toast_device_occupied">相框正被另一台手机使用，本机暂停自动回连</string>
     <string name="network_value_unknown">未获取</string>
     <string name="network_diagnostics_title">诊断信息</string>
     <string name="network_note_connecting">正在查找设备…</string>

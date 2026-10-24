@@ -109,6 +109,8 @@ abstract class DeviceActivity : AppCompatActivity(), ConnectionManager.Listener 
                 }
             }
 
+            ConnectionManager.State.OCCUPIED -> toast(getString(R.string.toast_device_occupied))
+
             else -> Unit
         }
     }
@@ -158,10 +160,10 @@ abstract class DeviceActivity : AppCompatActivity(), ConnectionManager.Listener 
         connection.connect(endpoint)
     }
 
-    /** Reconnect: the manager retries the link the last session ran over (no cross-link fallback) */
+    /** Rebuild the connection now: the manager decides the order (discovery first, PRD 16.2 NW-15) */
     protected fun refresh() {
         if (connecting) return
-        connection.reconnect()
+        connection.establish()
     }
 
     /** Leave the session; [handover] also unbinds the device and makes it show a fresh QR code */
