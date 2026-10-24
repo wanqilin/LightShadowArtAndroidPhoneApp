@@ -13,6 +13,7 @@ import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -538,12 +539,20 @@ class MainActivity : DeviceActivity() {
         if (selectedTabPosition != position) selectTab(tab)
     }
 
-    /** Bottom inset for the grids: the floating bars always, plus the pad while it is expanded. */
+    /**
+     * Bottom inset for the grids: the floating bars always, plus the pad while it is expanded.
+     *
+     * ViewPager2 keeps the three page grids inside its own internal RecyclerView, which is the only
+     * direct child of [pagerSpace]. Padding that wrapper shrinks every page instead of scrolling the
+     * last row above the pad — the grid then stops short and leaves a blank strip at the bottom — so
+     * the inset has to go on the page RecyclerViews one level down.
+     */
     private fun applyGalleryBottomInset(padExpanded: Boolean) {
         val extra = if (padExpanded) resources.getDimensionPixelSize(R.dimen.control_pad_diameter) else 0
         val base = resources.getDimensionPixelSize(R.dimen.gallery_bottom_inset) + extra
-        for (index in 0 until pagerSpace.childCount) {
-            val page = pagerSpace.getChildAt(index) as? RecyclerView ?: continue
+        val host = pagerSpace.getChildAt(0) as? ViewGroup ?: return
+        for (index in 0 until host.childCount) {
+            val page = host.getChildAt(index) as? RecyclerView ?: continue
             page.setPadding(page.paddingLeft, page.paddingTop, page.paddingRight, base)
         }
     }
