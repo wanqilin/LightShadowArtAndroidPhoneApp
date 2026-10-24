@@ -35,6 +35,8 @@ class HotspotConnector private constructor(context: Context) {
         .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    private val pending = mutableListOf<(Result<Unit>) -> Unit>()
+
     private var callback: ConnectivityManager.NetworkCallback? = null
     private var boundNetwork: Network? = null
 
@@ -152,6 +154,17 @@ class HotspotConnector private constructor(context: Context) {
             return
         }
 
+        // One request per hotspot: a second join for the same SSID would release() the pending
+        // system request and the phone would report "the app cancelled the request"
+        synchronized(pending) {
+            if (lastOutcome == Outcome.REQUESTING && lastAttemptSsid == ssid) {
+                pending += onResult
+                Log.i(TAG, "join already in flight for $ssid, sharing its result")
+                return
+            }
+            pending.clear()
+            pending += onResult
+        }
         release()
         lastAttemptSsid = ssid
         lastOutcome = Outcome.REQUESTING
@@ -175,7 +188,7 @@ class HotspotConnector private constructor(context: Context) {
                 boundNetwork = network
                 lastOutcome = Outcome.CONNECTED
                 Log.i(TAG, "hotspot connected: $ssid, link=$network")
-                notify(onResult, Result.success(Unit))
+                finish(Result.success(Unit))
             }
 
             /** Diagnostics for connection failures: shows whether the hotspot got an IPv4 address */
@@ -190,7 +203,7 @@ class HotspotConnector private constructor(context: Context) {
             override fun onUnavailable() {
                 lastOutcome = Outcome.UNAVAILABLE
                 Log.w(TAG, "hotspot unavailable: $ssid")
-                notify(onResult, Result.failure(IllegalStateException("未连接到设备热点")))
+                finish(Result.failure(IllegalStateException("未连接到设备热点")))
             }
 
             override fun onLost(network: Network) {
@@ -279,6 +292,12 @@ class HotspotConnector private constructor(context: Context) {
 
     private fun notify(onResult: (Result<Unit>) -> Unit, result: Result<Unit>) {
         mainHandler.post { onResult(result) }
+    }
+
+    /** Answer every caller that is waiting for the single in-flight request */
+    private fun finish(result: Result<Unit>) {
+        val waiting = synchronized(pending) { pending.toList().also { pending.clear() } }
+        waiting.forEach { notify(it, result) }
     }
 
     companion object {
