@@ -2,6 +2,7 @@ package com.ShowSeen.lightshadowart.mobile.net
 
 import android.content.Context
 import android.os.SystemClock
+import android.net.wifi.SupplicantState
 import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
@@ -665,6 +666,14 @@ class ConnectionManager private constructor(context: Context) {
         // app leaves the foreground; the session then points at an address we cannot reach any more.
         // When the last link was the hotspot, re-join it before retrying the endpoint.
         if (SessionStore.lastLink == SessionStore.LINK_AP && !hotspotConnector.isConnected) {
+            // Only a still-associated hotspot is worth re-joining: when the frame was reset (strong
+            // pull) its passphrase has rotated, and the phone is no longer associated. Re-joining
+            // then fails and, worse, races the user who is about to scan the new code.
+            if (!isAssociatedWith(SessionStore.lastApSsid)) {
+                Log.i(TAG, "hotspot lost and the phone left the AP: waiting for a new scan")
+                publish(Snapshot(State.FAILED, Failure.AP_NOT_FOUND, Link.NONE))
+                return
+            }
             reconnect()
             return
         }
@@ -740,6 +749,15 @@ class ConnectionManager private constructor(context: Context) {
 
     /** Whether the phone is already on [ssid]; asking the system for a network we are on pops a sheet */
     fun isOnWifi(ssid: String): Boolean = ssid.isNotEmpty() && currentSsid() == ssid
+
+    /** Whether the phone is actually associated with [ssid]: the name alone can be a stale echo */
+    private fun isAssociatedWith(ssid: String): Boolean {
+        if (ssid.isEmpty()) return false
+        val manager = app.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return false
+        val info = runCatching { manager.connectionInfo }.getOrNull() ?: return false
+        val name = info.ssid?.trim('"').orEmpty()
+        return name == ssid && info.supplicantState == SupplicantState.COMPLETED
+    }
 
     /** Current Wi-Fi name, or an empty string when not on Wi-Fi / not readable */
     fun currentSsid(): String {
