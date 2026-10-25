@@ -103,7 +103,7 @@ class LineColorActivity : AppCompatActivity() {
             recentContainer.addView(
                 SwatchView(this).apply {
                     this.color = color
-                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply {
                         marginStart = dp(4)
                         marginEnd = dp(4)
                     }
