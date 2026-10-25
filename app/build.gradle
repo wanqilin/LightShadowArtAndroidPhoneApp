@@ -56,4 +56,8 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     // 扫码（zxing-android-embedded 内置 CaptureActivity 与相机权限处理）
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+
+    // 单元测试：协议回执解析（与设备端 ApiRoutes 的 JSON 结构对齐，不需要设备即可回归）
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20231013'
 }

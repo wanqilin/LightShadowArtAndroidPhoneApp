@@ -880,7 +880,7 @@ private fun JSONObject?.toParams(): DeviceParams {
  * `values` is a flat map whose value type follows the parameter kind, exactly as the style schema
  * declares it, so the editor can build rows without a second lookup table.
  */
-private fun JSONObject?.toFrameConfig(): FrameConfig {
+internal fun JSONObject?.toFrameConfig(): FrameConfig {
     if (this == null) return FrameConfig(FrameState())
 
     val values = mutableMapOf<String, Any>()
