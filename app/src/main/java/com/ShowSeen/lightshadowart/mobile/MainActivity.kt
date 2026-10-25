@@ -762,21 +762,24 @@ class MainActivity : DeviceActivity() {
 
     /**
      * The two bottom bars never show together (UI PRD §3.6 D): a multi-select shows favourite /
-     * delete / export favourites, a paused full-screen frame shows favourite / frame / wallpaper /
-     * rotate. Both stay hidden in every other state. The paused bar keeps favourite so the frame on
-     * screen can be marked without leaving playback. Dimmed tools stay clickable so a tap explains
-     * why the action is unavailable instead of failing silently.
+     * delete / export favourites, full-screen playback shows favourite / frame / rotate. The playback
+     * bar stays on screen while auto play runs, with every key dimmed: hiding it left an empty strip
+     * under the frame. Dimmed tools stay clickable so a tap explains why the action is unavailable
+     * instead of failing silently. Browsing keeps both bars hidden.
      */
     private fun renderToolbarAvailability() {
         val selecting = adapterForCurrentView().selectionMode
-        val static = SessionStore.isActive && playbackState?.mode == PlaybackMode.STATIC
+        val mode = playbackState?.mode
+        val inPlayback = SessionStore.isActive && mode != null && mode != PlaybackMode.BROWSE
+        val paused = inPlayback && mode == PlaybackMode.STATIC
 
         galleryToolbarSelect.isVisible = selecting
-        galleryToolbarPlayback.isVisible = static && !selecting
+        galleryToolbarPlayback.isVisible = inPlayback && !selecting
 
         setToolAvailable(btnToolbarDelete, !SessionStore.inStudioMode)
-        setToolAvailable(btnToolbarFrame, SessionStore.isAdmin)
-        setToolAvailable(btnToolbarRotate, true)
+        setToolAvailable(btnToolbarPlaybackFav, paused)
+        setToolAvailable(btnToolbarFrame, paused && SessionStore.isAdmin)
+        setToolAvailable(btnToolbarRotate, paused)
         renderFavouriteIcons()
     }
 
