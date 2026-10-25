@@ -205,6 +205,8 @@ class FrameDesignActivity : AppCompatActivity() {
         }
         btnReset.setOnClickListener { resetToDefault() }
         btnApply.setOnClickListener { applyToDevice() }
+        // The inline preview is only 140dp tall: tapping it opens a bigger one for the fine details
+        preview.setOnClickListener { showFullScreenPreview() }
 
         // Apply and reset stay disabled until the device state has been read
         btnApply.isEnabled = false
@@ -514,6 +516,58 @@ class FrameDesignActivity : AppCompatActivity() {
     // ------------------------------------------------------------------
     // Actions
     // ------------------------------------------------------------------
+
+    /**
+     * Full-screen look at the same preview.
+     *
+     * 2dp-level details (bevel, thin lines) are unreadable in a 140dp box, so the same drawing is shown
+     * at the panel's aspect ratio and the whole dialog width.
+     */
+    private fun showFullScreenPreview() {
+        val style = currentStyle() ?: return
+        val panel = config?.panel ?: PanelInfo()
+        val bitmap = if (background.mode == FrameBackground.MODE_IMAGE) bgBitmap else null
+
+        val big = FramePreviewView(this).apply {
+            setFrame(style.params, values, this@FrameDesignActivity.background, panel)
+            setBackgroundBitmap(bitmap)
+        }
+        val title = TextView(this).apply {
+            text = getString(R.string.frame_preview_title)
+            textSize = 14f
+            setPadding(dp(16), dp(12), dp(16), dp(8))
+        }
+        val close = MaterialButton(this).apply {
+            text = getString(R.string.frame_preview_close)
+        }
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackground(android.graphics.drawable.ColorDrawable(Color.parseColor("#1A1C1E")))
+            addView(title)
+            addView(
+                big,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
+            addView(
+                close,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(dp(16), dp(8), dp(16), dp(16)) }
+            )
+        }
+        val dialog = android.app.Dialog(this)
+        dialog.setContentView(column)
+        dialog.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        close.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
 
     private fun setBackgroundMode(mode: Int) {
         background = background.copy(mode = mode)

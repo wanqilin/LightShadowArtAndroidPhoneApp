@@ -328,4 +328,6 @@
     <string name="frame_param_line_width">Line width</string>
     <string name="frame_param_line_color">Line colour</string>
     <string name="frame_param_bottom_extra">Extra bottom band</string>
+    <string name="frame_preview_title">Preview (tap to enlarge)</string>
+    <string name="frame_preview_close">Close</string>
 </resources>

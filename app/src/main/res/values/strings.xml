@@ -323,4 +323,6 @@
     <string name="frame_param_line_width">线条粗细</string>
     <string name="frame_param_line_color">线条颜色</string>
     <string name="frame_param_bottom_extra">下边额外加宽</string>
+    <string name="frame_preview_title">预览（点开放大看细节）</string>
+    <string name="frame_preview_close">关闭</string>
 </resources>
