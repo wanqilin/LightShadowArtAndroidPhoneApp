@@ -303,7 +303,7 @@
     <string name="frame_bg_blur">Blur</string>
     <string name="frame_bg_solid">Solid</string>
     <string name="frame_bg_image">Image</string>
-    <string name="frame_bg_active_marker">%1$s ✓</string>
+    <string name="frame_bg_active_marker">%1$s (selected)</string>
     <string name="frame_bg_image_pick">Choose image</string>
     <string name="frame_bg_image_replace">Replace image</string>
     <string name="frame_bg_image_remote">The device already stores an image (it cannot be previewed here; the panel is the reference)</string>

@@ -16,6 +16,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
@@ -357,9 +358,11 @@ class FrameDesignActivity : AppCompatActivity() {
     }
 
     private fun renderBackground() {
-        btnBgBlur.text = backgroundLabel(R.string.frame_bg_blur, background.mode == FrameBackground.MODE_BLUR)
-        btnBgSolid.text = backgroundLabel(R.string.frame_bg_solid, background.mode == FrameBackground.MODE_SOLID)
-        btnBgImage.text = backgroundLabel(R.string.frame_bg_image, background.mode == FrameBackground.MODE_IMAGE)
+        // The active mode is marked with a check icon: the pill is too narrow for a text suffix
+        // (the suffix was clipped on device) and the state must not rely on colour alone (PRD 2.1)
+        markBackgroundMode(btnBgBlur, R.string.frame_bg_blur, FrameBackground.MODE_BLUR)
+        markBackgroundMode(btnBgSolid, R.string.frame_bg_solid, FrameBackground.MODE_SOLID)
+        markBackgroundMode(btnBgImage, R.string.frame_bg_image, FrameBackground.MODE_IMAGE)
         rowBgColor.isVisible = background.mode == FrameBackground.MODE_SOLID
         btnBgUpload.isVisible = background.mode == FrameBackground.MODE_IMAGE
         btnBgUpload.text = getString(
@@ -380,10 +383,18 @@ class FrameDesignActivity : AppCompatActivity() {
         )
     }
 
-    /** A marker on the active background mode (not colour-only: the tick is text) */
-    private fun backgroundLabel(labelRes: Int, active: Boolean): String {
-        val text = getString(labelRes)
-        return if (active) getString(R.string.frame_bg_active_marker, text) else text
+    private fun markBackgroundMode(button: MaterialButton, labelRes: Int, mode: Int) {
+        button.text = getString(labelRes)
+        val active = background.mode == mode
+        button.icon = if (active) ContextCompat.getDrawable(this, R.drawable.ic_check) else null
+        button.iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+        // Three pills share one row: zero the default insets and keep the tick small, otherwise the
+        // icon squeezes the label ("纯色" was clipped to "纯")
+        button.iconSize = dp(14)
+        button.iconPadding = dp(2)
+        // MaterialButton's default horizontal insets plus the pill's padding leave no room for
+        // "icon + two characters" in a third of the row, so trim the text padding here
+        button.setPadding(dp(6), button.paddingTop, dp(6), button.paddingBottom)
     }
 
     // ------------------------------------------------------------------

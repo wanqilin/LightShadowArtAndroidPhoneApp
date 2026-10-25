@@ -298,7 +298,7 @@
     <string name="frame_bg_blur">模糊</string>
     <string name="frame_bg_solid">纯色</string>
     <string name="frame_bg_image">底图</string>
-    <string name="frame_bg_active_marker">%1$s ✓</string>
+    <string name="frame_bg_active_marker">%1$s（已选）</string>
     <string name="frame_bg_image_pick">选择底图</string>
     <string name="frame_bg_image_replace">更换底图</string>
     <string name="frame_bg_image_remote">设备端已保存底图（手机上无法预览这张图，以设备屏为准）</string>
