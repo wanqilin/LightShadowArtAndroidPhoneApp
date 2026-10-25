@@ -329,4 +329,20 @@
     <string name="frame_precise_ok">确定</string>
     <string name="frame_precise_invalid">请输入数字</string>
     <string name="frame_precise_clamped">超出范围，已取值 %1$s – %2$s 之间的最近值</string>
+    <string name="color_presets">常用颜色</string>
+    <string name="color_recent">最近使用</string>
+    <string name="color_pick_from_photo">从照片取色</string>
+    <string name="color_pick_from_photo_hint">点照片上的任意位置，取那里的颜色</string>
+    <string name="color_fine_tune">微调（色相 / 饱和度 / 明度）</string>
+    <string name="color_swatch_selected">%1$s，已选</string>
+    <string name="color_preset_cream">米白</string>
+    <string name="color_preset_ivory">象牙白</string>
+    <string name="color_preset_light_grey">浅灰</string>
+    <string name="color_preset_dark_grey">深灰</string>
+    <string name="color_preset_black">黑色</string>
+    <string name="color_preset_red">正红</string>
+    <string name="color_preset_wine">酒红</string>
+    <string name="color_preset_gold">香槟金</string>
+    <string name="color_preset_lake">湖蓝</string>
+    <string name="color_preset_green">墨绿</string>
 </resources>

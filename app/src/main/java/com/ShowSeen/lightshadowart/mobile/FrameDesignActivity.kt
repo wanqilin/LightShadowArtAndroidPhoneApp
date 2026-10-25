@@ -95,6 +95,9 @@ class FrameDesignActivity : AppCompatActivity() {
     private var loaded = false
     private var bgBitmap: Bitmap? = null
 
+    /** The picture on screen, kept so the colour picker can sample colours from it */
+    private var previewPhoto: Bitmap? = null
+
     /** Values per style within this session, so switching styles back and forth does not lose tuning */
     private val styleValueCache = mutableMapOf<String, MutableMap<String, Any>>()
 
@@ -203,6 +206,7 @@ class FrameDesignActivity : AppCompatActivity() {
                         LineColorActivity.EXTRA_TITLE_RES,
                         R.string.line_color_title_background
                     )
+                    .putExtra(LineColorActivity.EXTRA_PHOTO_PATH, pickablePhotoPath())
             )
         }
         btnReset.setOnClickListener { resetToDefault() }
@@ -271,6 +275,7 @@ class FrameDesignActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val bytes = client.mediaRaw(endpoint, sessionId, mediaPath) ?: return@launch
             val bitmap = decodeSampledBytes(bytes, 1024) ?: return@launch
+            previewPhoto = bitmap
             preview.setPhotoBitmap(bitmap)
         }
     }
@@ -286,6 +291,21 @@ class FrameDesignActivity : AppCompatActivity() {
         val options = BitmapFactory.Options().apply { inSampleSize = sample }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     }.getOrNull()
+
+    /**
+     * Writes the photo on screen to the cache and returns its path, so the colour picker can offer
+     * "pick from the photo". Null when there is no photo (default layer, or the fetch failed).
+     */
+    private fun pickablePhotoPath(): String? {
+        val bitmap = previewPhoto ?: return null
+        return runCatching {
+            val file = java.io.File(cacheDir, "color_pick_source.jpg")
+            java.io.FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 88, out)
+            }
+            file.absolutePath
+        }.getOrNull()
+    }
 
     /** Column separator-free label lookup used by both the row builder and the precise-entry dialog */
     private fun specOf(id: String): FrameParamInfo? =
@@ -516,6 +536,8 @@ class FrameDesignActivity : AppCompatActivity() {
                     android.content.Intent(this, LineColorActivity::class.java)
                         .putExtra(LineColorActivity.EXTRA_COLOR, current)
                         .putExtra(LineColorActivity.EXTRA_TITLE_RES, R.string.line_color_title)
+                        .putExtra(LineColorActivity.EXTRA_TITLE_TEXT, paramLabel(spec.id))
+                        .putExtra(LineColorActivity.EXTRA_PHOTO_PATH, pickablePhotoPath())
                 )
             }
         }

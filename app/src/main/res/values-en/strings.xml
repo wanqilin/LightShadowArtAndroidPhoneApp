@@ -334,4 +334,20 @@
     <string name="frame_precise_ok">OK</string>
     <string name="frame_precise_invalid">Please enter a number</string>
     <string name="frame_precise_clamped">Out of range, clamped to %1$s – %2$s</string>
+    <string name="color_presets">Common colours</string>
+    <string name="color_recent">Recently used</string>
+    <string name="color_pick_from_photo">Pick from the photo</string>
+    <string name="color_pick_from_photo_hint">Tap anywhere on the photo to take that colour</string>
+    <string name="color_fine_tune">Fine tune (hue / saturation / brightness)</string>
+    <string name="color_swatch_selected">%1$s, selected</string>
+    <string name="color_preset_cream">Cream</string>
+    <string name="color_preset_ivory">Ivory</string>
+    <string name="color_preset_light_grey">Light grey</string>
+    <string name="color_preset_dark_grey">Dark grey</string>
+    <string name="color_preset_black">Black</string>
+    <string name="color_preset_red">Red</string>
+    <string name="color_preset_wine">Wine</string>
+    <string name="color_preset_gold">Champagne gold</string>
+    <string name="color_preset_lake">Lake blue</string>
+    <string name="color_preset_green">Deep green</string>
 </resources>

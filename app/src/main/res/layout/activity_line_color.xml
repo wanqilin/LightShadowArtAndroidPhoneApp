@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Line / background colour picker (UI PRD §3.9): hue strip, saturation and brightness sliders and
-    a live preview block. Hue degrees and S/V percentages only — the hex value is never shown.
+    Line / background / mat colour picker (UI PRD §3.9).
+
+    Order matters: the direct ways to get a colour come first (常用色 → 最近使用 → 从照片取色), and the
+    hue/saturation/brightness fine tuning sits underneath as 微调. HSV alone was the complaint: the
+    user cannot "arrive at" a colour by guessing hue and percentages, but they can tap the white they
+    know, reuse yesterday's red, or pick the colour straight off the photo.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/app_bg"
@@ -47,7 +50,7 @@
                     <View
                         android:id="@+id/view_color_preview"
                         android:layout_width="match_parent"
-                        android:layout_height="72dp"
+                        android:layout_height="64dp"
                         android:background="@drawable/bg_media_placeholder"
                         android:contentDescription="@string/color_preview_desc" />
 
@@ -56,7 +59,122 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/page_vertical_padding"
-                        android:text="@string/color_hue" />
+                        android:text="@string/color_presets" />
+
+                    <!-- 5 × 2 preset swatches, generated in code so the colours live in one place -->
+                    <LinearLayout
+                        android:id="@+id/container_color_presets"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="vertical" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_color_recent"
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_padding">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/color_recent" />
+
+                    <LinearLayout
+                        android:id="@+id/container_color_recent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_color_photo"
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_padding">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/color_pick_from_photo" />
+
+                    <TextView
+                        style="@style/Text.Hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/color_pick_from_photo_hint" />
+
+                    <ImageView
+                        android:id="@+id/view_color_photo"
+                        android:layout_width="match_parent"
+                        android:layout_height="150dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_media_placeholder"
+                        android:contentDescription="@string/color_pick_from_photo"
+                        android:scaleType="fitCenter" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_padding">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/color_fine_tune" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/page_vertical_padding"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/Text.Label"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/color_hue" />
+
+                        <TextView
+                            android:id="@+id/tv_color_hue"
+                            style="@style/Text.Hint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
 
                     <com.ShowSeen.lightshadowart.mobile.HueStripView
                         android:id="@+id/view_color_hue"
