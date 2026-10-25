@@ -330,4 +330,6 @@
     <string name="color_green">绿</string>
     <string name="color_blue">蓝</string>
     <string name="color_rgb_value">%1$d</string>
+    <string name="color_wheel">色盘</string>
+    <string name="color_brightness">明度</string>
 </resources>

@@ -335,4 +335,6 @@
     <string name="color_green">Green</string>
     <string name="color_blue">Blue</string>
     <string name="color_rgb_value">%1$d</string>
+    <string name="color_wheel">Colour wheel</string>
+    <string name="color_brightness">Brightness</string>
 </resources>

@@ -34,10 +34,15 @@ class LineColorActivity : AppCompatActivity() {
     private lateinit var tvGreen: TextView
     private lateinit var tvBlue: TextView
     private lateinit var preview: android.view.View
+    private lateinit var wheel: ColorWheelView
+    private lateinit var brightnessBar: ValueBarView
     private lateinit var recentContainer: LinearLayout
     private lateinit var recentCard: MaterialCardView
 
     private val swatches = mutableListOf<SwatchView>()
+
+    /** Source of truth for the wheel: RGB alone cannot express "grey at hue 200" */
+    private val hsv = floatArrayOf(0f, 0f, 1f)
 
     /** Guards against the controls updating each other in a loop */
     private var syncing = false
@@ -53,6 +58,8 @@ class LineColorActivity : AppCompatActivity() {
         tvGreen = findViewById(R.id.tv_color_green)
         tvBlue = findViewById(R.id.tv_color_blue)
         preview = findViewById(R.id.view_color_preview)
+        wheel = findViewById(R.id.view_color_wheel)
+        brightnessBar = findViewById(R.id.view_color_brightness)
         recentContainer = findViewById(R.id.container_color_recent)
         recentCard = findViewById(R.id.card_color_recent)
 
@@ -66,6 +73,17 @@ class LineColorActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = returnColor()
         })
+
+        // The wheel picks roughly; it drives the RGB sliders, which stay authoritative afterwards
+        wheel.onPicked = { hue, saturation ->
+            hsv[0] = hue
+            hsv[1] = saturation
+            applyHsvToSliders()
+        }
+        brightnessBar.onPicked = { brightness ->
+            hsv[2] = brightness
+            applyHsvToSliders()
+        }
 
         redSlider.addOnChangeListener { _, _, fromUser -> if (fromUser) render() }
         greenSlider.addOnChangeListener { _, _, fromUser -> if (fromUser) render() }
@@ -103,19 +121,41 @@ class LineColorActivity : AppCompatActivity() {
         render()
     }
 
-    /** Load an existing 0xAARRGGBB colour into the three channels; alpha is dropped (colours are opaque). */
+    /** Load an existing 0xAARRGGBB colour into the controls; alpha is dropped (colours are opaque). */
     private fun applyColor(color: Int) {
+        Color.colorToHSV(opaque(color), hsv)
+        applyHsvToSliders()
+    }
+
+    /** Pushes the HSV state into the sliders, the wheel and the brightness bar. */
+    private fun applyHsvToSliders() {
+        val color = Color.HSVToColor(hsv)
         syncing = true
-        redSlider.value = Color.red(opaque(color)).toFloat().coerceIn(0f, 255f)
-        greenSlider.value = Color.green(opaque(color)).toFloat().coerceIn(0f, 255f)
-        blueSlider.value = Color.blue(opaque(color)).toFloat().coerceIn(0f, 255f)
+        redSlider.value = Color.red(color).toFloat()
+        greenSlider.value = Color.green(color).toFloat()
+        blueSlider.value = Color.blue(color).toFloat()
         syncing = false
+        syncWheel(color)
         render()
+    }
+
+    /** Keeps the wheel marker and the brightness bar in step with [color]. */
+    private fun syncWheel(color: Int) {
+        wheel.hue = hsv[0]
+        wheel.saturation = hsv[1]
+        wheel.brightness = hsv[2]
+        brightnessBar.setHueSaturation(hsv[0], hsv[1])
+        brightnessBar.brightness = hsv[2]
     }
 
     /** Keep the preview, the three numbers, the slider tracks and the recent ticks in step. */
     private fun render() {
         val color = selectedColor()
+        if (!syncing) {
+            // RGB was edited directly: move the wheel marker to the closest hue/saturation/brightness
+            Color.colorToHSV(color, hsv)
+            syncWheel(color)
+        }
         preview.setBackgroundColor(color)
         tvRed.text = getString(R.string.color_rgb_value, Color.red(color))
         tvGreen.text = getString(R.string.color_rgb_value, Color.green(color))

@@ -2,9 +2,9 @@
 <!--
     Line / background / mat colour picker (UI PRD §3.9).
 
-    Plain RGB: a preview block, one slider per channel with the number next to it, and 最近使用 for a
-    colour used before. No hue wheel, no preset palette, no photo sampling — the user asked for the
-    simple, direct route. No hex value is shown anywhere.
+    Top to bottom: the current colour (always visible), a colour wheel to pick roughly, a brightness bar,
+    then RGB sliders for exact values, then 最近使用. The RGB rows are single-line (label + slider +
+    number) to keep the wheel and the preview on the same screen; no hex value is shown anywhere.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -19,6 +19,16 @@
         android:layout_height="wrap_content"
         android:paddingStart="8dp"
         android:paddingEnd="@dimen/card_padding" />
+
+    <!-- Current colour: pinned, so the user always sees what the wheel and the sliders produced -->
+    <View
+        android:id="@+id/view_color_preview"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginStart="@dimen/page_horizontal_padding"
+        android:layout_marginEnd="@dimen/page_horizontal_padding"
+        android:background="@drawable/bg_media_placeholder"
+        android:contentDescription="@string/color_preview_desc" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -47,99 +57,115 @@
                     android:orientation="vertical"
                     android:padding="@dimen/card_padding">
 
-                    <View
-                        android:id="@+id/view_color_preview"
-                        android:layout_width="match_parent"
-                        android:layout_height="80dp"
-                        android:background="@drawable/bg_media_placeholder"
-                        android:contentDescription="@string/color_preview_desc" />
+                    <com.ShowSeen.lightshadowart.mobile.ColorWheelView
+                        android:id="@+id/view_color_wheel"
+                        android:layout_width="188dp"
+                        android:layout_height="188dp"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="@dimen/item_gap"
+                        android:contentDescription="@string/color_wheel" />
 
+                    <com.ShowSeen.lightshadowart.mobile.ValueBarView
+                        android:id="@+id/view_color_brightness"
+                        android:layout_width="match_parent"
+                        android:layout_height="24dp"
+                        android:layout_marginTop="@dimen/item_gap"
+                        android:contentDescription="@string/color_brightness" />
+
+                    <!-- RGB: one line per channel, so the wheel and preview stay visible -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/page_vertical_padding"
+                        android:layout_marginTop="@dimen/item_gap"
+                        android:gravity="center_vertical"
+                        android:minHeight="@dimen/touch_min_height"
                         android:orientation="horizontal">
 
                         <TextView
                             style="@style/Text.Label"
+                            android:layout_width="28dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/color_red" />
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/slider_color_red"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/color_red" />
+                            android:stepSize="1"
+                            android:valueFrom="0"
+                            android:valueTo="255"
+                            app:tickVisible="false" />
 
                         <TextView
                             android:id="@+id/tv_color_red"
                             style="@style/Text.Hint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_width="44dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="end" />
                     </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/slider_color_red"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:stepSize="1"
-                        android:valueFrom="0"
-                        android:valueTo="255"
-                        app:tickVisible="false" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
+                        android:gravity="center_vertical"
+                        android:minHeight="@dimen/touch_min_height"
                         android:orientation="horizontal">
 
                         <TextView
                             style="@style/Text.Label"
+                            android:layout_width="28dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/color_green" />
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/slider_color_green"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/color_green" />
+                            android:stepSize="1"
+                            android:valueFrom="0"
+                            android:valueTo="255"
+                            app:tickVisible="false" />
 
                         <TextView
                             android:id="@+id/tv_color_green"
                             style="@style/Text.Hint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_width="44dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="end" />
                     </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/slider_color_green"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:stepSize="1"
-                        android:valueFrom="0"
-                        android:valueTo="255"
-                        app:tickVisible="false" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
+                        android:gravity="center_vertical"
+                        android:minHeight="@dimen/touch_min_height"
                         android:orientation="horizontal">
 
                         <TextView
                             style="@style/Text.Label"
+                            android:layout_width="28dp"
+                            android:layout_height="wrap_content"
+                            android:text="@string/color_blue" />
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/slider_color_blue"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/color_blue" />
+                            android:stepSize="1"
+                            android:valueFrom="0"
+                            android:valueTo="255"
+                            app:tickVisible="false" />
 
                         <TextView
                             android:id="@+id/tv_color_blue"
                             style="@style/Text.Hint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                            android:layout_width="44dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="end" />
                     </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/slider_color_blue"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:stepSize="1"
-                        android:valueFrom="0"
-                        android:valueTo="255"
-                        app:tickVisible="false" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -171,14 +197,17 @@
                         android:orientation="horizontal" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_color_done"
-                style="@style/PillButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/page_vertical_padding"
-                android:text="@string/color_done" />
         </LinearLayout>
     </ScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_color_done"
+        style="@style/PillButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/page_horizontal_padding"
+        android:layout_marginTop="@dimen/item_gap"
+        android:layout_marginEnd="@dimen/page_horizontal_padding"
+        android:layout_marginBottom="@dimen/page_vertical_padding"
+        android:text="@string/color_done" />
 </LinearLayout>
