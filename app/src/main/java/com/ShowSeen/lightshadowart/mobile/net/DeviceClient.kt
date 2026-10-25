@@ -21,6 +21,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.io.InputStream
 import java.net.InetSocketAddress
+import java.net.URLEncoder
 import java.net.Socket
 import java.util.concurrent.TimeUnit
 
@@ -408,10 +409,25 @@ class DeviceClient(private val resolver: ContentResolver) {
         }
     }
 
-    /** GET /api/v1/frame —— read the device frame preset params and the available style list (req 3.3.1 / T-13) */
-    suspend fun readFrame(endpoint: DeviceEndpoint, sessionId: String): Result<FrameConfig> = call {
+    /**
+     * GET /api/v1/frame —— read the frame state (PRD 6.9).
+     *
+     * @param path an image path to read that picture's own override, or null for the default layer
+     *   (the one Settings → Parameters edits)
+     */
+    suspend fun readFrame(
+        endpoint: DeviceEndpoint,
+        sessionId: String,
+        path: String? = null
+    ): Result<FrameConfig> = call {
+        val base = endpoint.urlOf("/frame")
+        val url = if (path.isNullOrEmpty()) {
+            base
+        } else {
+            base + "?path=" + URLEncoder.encode(path, "UTF-8")
+        }
         val request = Request.Builder()
-            .url(endpoint.urlOf("/frame"))
+            .url(url)
             .header(AUTH_HEADER, bearer(sessionId))
             .get()
             .build()
@@ -424,30 +440,49 @@ class DeviceClient(private val resolver: ContentResolver) {
     }
 
     /**
-     * POST /api/v1/frame —— push frame parameters; admin only (selection users get 403).
+     * POST /api/v1/frame —— push a frame update; admin only (selection users get 403).
      *
-     * Only the **non-null** fields of [FramePatch] go into the request body; anything not mentioned
-     * keeps the device's current value, and the receipt holds the values actually in effect. The
-     * previous version always sent the whole set (every `FrameParams` field has a default), so
-     * switching only the style on the Style page also reset the user's line colour / width / paper —
-     * with a patch type, "send only what changed" is guaranteed by the type.
+     * Only what the caller passes is sent, so changing one slider never resets the rest:
+     * a null [styleId] keeps the current style, an empty [values] keeps every parameter (ids are
+     * matched against the style's own list on the device), a null [background] keeps the background,
+     * and [clear] (image scope) drops this picture's override back to the default layer.
      */
     suspend fun writeFrame(
         endpoint: DeviceEndpoint,
         sessionId: String,
-        patch: FramePatch
+        scope: String,
+        path: String?,
+        styleId: String?,
+        values: Map<String, Any>,
+        background: FrameBackground?,
+        frameEnabled: Boolean?,
+        clear: Boolean = false
     ): Result<FrameConfig> = call {
         val payload = JSONObject()
-        patch.styleId?.let { payload.put("style_id", it) }
-        patch.frameEnabled?.let { payload.put("frame_enabled", it) }
-        patch.lineColor?.let { payload.put("line_color", it) }
-        patch.lineWidthDp?.let { payload.put("line_width_dp", it.toDouble()) }
-        patch.paperColor?.let { payload.put("paper_color", it) }
-        patch.paperEnabled?.let { payload.put("paper_enabled", it) }
-        patch.backgroundImage?.let { payload.put("background_image", it) }
-        patch.paddingDp?.let { payload.put("padding_dp", it.toDouble()) }
-        patch.borderGapDp?.let { payload.put("border_gap_dp", it.toDouble()) }
-        patch.insetDp?.let { payload.put("inset_dp", it.toDouble()) }
+        payload.put("scope", scope)
+        if (scope == FRAME_SCOPE_IMAGE && !path.isNullOrEmpty()) payload.put("path", path)
+        styleId?.let { payload.put("style_id", it) }
+        if (values.isNotEmpty() || frameEnabled != null) {
+            val map = JSONObject()
+            for ((key, value) in values) {
+                when (value) {
+                    is Float -> map.put(key, value.toDouble())
+                    is Double -> map.put(key, value)
+                    is Int -> map.put(key, value)
+                    is Number -> map.put(key, value.toDouble())
+                }
+            }
+            frameEnabled?.let { map.put(FRAME_KEY_ENABLED, it) }
+            payload.put("values", map)
+        }
+        background?.let {
+            val bg = JSONObject()
+            bg.put("mode", it.mode)
+            bg.put("color", it.color)
+            payload.put("background", bg)
+        }
+        if (clear) payload.put("clear", true)
+
         val request = Request.Builder()
             .url(endpoint.urlOf("/frame"))
             .header(AUTH_HEADER, bearer(sessionId))
@@ -733,6 +768,13 @@ class DeviceClient(private val resolver: ContentResolver) {
         const val VIEW_ALL = "all"
         const val VIEW_FAVOURITE = "favourite"
 
+        /** /frame scope values, matching the device-side ServerConfig */
+        const val FRAME_SCOPE_DEFAULT = "default"
+        const val FRAME_SCOPE_IMAGE = "image"
+
+        /** The master frame switch is global, so it travels in values under its own key */
+        const val FRAME_KEY_ENABLED = "frame_enabled"
+
         /** Timeout for the reachability probe; far shorter than a normal request so failures don't stall the user */
         const val PROBE_TIMEOUT_MS = 3_000
 
@@ -834,36 +876,79 @@ private fun JSONObject?.toParams(): DeviceParams {
 
 /**
  * Parse the `GET/POST /frame` receipt (field names match the device-side `ApiRoutes.frameJson`).
- * Missing fields fall back to [FrameParams] defaults so older devices still parse.
+ *
+ * `values` is a flat map whose value type follows the parameter kind, exactly as the style schema
+ * declares it, so the editor can build rows without a second lookup table.
  */
 private fun JSONObject?.toFrameConfig(): FrameConfig {
-    if (this == null) return FrameConfig(FrameParams(), emptyList())
-    val params = FrameParams(
-        styleId = optString("style_id").orEmpty(),
-        frameEnabled = optBoolean("frame_enabled", FrameParams.DEFAULT_FRAME_ENABLED),
-        lineColor = optInt("line_color", FrameParams.DEFAULT_LINE_COLOR),
-        lineWidthDp = optDouble("line_width_dp", FrameParams.DEFAULT_LINE_WIDTH_DP.toDouble())
-            .toFloat(),
-        paperColor = optInt("paper_color", FrameParams.DEFAULT_PAPER_COLOR),
-        paperEnabled = optBoolean("paper_enabled", FrameParams.DEFAULT_PAPER_ENABLED),
-        backgroundImage = optBoolean("background_image", FrameParams.DEFAULT_BACKGROUND_IMAGE),
-        hasBackground = optBoolean("has_background", false),
-        // Parsed geometry values are never null: the UI fills them straight into the form
-        paddingDp = optDouble("padding_dp", FrameParams.DEFAULT_PADDING_DP.toDouble()).toFloat(),
-        borderGapDp = optDouble("border_gap_dp", FrameParams.DEFAULT_BORDER_GAP_DP.toDouble())
-            .toFloat(),
-        insetDp = optDouble("inset_dp", FrameParams.DEFAULT_INSET_DP.toDouble()).toFloat()
+    if (this == null) return FrameConfig(FrameState())
+
+    val values = mutableMapOf<String, Any>()
+    optJSONObject("values")?.let { map ->
+        val keys = map.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            when (val value = map.opt(key)) {
+                is Int -> values[key] = value
+                is Number -> values[key] = value.toFloat()
+                is Boolean -> values[key] = value
+            }
+        }
+    }
+
+    val backgroundJson = optJSONObject("background")
+    val background = FrameBackground(
+        mode = backgroundJson?.optInt("mode", FrameBackground.MODE_SOLID)
+            ?: FrameBackground.MODE_SOLID,
+        color = backgroundJson?.optInt("color", FrameBackground.DEFAULT_COLOR)
+            ?: FrameBackground.DEFAULT_COLOR,
+        hasImage = backgroundJson?.optBoolean("has_image", false) ?: false
     )
+
     val styles = buildList {
         val array = optJSONArray("styles") ?: return@buildList
         for (i in 0 until array.length()) {
             val item = array.optJSONObject(i) ?: continue
             val id = item.optString("id")
             if (id.isEmpty()) continue
-            add(FrameStyleInfo(id, item.optString("name")))
+            val params = buildList {
+                val list = item.optJSONArray("params") ?: return@buildList
+                for (j in 0 until list.length()) {
+                    val param = list.optJSONObject(j) ?: continue
+                    val paramId = param.optString("id")
+                    if (paramId.isEmpty()) continue
+                    add(
+                        FrameParamInfo(
+                            id = paramId,
+                            kind = param.optString("kind", FrameParamInfo.KIND_LENGTH),
+                            minDp = param.optDouble("min", 0.0).toFloat(),
+                            maxDp = param.optDouble("max", 0.0).toFloat(),
+                            defaultDp = param.optDouble("default", 0.0).toFloat(),
+                            defaultColor = param.optInt("default", 0),
+                            advanced = param.optBoolean("advanced", false)
+                        )
+                    )
+                }
+            }
+            add(FrameStyleInfo(id, item.optString("name"), params))
         }
     }
-    return FrameConfig(params, styles)
+
+    val panelJson = optJSONObject("panel")
+    val panel = PanelInfo(
+        widthPx = panelJson?.optInt("width", 1920) ?: 1920,
+        heightPx = panelJson?.optInt("height", 1280) ?: 1280,
+        density = (panelJson?.optDouble("density", 2.0) ?: 2.0).toFloat()
+    )
+
+    val state = FrameState(
+        styleId = optString("style_id").orEmpty(),
+        values = values,
+        background = background,
+        frameEnabled = optBoolean("frame_enabled", false),
+        fromImage = optString("source") == "image"
+    )
+    return FrameConfig(state, styles, panel)
 }
 
 /** Parse the GET /media items array */private fun JSONArray?.toMediaItems(): List<MediaItem> {

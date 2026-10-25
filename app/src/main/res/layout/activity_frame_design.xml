@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Frame Design (UI PRD §3.8): the frame switch, the style list and the geometric / width / colour
-    parameters, in the order the user specified. No ScrollView on purpose — the page fits one screen
-    and scrolling here only causes mis-taps. There is deliberately no background row: the wallpaper
-    belongs to the Backgrounds page.
+    Frame + background editor (PRD 6.9 / 6.10).
+
+    One page for both scopes: "default" (Settings → Parameters) and "image" (the picture on screen).
+    The parameter rows are generated from the device's style schema at runtime, so this layout only
+    provides the containers — a style the device adds later needs no change here.
+
+    Scrollable on purpose: the base group fits one screen, but the advanced group must stay reachable.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/app_bg"
@@ -19,135 +21,173 @@
         android:paddingStart="8dp"
         android:paddingEnd="@dimen/card_padding" />
 
-    <LinearLayout
+    <ScrollView
+        android:id="@+id/scroll_frame_design"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:paddingStart="@dimen/page_horizontal_padding"
-        android:paddingTop="@dimen/item_gap"
-        android:paddingEnd="@dimen/page_horizontal_padding"
-        android:paddingBottom="@dimen/page_vertical_padding">
+        android:fillViewport="true"
+        android:scrollbars="none">
 
-        <com.google.android.material.card.MaterialCardView
-            style="@style/SurfaceCard"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/page_horizontal_padding"
+            android:paddingTop="@dimen/item_gap"
+            android:paddingEnd="@dimen/page_horizontal_padding"
+            android:paddingBottom="@dimen/page_vertical_padding">
 
-            <LinearLayout
+            <!-- Which scope this page edits: the default layer or the picture on screen -->
+            <TextView
+                android:id="@+id/tv_frame_scope"
+                style="@style/Text.Label"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:text="@string/frame_scope_default" />
 
-                <!-- Frame switch: off means the device draws no frame at all -->
+            <!-- Live preview: the same layers the panel draws, at the panel's real aspect ratio -->
+            <com.ShowSeen.lightshadowart.mobile.FramePreviewView
+                android:id="@+id/preview_frame"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:layout_marginTop="@dimen/item_gap" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap">
+
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:minHeight="@dimen/touch_min_height"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/card_padding"
-                    android:paddingEnd="@dimen/card_padding">
-
-                    <TextView
-                        style="@style/Text.RowTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/add_frame_enabled" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-        style="@style/Widget.LightShadowArtPhone.Switch"
-                        android:id="@+id/switch_frame_design_enabled"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minHeight="@dimen/touch_min_height" />
-                </LinearLayout>
-
-                <View style="@style/Settings.Divider" />
-
-                <!-- Everything below is greyed out and untouchable while the switch is off -->
-                <LinearLayout
-                    android:id="@+id/container_frame_design_params"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingStart="@dimen/card_padding"
-                    android:paddingTop="@dimen/item_gap"
-                    android:paddingEnd="@dimen/card_padding"
-                    android:paddingBottom="@dimen/item_gap">
+                    android:padding="@dimen/card_padding">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:minHeight="@dimen/touch_min_height"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/Text.RowTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/add_frame_enabled" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switch_frame_design_enabled"
+                            style="@style/Widget.LightShadowArtPhone.Switch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minHeight="@dimen/touch_min_height" />
+                    </LinearLayout>
+
+                    <View style="@style/Settings.Divider" />
 
                     <TextView
                         style="@style/Text.Label"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/item_gap"
                         android:text="@string/frame_style" />
 
                     <Spinner
-                        android:id="@+id/spinner_frame_design_style"
+                        android:id="@+id/spinner_frame_style"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="@dimen/touch_min_height" />
 
-                    <TextView
-                        style="@style/Text.Label"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
-                        android:text="@string/add_frame_padding" />
-
-                    <EditText
-                        android:id="@+id/et_frame_design_padding"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:singleLine="true" />
-
-                    <TextView
-                        style="@style/Text.Label"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
-                        android:text="@string/add_frame_border_gap" />
-
-                    <EditText
-                        android:id="@+id/et_frame_design_border_gap"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:singleLine="true" />
-
-                    <TextView
-                        style="@style/Text.Label"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
-                        android:text="@string/add_frame_inset" />
-
-                    <EditText
-                        android:id="@+id/et_frame_design_inset"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:singleLine="true" />
-
-                    <TextView
-                        style="@style/Text.Label"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/section_gap"
-                        android:text="@string/add_frame_width" />
-
-                    <EditText
-                        android:id="@+id/et_frame_design_width"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:singleLine="true" />
-
-                    <!-- Colour row: a swatch only; the HSV picker is its own page -->
+                    <!-- Base parameters, generated from the style schema -->
                     <LinearLayout
-                        android:id="@+id/row_frame_design_color"
+                        android:id="@+id/container_frame_params"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <TextView
+                        android:id="@+id/tv_frame_advanced"
+                        style="@style/Text.RowTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_min_height"
+                        android:gravity="center_vertical"
+                        android:text="@string/frame_advanced_show" />
+
+                    <!-- Advanced parameters, hidden until the row above is tapped -->
+                    <LinearLayout
+                        android:id="@+id/container_frame_advanced"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_frame_background"
+                style="@style/SurfaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/item_gap">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_padding">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/frame_background" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/item_gap"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_frame_bg_blur"
+                            style="@style/PillButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/item_gap"
+                            android:layout_weight="1"
+                            android:maxLines="1"
+                            android:minHeight="@dimen/touch_min_height"
+                            android:text="@string/frame_bg_blur" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_frame_bg_solid"
+                            style="@style/PillButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/item_gap"
+                            android:layout_weight="1"
+                            android:maxLines="1"
+                            android:minHeight="@dimen/touch_min_height"
+                            android:text="@string/frame_bg_solid" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_frame_bg_image"
+                            style="@style/PillButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:maxLines="1"
+                            android:minHeight="@dimen/touch_min_height"
+                            android:text="@string/frame_bg_image" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/row_frame_bg_color"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/section_gap"
@@ -163,10 +203,10 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/add_frame_color" />
+                            android:text="@string/frame_background_color" />
 
                         <View
-                            android:id="@+id/view_frame_design_color_preview"
+                            android:id="@+id/view_frame_bg_color_preview"
                             android:layout_width="64dp"
                             android:layout_height="36dp"
                             android:background="@drawable/bg_media_placeholder" />
@@ -178,16 +218,53 @@
                             android:contentDescription="@null"
                             android:src="@drawable/ic_chevron_right" />
                     </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_frame_design_apply"
-            style="@style/PillButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/section_gap"
-            android:text="@string/frame_apply" />
-    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_frame_bg_upload"
+                        style="@style/PillButton.Outlined"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/section_gap"
+                        android:minHeight="@dimen/touch_min_height"
+                        android:text="@string/frame_style_import" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:id="@+id/tv_frame_status"
+                style="@style/Text.Label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/section_gap"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/section_gap"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_frame_design_reset"
+                    style="@style/PillButton.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/item_gap"
+                    android:layout_weight="1"
+                    android:maxLines="1"
+                    android:minHeight="@dimen/touch_min_height"
+                    android:text="@string/frame_reset" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_frame_design_apply"
+                    style="@style/PillButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:maxLines="1"
+                    android:minHeight="@dimen/touch_min_height"
+                    android:text="@string/frame_apply" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>

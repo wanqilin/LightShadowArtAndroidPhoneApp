@@ -104,12 +104,9 @@
             android:screenOrientation="portrait" />
 
         <!-- Backgrounds (UI PRD §3.10): wallpaper / solid fill behind the photo -->
-        <activity
-            android:name=".BackgroundsActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
+        
 
-        <!-- Line colour picker (UI PRD §3.9): HSV sub-page of Frame Design and Backgrounds -->
+        <!-- Line colour picker (UI PRD §3.9): HSV sub-page of the frame / background editor -->
         <activity
             android:name=".LineColorActivity"
             android:exported="false"

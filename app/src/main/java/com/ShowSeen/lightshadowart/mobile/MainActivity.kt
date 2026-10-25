@@ -36,7 +36,6 @@ import com.ShowSeen.lightshadowart.mobile.net.ConnectionManager
 import com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint
 import com.ShowSeen.lightshadowart.mobile.net.DeviceParams
 import com.ShowSeen.lightshadowart.mobile.net.FileTooLargeException
-import com.ShowSeen.lightshadowart.mobile.net.FramePatch
 import com.ShowSeen.lightshadowart.mobile.net.MediaItem
 import com.ShowSeen.lightshadowart.mobile.net.PlaybackMode
 import com.ShowSeen.lightshadowart.mobile.net.PlaybackState
@@ -567,6 +566,8 @@ class MainActivity : DeviceActivity() {
             startActivity(Intent(this, LanguageActivity::class.java))
         }
         btnSettingsParams.setOnClickListener { showSettingsPage(SETTINGS_PAGE_PARAMS) }
+        findViewById<View>(R.id.btn_settings_frame_default)
+            .setOnClickListener { openDefaultFrame() }
         btnSettingsAbout.setOnClickListener {
             startActivity(Intent(this, AboutActivity::class.java))
         }
@@ -1335,16 +1336,36 @@ class MainActivity : DeviceActivity() {
         startPlaybackPolling(refreshSoon = true)
     }
 
+    /**
+     * Frame and background are one editor page (PRD 6.10): it edits the picture on screen, and the same
+     * page opened from Settings → Parameters edits the default layer instead.
+     */
     private fun openFrameDesign(): Boolean {
         if (!requireEditable()) return false
-        startActivity(Intent(this, FrameDesignActivity::class.java))
+        startActivity(frameEditorIntent())
         return true
     }
 
     private fun openBackgrounds(): Boolean {
         if (!requireEditable()) return false
-        startActivity(Intent(this, BackgroundsActivity::class.java))
+        startActivity(frameEditorIntent())
         return true
+    }
+
+    private fun frameEditorIntent(): Intent {
+        val path = playbackState?.lastFile.orEmpty()
+        return Intent(this, FrameDesignActivity::class.java)
+            .putExtra(FrameDesignActivity.EXTRA_SCOPE, FrameDesignActivity.SCOPE_IMAGE)
+            .putExtra(FrameDesignActivity.EXTRA_PATH, path)
+            .putExtra(FrameDesignActivity.EXTRA_DISPLAY_NAME, path.substringAfterLast('/'))
+    }
+
+    /** Settings → Parameters → default frame / background */
+    private fun openDefaultFrame() {
+        startActivity(
+            Intent(this, FrameDesignActivity::class.java)
+                .putExtra(FrameDesignActivity.EXTRA_SCOPE, FrameDesignActivity.SCOPE_DEFAULT)
+        )
     }
 
     /** Editing requires an administrator session inside static playback; otherwise say why. */

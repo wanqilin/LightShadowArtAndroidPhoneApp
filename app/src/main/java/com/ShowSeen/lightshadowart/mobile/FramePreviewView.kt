@@ -3,22 +3,25 @@ package com.ShowSeen.lightshadowart.mobile
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import androidx.core.content.ContextCompat
+import com.ShowSeen.lightshadowart.mobile.net.FrameBackground
+import com.ShowSeen.lightshadowart.mobile.net.FrameParamInfo
+import com.ShowSeen.lightshadowart.mobile.net.PanelInfo
 
 /**
- * Edit preview for the background config page (requirement 3.3.2 / T-9; F-6 round three extended it to solid colors).
+ * Live preview of the device panel (PRD 6.10).
  *
- * - A **red border** marks the maximum boundary 1920x1280 (same as the device logical resolution), warning the user that design content must stay inside it;
- * - Inside the boundary the user-imported background image is drawn with **centerCrop**, matching how the device's `BlurFillView` fills the area;
- * - With no image, the **solid background color** is painted (F-6 round three), matching the device's "image first, solid color as the base" priority,
- *   so the preview shows the same layer the device would paint.
+ * The user could only "change a number, walk to the wall and look at the screen" before, which is why
+ * the parameters were unreadable. This view draws the same layers the device draws — background →
+ * photo → frame bands — using the panel's real aspect ratio, so a slider change is visible at once.
  *
- * Note: the preview is an approximation (the device actually renders at 1920x1280 logical resolution); the device screen is the final word on appearance.
+ * Rendered from parameter ids, not from a per-style switch: whatever the device declares is what gets
+ * previewed, so a new device-side style needs no phone change here.
  */
 class FramePreviewView @JvmOverloads constructor(
     context: Context,
@@ -26,82 +29,244 @@ class FramePreviewView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val imagePaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val colorPaint = Paint()
-    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = ContextCompat.getColor(context, R.color.frame_boundary)
-        strokeWidth = resources.displayMetrics.density * 2f
-    }
     private val srcRect = Rect()
     private val dstRect = RectF()
 
-    private var previewBitmap: Bitmap? = null
+    private var panel = PanelInfo()
+    private var params: List<FrameParamInfo> = emptyList()
+    private var values: Map<String, Any> = emptyMap()
+    private var background = FrameBackground()
+    private var backgroundBitmap: Bitmap? = null
 
-    /** Solid background color (the base when no image is selected); `null` means paint none */
-    private var previewColor: Int? = null
+    /** Placeholder photo aspect (4:3 landscape, the most common case on this panel) */
+    private val photoAspect = 4f / 3f
 
-    /** Sets the background image to preview; null clears it (the caller is responsible for recycling the Bitmap) */
-    fun setPreviewBitmap(bitmap: Bitmap?) {
-        previewBitmap = bitmap
+    fun setFrame(
+        params: List<FrameParamInfo>,
+        values: Map<String, Any>,
+        background: FrameBackground,
+        panel: PanelInfo
+    ) {
+        this.params = params
+        this.values = values
+        this.background = background
+        this.panel = panel
+        requestLayout()
         invalidate()
     }
 
-    /** Sets the solid background color (the base outside the photo, the same color the device's `BlurFillView` paints) */
-    fun setPreviewColor(color: Int?) {
-        previewColor = color
+    /** Background image to preview (the shared device-side backdrop); null clears it */
+    fun setBackgroundBitmap(bitmap: Bitmap?) {
+        backgroundBitmap = bitmap
         invalidate()
     }
+
+    private fun lengthDp(id: String): Float =
+        (values[id] as? Number)?.toFloat()
+            ?: params.firstOrNull { it.id == id }?.defaultDp
+            ?: 0f
+
+    private fun color(id: String): Int =
+        (values[id] as? Number)?.toInt()
+            ?: params.firstOrNull { it.id == id }?.defaultColor
+            ?: Color.TRANSPARENT
+
+    private fun has(id: String): Boolean = params.any { it.id == id }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        // Fill mode: fill proportionally from the phone's available width, height derived from 1920:1280 (user's spec, requirement 3.3.2 / T-9)
-        val height = (width * BOUNDARY_HEIGHT / BOUNDARY_WIDTH).toInt()
+        // Respect the height the layout asked for; the aspect ratio only fills it in for wrap_content
+        val height = when (MeasureSpec.getMode(heightMeasureSpec)) {
+            MeasureSpec.EXACTLY -> MeasureSpec.getSize(heightMeasureSpec)
+            else -> (width * panel.aspect).toInt()
+        }
         setMeasuredDimension(width, height)
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val boundary = boundaryRect()
-        if (boundary.width() <= 0f || boundary.height() <= 0f) return
+        if (width <= 0 || height <= 0) return
 
-        // Paint the solid base first: an image covers it when present (same priority as the device)
-        previewColor?.let { color ->
-            colorPaint.color = color
-            canvas.drawRect(boundary, colorPaint)
+        // 1) background: what the device paints outside the photo
+        drawBackground(canvas)
+
+        val scale = width.toFloat() / panel.widthPx
+        val insetPx = insetDp() * panel.density * scale
+        val box = RectF(insetPx, insetPx, width - insetPx, height - insetPx)
+        if (box.width() <= 0f || box.height() <= 0f) return
+
+        // 2) photo placeholder, contain-fitted like the device does
+        val photoWidth: Float
+        val photoHeight: Float
+        if (box.width() / box.height() > photoAspect) {
+            photoHeight = box.height()
+            photoWidth = photoHeight * photoAspect
+        } else {
+            photoWidth = box.width()
+            photoHeight = photoWidth / photoAspect
         }
+        val photo = RectF(
+            box.centerX() - photoWidth / 2f,
+            box.centerY() - photoHeight / 2f,
+            box.centerX() + photoWidth / 2f,
+            box.centerY() + photoHeight / 2f
+        )
+        fillPaint.color = PHOTO_COLOR
+        canvas.drawRect(photo, fillPaint)
 
-        val bitmap = previewBitmap
-        if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {
-            // centerCrop: the short edge fills the boundary, the long edge is center-cropped, matching how the device fills the base
-            val scale = maxOf(
-                boundary.width() / bitmap.width,
-                boundary.height() / bitmap.height
-            )
-            val drawWidth = bitmap.width * scale
-            val drawHeight = bitmap.height * scale
-            val left = boundary.left + (boundary.width() - drawWidth) / 2f
-            val top = boundary.top + (boundary.height() - drawHeight) / 2f
-            srcRect.set(0, 0, bitmap.width, bitmap.height)
-            dstRect.set(left, top, left + drawWidth, top + drawHeight)
-            // Clip anything past the maximum boundary so nothing is drawn outside it
-            canvas.save()
-            canvas.clipRect(boundary)
-            canvas.drawBitmap(bitmap, srcRect, dstRect, imagePaint)
-            canvas.restore()
-        }
-
-        canvas.drawRect(boundary, borderPaint)
+        // 3) frame bands, pushed outward from the photo rect (same rule as the device)
+        drawFrame(canvas, photo, panel.density * scale)
     }
 
-    /** The maximum boundary is the whole View: this View's size is already set to 1920:1280 by [onMeasure] */
-    private fun boundaryRect(): RectF {
-        return RectF(0f, 0f, width.toFloat(), height.toFloat())
+    private fun drawBackground(canvas: Canvas) {
+        when (background.mode) {
+            FrameBackground.MODE_IMAGE -> {
+                val bitmap = backgroundBitmap
+                if (bitmap != null && !bitmap.isRecycled) {
+                    val scale = maxOf(
+                        width.toFloat() / bitmap.width,
+                        height.toFloat() / bitmap.height
+                    )
+                    val drawWidth = bitmap.width * scale
+                    val drawHeight = bitmap.height * scale
+                    srcRect.set(0, 0, bitmap.width, bitmap.height)
+                    dstRect.set(
+                        (width - drawWidth) / 2f,
+                        (height - drawHeight) / 2f,
+                        (width + drawWidth) / 2f,
+                        (height + drawHeight) / 2f
+                    )
+                    canvas.save()
+                    canvas.clipRect(0f, 0f, width.toFloat(), height.toFloat())
+                    canvas.drawBitmap(bitmap, srcRect, dstRect, imagePaint)
+                    canvas.restore()
+                } else {
+                    fillPaint.color = Color.parseColor("#6B7280")
+                    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fillPaint)
+                }
+            }
+            FrameBackground.MODE_SOLID -> {
+                fillPaint.color = background.color
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fillPaint)
+            }
+            else -> {
+                fillPaint.color = Color.parseColor("#202226")
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fillPaint)
+            }
+        }
     }
 
-    companion object {
-        /** Maximum boundary: matches the device logical resolution (requirement 3.3.2 / T-9) */
-        const val BOUNDARY_WIDTH = 1920f
-        const val BOUNDARY_HEIGHT = 1280f
+    /** Total inset of the current style, in dp */
+    private fun insetDp(): Float {
+        var inset = 0f
+        if (has("band_dp")) inset += lengthDp("band_dp")
+        if (has("spread_dp")) inset += lengthDp("spread_dp")
+        if (has("offset_dp")) inset += lengthDp("offset_dp") + lengthDp("gap_dp")
+        inset += lengthDp("margin_dp")
+        return maxOf(0f, inset)
+    }
+
+    private fun drawFrame(canvas: Canvas, photo: RectF, density: Float) {
+        // mat: paper → bevel → photo shadow → decorative line → outline
+        if (has("band_dp")) {
+            val band = lengthDp("band_dp") * density
+            val bandColor = color("band_color")
+            lined(band, Color.TRANSPARENT, bandColor, canvas, photo)
+
+            val bevel = lengthDp("bevel_dp") * density
+            if (bevel > 0f) {
+                lined(bevel, Color.TRANSPARENT, lighten(bandColor, 0.55f), canvas, photo)
+            }
+            // 1dp shadow right against the photo
+            lined(maxOf(1f, density * 0.5f), Color.TRANSPARENT, shade(bandColor, 0.55f), canvas, photo)
+
+            val deco = lengthDp("deco_line_dp") * density
+            if (deco > 0f) {
+                val rect = RectF(photo)
+                val offset = lengthDp("deco_offset_dp") * density
+                rect.inset(-offset, -offset)
+                linePaint.color = color("deco_line_color")
+                linePaint.strokeWidth = deco
+                canvas.drawRect(rect, linePaint)
+            }
+            val outer = lengthDp("outer_line_dp") * density
+            if (outer > 0f) {
+                val rect = RectF(photo)
+                val offset = band + outer / 2f
+                rect.inset(-offset, -offset)
+                linePaint.color = color("outer_line_color")
+                linePaint.strokeWidth = outer
+                canvas.drawRect(rect, linePaint)
+            }
+        }
+
+        // shadow: white line hugging the photo + a gradient of rings
+        if (has("spread_dp")) {
+            val spread = lengthDp("spread_dp") * density
+            val inner = maxOf(1f, lengthDp("inner_line_dp") * density)
+            val steps = 8
+            val step = maxOf(0f, spread - inner) / steps
+            for (i in 0 until steps) {
+                val offset = inner + step * (i + 0.5f)
+                val alpha = (150 * (1f - i.toFloat() / steps)).toInt()
+                if (step <= 0f || alpha <= 0) break
+                val rect = RectF(photo)
+                rect.inset(-offset, -offset)
+                linePaint.color = Color.argb(alpha, 0, 0, 0)
+                linePaint.strokeWidth = step
+                canvas.drawRect(rect, linePaint)
+            }
+            lined(inner, Color.TRANSPARENT, color("inner_line_color"), canvas, photo)
+        }
+
+        // simple_line: inner line on photo+offset, outer on inner+gap
+        if (has("offset_dp")) {
+            val line = maxOf(1f, lengthDp("line_dp") * density)
+            linePaint.color = color("line_color")
+            linePaint.strokeWidth = line
+            val inner = RectF(photo)
+            val offset = lengthDp("offset_dp") * density
+            inner.inset(-offset, -offset)
+            canvas.drawRect(inner, linePaint)
+            val gap = lengthDp("gap_dp") * density
+            if (gap > 0f) {
+                val outer = RectF(photo)
+                val outerOffset = offset + gap
+                outer.inset(-outerOffset, -outerOffset)
+                canvas.drawRect(outer, linePaint)
+            }
+        }
+    }
+
+    /** Fills the band [photo, photo + width] (centre-line stroke, like the device's fillBand) */
+    private fun lined(width: Float, colorUnused: Int, color: Int, canvas: Canvas, photo: RectF) {
+        if (width <= 0f) return
+        val rect = RectF(photo)
+        rect.inset(-width / 2f, -width / 2f)
+        linePaint.color = color
+        linePaint.strokeWidth = width
+        canvas.drawRect(rect, linePaint)
+    }
+
+    private fun lighten(color: Int, ratio: Float): Int {
+        val r = (Color.red(color) + (255 - Color.red(color)) * ratio).toInt()
+        val g = (Color.green(color) + (255 - Color.green(color)) * ratio).toInt()
+        val b = (Color.blue(color) + (255 - Color.blue(color)) * ratio).toInt()
+        return Color.rgb(r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
+    }
+
+    private fun shade(color: Int, ratio: Float): Int {
+        val r = (Color.red(color) * ratio).toInt()
+        val g = (Color.green(color) * ratio).toInt()
+        val b = (Color.blue(color) * ratio).toInt()
+        return Color.rgb(r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
+    }
+
+    private companion object {
+        /** Neutral stand-in for the photo: the preview shows the frame, not the picture */
+        const val PHOTO_COLOR = 0xFF8CA0B8.toInt()
     }
 }

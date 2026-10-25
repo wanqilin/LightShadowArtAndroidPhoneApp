@@ -10,7 +10,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.slider.Slider
-import com.ShowSeen.lightshadowart.mobile.net.FrameParams
 import kotlin.math.roundToInt
 
 /**
@@ -59,7 +58,7 @@ class LineColorActivity : AppCompatActivity() {
         saturationSlider.addOnChangeListener { _, _, fromUser -> if (fromUser) render() }
         valueSlider.addOnChangeListener { _, _, fromUser -> if (fromUser) render() }
 
-        applyColor(intent.getIntExtra(EXTRA_COLOR, FrameParams.DEFAULT_LINE_COLOR))
+        applyColor(intent.getIntExtra(EXTRA_COLOR, DEFAULT_LINE_COLOR))
     }
 
     /** Load an existing 0xAARRGGBB colour into H/S/V; alpha is dropped (device colours are opaque). */
@@ -111,6 +110,8 @@ class LineColorActivity : AppCompatActivity() {
 
     companion object {
         /** Result extra: the chosen colour as 0xAARRGGBB. */
+        const val DEFAULT_LINE_COLOR: Int = 0xFFD32F2F.toInt()
+
         const val EXTRA_COLOR = "extra_line_color"
 
         /** Input extra: string resource for the page title (line colour / background colour). */

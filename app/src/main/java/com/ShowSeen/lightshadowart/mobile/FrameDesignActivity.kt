@@ -1,251 +1,647 @@
 package com.ShowSeen.lightshadowart.mobile
 
-import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.ShowSeen.lightshadowart.mobile.net.DeviceClient
-import com.ShowSeen.lightshadowart.mobile.net.FrameParams
-import com.ShowSeen.lightshadowart.mobile.net.FramePatch
+import com.ShowSeen.lightshadowart.mobile.net.FrameBackground
+import com.ShowSeen.lightshadowart.mobile.net.FrameConfig
+import com.ShowSeen.lightshadowart.mobile.net.FrameParamInfo
 import com.ShowSeen.lightshadowart.mobile.net.FrameStyleInfo
+import com.ShowSeen.lightshadowart.mobile.net.PanelInfo
 import com.ShowSeen.lightshadowart.mobile.net.SessionExpiredException
+import com.ShowSeen.lightshadowart.mobile.net.toUploadSource
 import kotlinx.coroutines.launch
 
 /**
- * Frame Design (UI PRD §3.8).
+ * Frame + background editor (PRD 6.9 / 6.10).
  *
- * Flow: read the device's current frame with `GET /frame`, edit, then send only the frame fields
- * with `POST /frame` (partial update — the wallpaper fields stay untouched).
+ * One page, two scopes:
+ * - [SCOPE_IMAGE]: the picture on screen keeps its own parameters and background;
+ * - [SCOPE_DEFAULT]: the fallback every un-customised picture uses, reachable from Settings → Parameters.
  *
- * Control order matches the specification: switch → style → ① → ⑤ → ② → ④ → colour row → Apply.
- * The style list comes from the device, and the colour row opens the HSV picker as a sub-page.
- *
- * Switching the frame off greys the whole parameter block out and makes it untouchable, while the
- * switch itself stays usable — otherwise it could never be turned back on. A 22dp corner card holds
- * the parameters so the page reads as one grouped setting rather than a form.
+ * Rows are generated from the device's style schema, so only the parameters the selected style really
+ * reads appear, and every row is a 44dp compact line (label + value + slider) so the live preview
+ * still fits one screen. Values are sent as a partial update: only what this page owns is written.
  */
 class FrameDesignActivity : AppCompatActivity() {
 
+    companion object {
+        /** [SCOPE_IMAGE] edits one picture, [SCOPE_DEFAULT] edits the fallback layer */
+        const val EXTRA_SCOPE = "extra_frame_scope"
+        /** Absolute media path, required for [SCOPE_IMAGE] */
+        const val EXTRA_PATH = "extra_frame_path"
+        /** File name of the picture on screen, only used for the "applies to" line */
+        const val EXTRA_DISPLAY_NAME = "extra_frame_display_name"
+
+        const val SCOPE_DEFAULT = "default"
+        const val SCOPE_IMAGE = "image"
+
+        private const val ROW_HEIGHT_DP = 44
+        private const val HALF_STEP = 2f
+        private const val DISABLED_ALPHA = 0.45f
+    }
+
     private lateinit var client: DeviceClient
-    private lateinit var paramsContainer: ViewGroup
+    private lateinit var tvScope: TextView
+    private lateinit var preview: FramePreviewView
     private lateinit var switchEnabled: MaterialSwitch
     private lateinit var styleSpinner: Spinner
-    private lateinit var etPadding: EditText
-    private lateinit var etBorderGap: EditText
-    private lateinit var etInset: EditText
-    private lateinit var etWidth: EditText
-    private lateinit var colorPreview: View
+    private lateinit var containerParams: LinearLayout
+    private lateinit var containerAdvanced: LinearLayout
+    private lateinit var tvAdvanced: TextView
+    private lateinit var cardBackground: MaterialCardView
+    private lateinit var btnBgBlur: MaterialButton
+    private lateinit var btnBgSolid: MaterialButton
+    private lateinit var btnBgImage: MaterialButton
+    private lateinit var rowBgColor: View
+    private lateinit var bgColorPreview: View
+    private lateinit var btnBgUpload: MaterialButton
+    private lateinit var tvStatus: TextView
+    private lateinit var btnReset: MaterialButton
     private lateinit var btnApply: MaterialButton
 
-    /** Selectable styles as reported by the device; the client never hard-codes style names. */
-    private var styles: List<FrameStyleInfo> = emptyList()
+    private var scope = SCOPE_DEFAULT
+    private var path: String? = null
+    private var displayName = ""
 
-    /** Frame the device reported; null until it has been read, which also gates Apply. */
-    private var current: FrameParams? = null
-
-    private var selectedColor: Int = FrameParams.DEFAULT_LINE_COLOR
+    private var config: FrameConfig? = null
+    private var styleId = ""
+    private var values = mutableMapOf<String, Any>()
+    private var background = FrameBackground()
+    private var frameEnabled = false
+    private var advancedExpanded = false
     private var applying = false
+    private var loaded = false
+    private var bgBitmap: Bitmap? = null
 
-    /** The HSV picker returns the chosen colour, or the previous one when nothing was changed. */
+    /** Values per style within this session, so switching styles back and forth does not lose tuning */
+    private val styleValueCache = mutableMapOf<String, MutableMap<String, Any>>()
+
+    /** Rows currently on screen, by parameter id (used to toggle the dependent rows) */
+    private val rowsById = mutableMapOf<String, View>()
+    private val swatchesById = mutableMapOf<String, View>()
+
+    private var pendingColorParam: FrameParamInfo? = null
+    private var pendingBackgroundColor = false
+
     private val colorLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode != RESULT_OK) return@registerForActivityResult
-        val color = result.data?.getIntExtra(LineColorActivity.EXTRA_COLOR, selectedColor)
-        showColor(color ?: selectedColor)
+        val color = result.data?.getIntExtra(LineColorActivity.EXTRA_COLOR, Color.BLACK)
+            ?: Color.BLACK
+        val param = pendingColorParam
+        when {
+            pendingBackgroundColor -> {
+                background = background.copy(color = opaque(color))
+                renderBackground()
+                renderPreview()
+            }
+            param != null -> {
+                values[param.id] = opaque(color)
+                swatchesById[param.id]?.setBackgroundColor(opaque(color))
+                renderPreview()
+            }
+        }
+        pendingColorParam = null
+        pendingBackgroundColor = false
+    }
+
+    private val imageLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) uploadBackground(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_frame_design)
 
+        scope = intent.getStringExtra(EXTRA_SCOPE) ?: SCOPE_DEFAULT
+        path = intent.getStringExtra(EXTRA_PATH)
+        displayName = intent.getStringExtra(EXTRA_DISPLAY_NAME).orEmpty()
+
         SessionStore.init(this)
         client = DeviceClient(contentResolver)
 
-        paramsContainer = findViewById(R.id.container_frame_design_params)
+        tvScope = findViewById(R.id.tv_frame_scope)
+        preview = findViewById(R.id.preview_frame)
         switchEnabled = findViewById(R.id.switch_frame_design_enabled)
-        styleSpinner = findViewById(R.id.spinner_frame_design_style)
-        etPadding = findViewById(R.id.et_frame_design_padding)
-        etBorderGap = findViewById(R.id.et_frame_design_border_gap)
-        etInset = findViewById(R.id.et_frame_design_inset)
-        etWidth = findViewById(R.id.et_frame_design_width)
-        colorPreview = findViewById(R.id.view_frame_design_color_preview)
+        styleSpinner = findViewById(R.id.spinner_frame_style)
+        containerParams = findViewById(R.id.container_frame_params)
+        containerAdvanced = findViewById(R.id.container_frame_advanced)
+        tvAdvanced = findViewById(R.id.tv_frame_advanced)
+        cardBackground = findViewById(R.id.card_frame_background)
+        btnBgBlur = findViewById(R.id.btn_frame_bg_blur)
+        btnBgSolid = findViewById(R.id.btn_frame_bg_solid)
+        btnBgImage = findViewById(R.id.btn_frame_bg_image)
+        rowBgColor = findViewById(R.id.row_frame_bg_color)
+        bgColorPreview = findViewById(R.id.view_frame_bg_color_preview)
+        btnBgUpload = findViewById(R.id.btn_frame_bg_upload)
+        tvStatus = findViewById(R.id.tv_frame_status)
+        btnReset = findViewById(R.id.btn_frame_design_reset)
         btnApply = findViewById(R.id.btn_frame_design_apply)
 
         findViewById<PageTopBarView>(R.id.frame_design_top_bar).apply {
-            setTitle(getString(R.string.frame_design_title))
+            setTitle(
+                getString(
+                    if (scope == SCOPE_IMAGE) R.string.frame_design_title
+                    else R.string.frame_default_title
+                )
+            )
             setOnBackClickListener { finish() }
         }
-        findViewById<LinearLayout>(R.id.row_frame_design_color).setOnClickListener {
-            colorLauncher.launch(
-                Intent(this, LineColorActivity::class.java)
-                    .putExtra(LineColorActivity.EXTRA_COLOR, selectedColor)
-                    .putExtra(LineColorActivity.EXTRA_TITLE_RES, R.string.line_color_title)
-            )
-        }
-        switchEnabled.setOnCheckedChangeListener { _, checked -> renderParamRows(checked) }
-        btnApply.setOnClickListener { applyToDevice() }
-        // Apply stays disabled until the device has been read, so interface defaults can never
-        // overwrite parameters the user set earlier.
-        btnApply.isEnabled = false
 
-        showColor(selectedColor)
-        renderParamRows(switchEnabled.isChecked)
-        loadFromDevice()
-    }
-
-    /** Read the device frame parameters and the style list, then fill the form. */
-    private fun loadFromDevice() {
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-        if (endpoint == null || sessionId == null) {
-            toast(getString(R.string.toast_need_session))
-            finish()
-            return
+        switchEnabled.setOnCheckedChangeListener { _, checked ->
+            frameEnabled = checked
+            renderParamsEnabled()
+            renderPreview()
         }
-        lifecycleScope.launch {
-            val config = client.readFrame(endpoint, sessionId).getOrElse { error ->
-                if (error is SessionExpiredException) {
-                    SessionStore.clear()
-                    toast(getString(R.string.toast_session_expired))
-                } else {
-                    toast(getString(R.string.frame_load_failed, error.message.orEmpty()))
-                }
-                finish()
-                return@launch
+        tvAdvanced.setOnClickListener {
+            advancedExpanded = !advancedExpanded
+            renderAdvancedVisibility()
+        }
+        btnBgBlur.setOnClickListener { setBackgroundMode(FrameBackground.MODE_BLUR) }
+        btnBgSolid.setOnClickListener { setBackgroundMode(FrameBackground.MODE_SOLID) }
+        btnBgImage.setOnClickListener {
+            if (background.hasImage) {
+                setBackgroundMode(FrameBackground.MODE_IMAGE)
+            } else {
+                // No backdrop on the device yet: pick one first
+                imageLauncher.launch("image/*")
             }
-
-            current = config.params
-            styles = config.styles
-            styleSpinner.adapter = ArrayAdapter(
-                this@FrameDesignActivity,
-                android.R.layout.simple_spinner_item,
-                styles.map { it.name }
-            ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-            styles.indexOfFirst { it.id == config.params.styleId }
-                .takeIf { it >= 0 }
-                ?.let { styleSpinner.setSelection(it) }
-
-            etPadding.setText(trimFloat(config.params.paddingDp ?: FrameParams.DEFAULT_PADDING_DP))
-            etBorderGap.setText(
-                trimFloat(config.params.borderGapDp ?: FrameParams.DEFAULT_BORDER_GAP_DP)
+        }
+        btnBgUpload.setOnClickListener { imageLauncher.launch("image/*") }
+        rowBgColor.setOnClickListener {
+            pendingBackgroundColor = true
+            pendingColorParam = null
+            colorLauncher.launch(
+                android.content.Intent(this, LineColorActivity::class.java)
+                    .putExtra(LineColorActivity.EXTRA_COLOR, background.color)
+                    .putExtra(
+                        LineColorActivity.EXTRA_TITLE_RES,
+                        R.string.line_color_title_background
+                    )
             )
-            etInset.setText(trimFloat(config.params.insetDp ?: FrameParams.DEFAULT_INSET_DP))
-            etWidth.setText(trimFloat(config.params.lineWidthDp))
-            showColor(config.params.lineColor)
-            switchEnabled.isChecked = config.params.frameEnabled
-            renderParamRows(config.params.frameEnabled)
-            btnApply.isEnabled = true
         }
-    }
+        btnReset.setOnClickListener { resetToDefault() }
+        btnApply.setOnClickListener { applyToDevice() }
 
-    private fun showColor(color: Int) {
-        selectedColor = color
-        colorPreview.setBackgroundColor(opaque(color))
-    }
-
-    /**
-     * Grey out and disable every parameter while the frame switch is off.
-     *
-     * `ViewGroup.setEnabled(false)` does not reach children — they still consume touches — so each
-     * child is disabled explicitly; the alpha carries the visual cue.
-     */
-    private fun renderParamRows(enabled: Boolean) {
-        setEnabledRecursively(paramsContainer, enabled)
-        paramsContainer.alpha = if (enabled) 1f else DISABLED_ALPHA
-    }
-
-    private fun setEnabledRecursively(view: View, enabled: Boolean) {
-        view.isEnabled = enabled
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) setEnabledRecursively(view.getChildAt(i), enabled)
-        }
-    }
-
-    /**
-     * Validate and send only what this page owns: switch, style, colour, width and ①⑤②.
-     * The wallpaper fields are configured on the Backgrounds page and stay untouched here.
-     */
-    private fun applyToDevice() {
-        val endpoint = SessionStore.endpoint
-        val sessionId = SessionStore.sessionId
-        if (endpoint == null || sessionId == null) {
-            toast(getString(R.string.toast_need_session))
-            finish()
-            return
-        }
-        val base = current ?: return
-        val padding = etPadding.text.toString().trim().toFloatOrNull()
-        val borderGap = etBorderGap.text.toString().trim().toFloatOrNull()
-        val inset = etInset.text.toString().trim().toFloatOrNull()
-        val width = etWidth.text.toString().trim().toFloatOrNull()
-        if (padding == null || padding < 0f || borderGap == null || borderGap < 0f ||
-            inset == null || inset < 0f || width == null || width <= 0f
-        ) {
-            toast(getString(R.string.frame_invalid))
-            return
-        }
-        if (applying) return
-        applying = true
+        // Apply and reset stay disabled until the device state has been read
         btnApply.isEnabled = false
-
-        val styleId = styles.getOrNull(styleSpinner.selectedItemPosition)?.id ?: base.styleId
-        val patch = FramePatch(
-            styleId = styleId,
-            frameEnabled = switchEnabled.isChecked,
-            lineColor = selectedColor,
-            lineWidthDp = width,
-            paddingDp = padding,
-            borderGapDp = borderGap,
-            insetDp = inset
+        btnReset.isEnabled = false
+        tvScope.text = getString(
+            if (scope == SCOPE_IMAGE) R.string.frame_scope_image else R.string.frame_scope_default
         )
 
+        load()
+    }
+
+    // ------------------------------------------------------------------
+    // Device state
+    // ------------------------------------------------------------------
+
+    private fun load() {
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            toast(getString(R.string.toast_need_session))
+            finish()
+            return
+        }
         lifecycleScope.launch {
-            client.writeFrame(endpoint, sessionId, patch)
-                .onSuccess { applied ->
-                    // The receipt carries the values that really took effect; base the next edit on it
-                    current = applied.params
-                    applying = false
-                    btnApply.isEnabled = true
-                    toast(getString(R.string.frame_applied))
-                }
-                .onFailure { error ->
-                    applying = false
-                    btnApply.isEnabled = true
-                    if (error is SessionExpiredException) {
-                        SessionStore.clear()
-                        toast(getString(R.string.toast_session_expired))
-                    } else {
-                        toast(getString(R.string.frame_save_failed, error.message.orEmpty()))
+            client.readFrame(endpoint, sessionId, if (scope == SCOPE_IMAGE) path else null)
+                .onSuccess { loaded0 ->
+                    config = loaded0
+                    val state = loaded0.state
+                    styleId = state.styleId.ifEmpty {
+                        loaded0.styles.firstOrNull()?.id.orEmpty()
                     }
+                    values = state.values.toMutableMap()
+                    styleValueCache[styleId] = values
+                    background = state.background
+                    frameEnabled = state.frameEnabled
+                    loaded = true
+                    renderScope()
+                    renderSpinner()
+                    renderAll()
+                }
+                .onFailure { failure ->
+                    handleFailure(failure, getString(R.string.frame_load_failed, ""))
+                    finish()
                 }
         }
     }
 
-    /** Drop the float tail so the field stays editable: 12.0 → "12", 12.5 → "12.5" */
-    private fun trimFloat(value: Float): String =
-        if (value == value.toInt().toFloat()) value.toInt().toString() else value.toString()
+    private fun currentStyle(): FrameStyleInfo? {
+        val cfg = config ?: return null
+        return cfg.styles.firstOrNull { it.id == styleId } ?: cfg.styles.firstOrNull()
+    }
 
-    /** Swatches only care about RGB; device colours are opaque, so alpha is dropped. */
+    private fun handleFailure(failure: Throwable, fallback: String) {
+        if (failure is SessionExpiredException) {
+            SessionStore.clear()
+            toast(getString(R.string.toast_session_expired))
+        } else {
+            toast(fallback + (failure.message ?: ""))
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Rendering
+    // ------------------------------------------------------------------
+
+    private fun renderScope() {
+        if (scope == SCOPE_IMAGE && displayName.isNotEmpty()) {
+            tvScope.text = getString(R.string.frame_scope_image_named, displayName)
+        }
+    }
+
+    private fun renderSpinner() {
+        val cfg = config ?: return
+        styleSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            cfg.styles.map { it.name }
+        ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        cfg.styles.indexOfFirst { it.id == styleId }.takeIf { it >= 0 }?.let {
+            styleSpinner.setSelection(it)
+        }
+        styleSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val picked = cfg.styles.getOrNull(position) ?: return
+                if (picked.id == styleId) return
+                styleId = picked.id
+                values = styleValueCache.getOrPut(styleId) {
+                    picked.params.associate { it.id to it.defaultValue }.toMutableMap()
+                }
+                renderAll()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+    }
+
+    private fun renderAll() {
+        switchEnabled.isChecked = frameEnabled
+        renderRows()
+        renderAdvancedVisibility()
+        renderBackground()
+        renderParamsEnabled()
+        renderPreview()
+        btnApply.isEnabled = loaded && !applying
+        btnReset.isEnabled = loaded && !applying
+        // "Restore default" only means something for one picture: the default layer is the bottom level
+        btnReset.isVisible = scope == SCOPE_IMAGE
+    }
+
+    private fun renderParamsEnabled() {
+        val alpha = if (frameEnabled) 1f else DISABLED_ALPHA
+        styleSpinner.alpha = alpha
+        containerParams.alpha = alpha
+        tvAdvanced.alpha = alpha
+        containerAdvanced.alpha = alpha
+        cardBackground.alpha = alpha
+        // No frame means no frame parameters: only the switch stays usable
+        styleSpinner.isEnabled = frameEnabled
+        containerParams.isEnabled = frameEnabled
+        containerAdvanced.isEnabled = frameEnabled
+        tvAdvanced.isEnabled = frameEnabled
+        btnApply.isEnabled = loaded && !applying
+    }
+
+    private fun renderRows() {
+        val style = currentStyle() ?: return
+        containerParams.removeAllViews()
+        containerAdvanced.removeAllViews()
+        rowsById.clear()
+        swatchesById.clear()
+
+        for (spec in style.params) {
+            val parent = if (spec.advanced) containerAdvanced else containerParams
+            val row = buildRow(spec)
+            rowsById[spec.id] = row
+            parent.addView(row)
+        }
+        updateDependentRows()
+    }
+
+    private fun renderAdvancedVisibility() {
+        val hasAdvanced = currentStyle()?.params?.any { it.advanced } == true
+        tvAdvanced.isVisible = hasAdvanced
+        containerAdvanced.isVisible = hasAdvanced && advancedExpanded
+        tvAdvanced.text = getString(
+            if (advancedExpanded) R.string.frame_advanced_hide else R.string.frame_advanced_show
+        )
+    }
+
+    private fun renderBackground() {
+        btnBgBlur.text = backgroundLabel(R.string.frame_bg_blur, background.mode == FrameBackground.MODE_BLUR)
+        btnBgSolid.text = backgroundLabel(R.string.frame_bg_solid, background.mode == FrameBackground.MODE_SOLID)
+        btnBgImage.text = backgroundLabel(R.string.frame_bg_image, background.mode == FrameBackground.MODE_IMAGE)
+        rowBgColor.isVisible = background.mode == FrameBackground.MODE_SOLID
+        btnBgUpload.isVisible = background.mode == FrameBackground.MODE_IMAGE
+        btnBgUpload.text = getString(
+            if (background.hasImage) R.string.frame_bg_image_replace else R.string.frame_bg_image_pick
+        )
+        bgColorPreview.setBackgroundColor(opaque(background.color))
+        tvStatus.isVisible = background.mode == FrameBackground.MODE_IMAGE &&
+            background.hasImage && bgBitmap == null
+        if (tvStatus.isVisible) tvStatus.text = getString(R.string.frame_bg_image_remote)
+    }
+
+    private fun renderPreview() {
+        val style = currentStyle() ?: return
+        val panel = config?.panel ?: PanelInfo()
+        preview.setFrame(style.params, values, background, panel)
+        preview.setBackgroundBitmap(
+            if (background.mode == FrameBackground.MODE_IMAGE) bgBitmap else null
+        )
+    }
+
+    /** A marker on the active background mode (not colour-only: the tick is text) */
+    private fun backgroundLabel(labelRes: Int, active: Boolean): String {
+        val text = getString(labelRes)
+        return if (active) getString(R.string.frame_bg_active_marker, text) else text
+    }
+
+    // ------------------------------------------------------------------
+    // Rows
+    // ------------------------------------------------------------------
+
+    private fun buildRow(spec: FrameParamInfo): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            minimumHeight = dp(ROW_HEIGHT_DP)
+        }
+        val label = TextView(this).apply {
+            text = paramLabel(spec.id)
+            textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.1f)
+        }
+        row.addView(label)
+
+        if (spec.isLength) {
+            val current = (values[spec.id] as? Number)?.toFloat() ?: spec.defaultDp
+            val valueText = TextView(this).apply {
+                text = formatDp(current)
+                textSize = 13f
+                gravity = android.view.Gravity.END
+                layoutParams = LinearLayout.LayoutParams(dp(56), LinearLayout.LayoutParams.WRAP_CONTENT)
+            }
+            val seek = SeekBar(this).apply {
+                max = (((spec.maxDp - spec.minDp) * HALF_STEP).toInt()).coerceAtLeast(1)
+                progress = (((current - spec.minDp) * HALF_STEP).toInt()).coerceIn(0, max)
+                layoutParams = LinearLayout.LayoutParams(0, dp(32), 1.4f)
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(
+                        bar: SeekBar?,
+                        progressValue: Int,
+                        fromUser: Boolean
+                    ) {
+                        if (!fromUser) return
+                        val value = spec.minDp + progressValue / HALF_STEP
+                        values[spec.id] = value
+                        valueText.text = formatDp(value)
+                        updateDependentRows()
+                        renderPreview()
+                    }
+
+                    override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+                })
+            }
+            // Value first, then the slider: the number is what the user reads back
+            row.addView(valueText)
+            row.addView(seek)
+        } else {
+            val swatch = View(this).apply {
+                setBackgroundColor(
+                    opaque((values[spec.id] as? Number)?.toInt() ?: spec.defaultColor)
+                )
+                layoutParams = LinearLayout.LayoutParams(dp(44), dp(26))
+            }
+            swatchesById[spec.id] = swatch
+            row.addView(swatch)
+            row.addView(android.widget.ImageView(this).apply {
+                setImageResource(R.drawable.ic_chevron_right)
+                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply {
+                    marginStart = dp(8)
+                }
+            })
+            row.setOnClickListener {
+                pendingColorParam = spec
+                pendingBackgroundColor = false
+                val current = (values[spec.id] as? Number)?.toInt() ?: spec.defaultColor
+                colorLauncher.launch(
+                    android.content.Intent(this, LineColorActivity::class.java)
+                        .putExtra(LineColorActivity.EXTRA_COLOR, current)
+                        .putExtra(LineColorActivity.EXTRA_TITLE_RES, R.string.line_color_title)
+                )
+            }
+        }
+        return row
+    }
+
+    /**
+     * Hides parameters that cannot do anything yet (a line colour with the line switched off), so the
+     * page never shows a knob without an effect — the original complaint about this screen.
+     */
+    private fun updateDependentRows() {
+        for ((id, row) in rowsById) {
+            row.isVisible = isRowVisible(id)
+        }
+    }
+
+    private fun isRowVisible(id: String): Boolean {
+        fun length(paramId: String): Float =
+            (values[paramId] as? Number)?.toFloat()
+                ?: currentStyle()?.params?.firstOrNull { it.id == paramId }?.defaultDp
+                ?: 0f
+
+        return when (id) {
+            "deco_offset_dp", "deco_line_color" -> length("deco_line_dp") > 0f
+            "outer_line_color" -> length("outer_line_dp") > 0f
+            "inner_line_color" -> length("inner_line_dp") > 0f
+            else -> true
+        }
+    }
+
+    private fun paramLabel(id: String): String {
+        val resId = when (id) {
+            "band_dp" -> R.string.frame_param_band
+            "band_color" -> R.string.frame_param_band_color
+            "margin_dp" -> R.string.frame_param_margin
+            "bevel_dp" -> R.string.frame_param_bevel
+            "outer_line_dp" -> R.string.frame_param_outer_line
+            "outer_line_color" -> R.string.frame_param_outer_color
+            "deco_line_dp" -> R.string.frame_param_deco_line
+            "deco_offset_dp" -> R.string.frame_param_deco_offset
+            "deco_line_color" -> R.string.frame_param_deco_color
+            "spread_dp" -> R.string.frame_param_spread
+            "inner_line_dp" -> R.string.frame_param_inner_line
+            "inner_line_color" -> R.string.frame_param_inner_color
+            "offset_dp" -> R.string.frame_param_offset
+            "gap_dp" -> R.string.frame_param_gap
+            "line_dp" -> R.string.frame_param_line_width
+            "line_color" -> R.string.frame_param_line_color
+            else -> 0
+        }
+        return if (resId == 0) id else getString(resId)
+    }
+
+    // ------------------------------------------------------------------
+    // Actions
+    // ------------------------------------------------------------------
+
+    private fun setBackgroundMode(mode: Int) {
+        background = background.copy(mode = mode)
+        renderBackground()
+        renderPreview()
+    }
+
+    private fun uploadBackground(uri: Uri) {
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            toast(getString(R.string.toast_need_session))
+            return
+        }
+        lifecycleScope.launch {
+            client.uploadFrameImage(endpoint, sessionId, contentResolver.toUploadSource(uri))
+                .onSuccess { saved ->
+                    if (!saved) {
+                        toast(getString(R.string.frame_style_upload_failed))
+                        return@onSuccess
+                    }
+                    bgBitmap = decodePreviewBitmap(uri)
+                    background = background.copy(
+                        mode = FrameBackground.MODE_IMAGE,
+                        hasImage = true
+                    )
+                    renderBackground()
+                    renderPreview()
+                }
+                .onFailure { handleFailure(it, getString(R.string.frame_style_upload_failed)) }
+        }
+    }
+
+    private fun applyToDevice() {
+        if (!loaded || applying) return
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            toast(getString(R.string.toast_need_session))
+            finish()
+            return
+        }
+        applying = true
+        btnApply.isEnabled = false
+        lifecycleScope.launch {
+            client.writeFrame(
+                endpoint = endpoint,
+                sessionId = sessionId,
+                scope = scope,
+                path = if (scope == SCOPE_IMAGE) path else null,
+                styleId = styleId,
+                values = values.toMap(),
+                background = background,
+                frameEnabled = frameEnabled
+            )
+                .onSuccess { applied ->
+                    config = applied
+                    applying = false
+                    toast(getString(R.string.frame_applied))
+                    renderAll()
+                }
+                .onFailure {
+                    applying = false
+                    btnApply.isEnabled = true
+                    handleFailure(it, getString(R.string.frame_save_failed, ""))
+                }
+        }
+    }
+
+    /** Drops this picture's override so it follows the default layer again */
+    private fun resetToDefault() {
+        if (scope != SCOPE_IMAGE || applying) return
+        val endpoint = SessionStore.endpoint
+        val sessionId = SessionStore.sessionId
+        if (endpoint == null || sessionId == null) {
+            toast(getString(R.string.toast_need_session))
+            finish()
+            return
+        }
+        applying = true
+        btnReset.isEnabled = false
+        lifecycleScope.launch {
+            client.writeFrame(
+                endpoint = endpoint,
+                sessionId = sessionId,
+                scope = SCOPE_IMAGE,
+                path = path,
+                styleId = null,
+                values = emptyMap(),
+                background = null,
+                frameEnabled = null,
+                clear = true
+            )
+                .onSuccess {
+                    applying = false
+                    toast(getString(R.string.frame_reset_done))
+                    load()
+                }
+                .onFailure {
+                    applying = false
+                    btnReset.isEnabled = true
+                    handleFailure(it, getString(R.string.frame_save_failed, ""))
+                }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    private fun decodePreviewBitmap(uri: Uri): Bitmap? = runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        var sample = 1
+        val longest = maxOf(bounds.outWidth, bounds.outHeight)
+        while (longest / sample > 1024) sample *= 2
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+    }.getOrNull()
+
+    private fun formatDp(value: Float): String =
+        if (value == value.toInt().toFloat()) "${value.toInt()}" else String.format("%.1f", value)
+
     private fun opaque(color: Int): Int =
         Color.rgb(Color.red(color), Color.green(color), Color.blue(color))
 
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-
-    private companion object {
-        const val DISABLED_ALPHA = 0.4f
     }
 }

@@ -380,6 +380,48 @@
                         <View
                             android:id="@+id/divider_settings_auto_play"
                             style="@style/Settings.Divider" />
+
+                        <!-- Default frame / background: the fallback every un-customised picture uses -->
+                        <LinearLayout
+                            android:id="@+id/btn_settings_frame_default"
+                            style="@style/Settings.Row.Clickable">
+
+                            <ImageView
+                                style="@style/Settings.Row.Icon"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_settings_gear"
+                                app:tint="@color/primary_blue" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/item_gap"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/Text.RowTitle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_frame_default" />
+
+                                <TextView
+                                    style="@style/Text.Hint"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_frame_default_summary" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_chevron_right" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/divider_settings_frame_default"
+                            style="@style/Settings.Divider" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
