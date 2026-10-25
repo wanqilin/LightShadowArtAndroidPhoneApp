@@ -327,4 +327,5 @@
     <string name="frame_param_gap">Line gap</string>
     <string name="frame_param_line_width">Line width</string>
     <string name="frame_param_line_color">Line colour</string>
+    <string name="frame_param_bottom_extra">Extra bottom band</string>
 </resources>

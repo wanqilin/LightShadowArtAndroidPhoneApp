@@ -94,8 +94,14 @@ class FramePreviewView @JvmOverloads constructor(
         drawBackground(canvas)
 
         val scale = width.toFloat() / panel.widthPx
-        val insetPx = insetDp() * panel.density * scale
-        val box = RectF(insetPx, insetPx, width - insetPx, height - insetPx)
+        val insets = insetsDp()
+        val unit = panel.density * scale
+        val box = RectF(
+            insets[0] * unit,
+            insets[1] * unit,
+            width - insets[2] * unit,
+            height - insets[3] * unit
+        )
         if (box.width() <= 0f || box.height() <= 0f) return
 
         // 2) photo placeholder, contain-fitted like the device does
@@ -159,29 +165,33 @@ class FramePreviewView @JvmOverloads constructor(
         }
     }
 
-    /** Total inset of the current style, in dp */
-    private fun insetDp(): Float {
+    /** Inset of the current style per side, in dp: left, top, right, bottom */
+    private fun insetsDp(): FloatArray {
         var inset = 0f
         if (has("band_dp")) inset += lengthDp("band_dp")
         if (has("spread_dp")) inset += lengthDp("spread_dp")
         if (has("offset_dp")) inset += lengthDp("offset_dp") + lengthDp("gap_dp")
         inset += lengthDp("margin_dp")
-        return maxOf(0f, inset)
+        val side = maxOf(0f, inset)
+        val bottom = side + maxOf(0f, lengthDp("bottom_extra_dp"))
+        return floatArrayOf(side, side, side, bottom)
     }
 
     private fun drawFrame(canvas: Canvas, photo: RectF, density: Float) {
         // mat: paper → bevel → photo shadow → decorative line → outline
         if (has("band_dp")) {
             val band = lengthDp("band_dp") * density
+            val extra = lengthDp("bottom_extra_dp") * density
             val bandColor = color("band_color")
-            lined(band, Color.TRANSPARENT, bandColor, canvas, photo)
+            fillBand(photo, band, extra, bandColor, canvas)
 
             val bevel = lengthDp("bevel_dp") * density
             if (bevel > 0f) {
-                lined(bevel, Color.TRANSPARENT, lighten(bandColor, 0.55f), canvas, photo)
+                fillBand(photo, bevel, bevel, lighten(bandColor, 0.55f), canvas)
             }
             // 1dp shadow right against the photo
-            lined(maxOf(1f, density * 0.5f), Color.TRANSPARENT, shade(bandColor, 0.55f), canvas, photo)
+            val shadowLine = maxOf(1f, density * 0.5f)
+            fillBand(photo, shadowLine, shadowLine, shade(bandColor, 0.55f), canvas)
 
             val deco = lengthDp("deco_line_dp") * density
             if (deco > 0f) {
@@ -194,9 +204,13 @@ class FramePreviewView @JvmOverloads constructor(
             }
             val outer = lengthDp("outer_line_dp") * density
             if (outer > 0f) {
-                val rect = RectF(photo)
-                val offset = band + outer / 2f
-                rect.inset(-offset, -offset)
+                val half = outer / 2f
+                val rect = RectF(
+                    photo.left - band - half,
+                    photo.top - band - half,
+                    photo.right + band + half,
+                    photo.bottom + band + extra + half
+                )
                 linePaint.color = color("outer_line_color")
                 linePaint.strokeWidth = outer
                 canvas.drawRect(rect, linePaint)
@@ -239,6 +253,16 @@ class FramePreviewView @JvmOverloads constructor(
                 canvas.drawRect(outer, linePaint)
             }
         }
+    }
+
+    /** Fills a band whose bottom side may be wider (bottom-weighted mat), like the device */
+    private fun fillBand(photo: RectF, width: Float, bottomExtra: Float, color: Int, canvas: Canvas) {
+        if (width <= 0f && bottomExtra <= 0f) return
+        fillPaint.color = color
+        canvas.drawRect(photo.left - width, photo.top - width, photo.right + width, photo.top, fillPaint)
+        canvas.drawRect(photo.left - width, photo.bottom, photo.right + width, photo.bottom + bottomExtra, fillPaint)
+        canvas.drawRect(photo.left - width, photo.top, photo.left, photo.bottom, fillPaint)
+        canvas.drawRect(photo.right, photo.top, photo.right + width, photo.bottom, fillPaint)
     }
 
     /** Fills the band [photo, photo + width] (centre-line stroke, like the device's fillBand) */

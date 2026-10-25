@@ -498,6 +498,7 @@ class FrameDesignActivity : AppCompatActivity() {
             "deco_line_dp" -> R.string.frame_param_deco_line
             "deco_offset_dp" -> R.string.frame_param_deco_offset
             "deco_line_color" -> R.string.frame_param_deco_color
+            "bottom_extra_dp" -> R.string.frame_param_bottom_extra
             "spread_dp" -> R.string.frame_param_spread
             "inner_line_dp" -> R.string.frame_param_inner_line
             "inner_line_color" -> R.string.frame_param_inner_color

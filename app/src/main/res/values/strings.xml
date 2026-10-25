@@ -322,4 +322,5 @@
     <string name="frame_param_gap">双线间距</string>
     <string name="frame_param_line_width">线条粗细</string>
     <string name="frame_param_line_color">线条颜色</string>
+    <string name="frame_param_bottom_extra">下边额外加宽</string>
 </resources>
