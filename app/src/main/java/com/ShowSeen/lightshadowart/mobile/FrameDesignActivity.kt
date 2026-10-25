@@ -10,7 +10,6 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -56,8 +55,7 @@ class FrameDesignActivity : AppCompatActivity() {
         const val SCOPE_DEFAULT = "default"
         const val SCOPE_IMAGE = "image"
 
-        private const val ROW_HEIGHT_DP = 44
-        private const val HALF_STEP = 2f
+        private const val ROW_HEIGHT_DP = 48
 
         /** Step of the -/+ buttons, in dp */
         private const val STEP_DP = 0.5f
@@ -478,41 +476,23 @@ class FrameDesignActivity : AppCompatActivity() {
                 gravity = android.view.Gravity.CENTER
                 setTextColor(getColor(R.color.primary_blue))
                 setBackgroundResource(R.drawable.bg_pill_tint)
-                minWidth = dp(62)
-                setPadding(dp(4), dp(4), dp(4), dp(4))
+                setPadding(dp(10), dp(6), dp(10), dp(6))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { marginStart = dp(4); marginEnd = dp(4) }
+                ).apply {
+                    marginStart = dp(6)
+                    marginEnd = dp(6)
+                    // The number is the only control left besides -/+, so it gets the remaining width
+                    width = 0
+                    weight = 1f
+                }
                 isClickable = true
                 setOnClickListener { showPreciseEntry(spec) }
-            }
-            val seek = SeekBar(this).apply {
-                max = (((spec.maxDp - spec.minDp) * HALF_STEP).toInt()).coerceAtLeast(1)
-                progress = (((current - spec.minDp) * HALF_STEP).toInt()).coerceIn(0, max)
-                layoutParams = LinearLayout.LayoutParams(0, dp(32), 1f)
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(
-                        bar: SeekBar?,
-                        progressValue: Int,
-                        fromUser: Boolean
-                    ) {
-                        if (!fromUser) return
-                        val value = spec.minDp + progressValue / HALF_STEP
-                        values[spec.id] = value
-                        valueText.text = formatDp(value)
-                        updateDependentRows()
-                        renderPreview()
-                    }
-
-                    override fun onStartTrackingTouch(bar: SeekBar?) = Unit
-                    override fun onStopTrackingTouch(bar: SeekBar?) = Unit
-                })
             }
             row.addView(minus)
             row.addView(valueText)
             row.addView(plus)
-            row.addView(seek)
         } else {
             val swatch = View(this).apply {
                 setBackgroundColor(
@@ -548,7 +528,7 @@ class FrameDesignActivity : AppCompatActivity() {
             textSize = 18f
             gravity = android.view.Gravity.CENTER
             setTextColor(getColor(R.color.primary_blue))
-            layoutParams = LinearLayout.LayoutParams(dp(28), dp(36))
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
             setOnClickListener { onClick() }
         }
 
