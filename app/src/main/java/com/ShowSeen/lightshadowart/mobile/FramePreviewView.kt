@@ -183,7 +183,8 @@ class FramePreviewView @JvmOverloads constructor(
             val band = lengthDp("band_dp") * density
             val extra = lengthDp("bottom_extra_dp") * density
             val bandColor = color("band_color")
-            fillBand(photo, band, extra, bandColor, canvas)
+            // Bottom side is band + extra (0 extra = uniform mat)
+            fillBand(photo, band, band + extra, bandColor, canvas)
 
             val bevel = lengthDp("bevel_dp") * density
             if (bevel > 0f) {
