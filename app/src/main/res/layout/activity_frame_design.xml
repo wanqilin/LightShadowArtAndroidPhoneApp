@@ -2,11 +2,13 @@
 <!--
     Frame + background editor (PRD 6.9 / 6.10).
 
-    One page for both scopes: "default" (Settings → Parameters) and "image" (the picture on screen).
-    The parameter rows are generated from the device's style schema at runtime, so this layout only
-    provides the containers — a style the device adds later needs no change here.
+    Layout rule of this page: **the preview and the apply button never scroll away**. The preview is
+    pinned under the "applies to" line and the action bar is pinned at the bottom; only the parameter
+    cards in between scroll. That way the user always sees what a slider does while dragging it, and
+    never has to scroll back down to apply.
 
-    Scrollable on purpose: the base group fits one screen, but the advanced group must stay reachable.
+    The parameter rows themselves are generated from the device's style schema at runtime, so this
+    layout only provides the containers — a style the device adds later needs no change here.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -21,6 +23,31 @@
         android:paddingStart="8dp"
         android:paddingEnd="@dimen/card_padding" />
 
+    <!-- Which scope this page edits: the default layer or the picture on screen -->
+    <TextView
+        android:id="@+id/tv_frame_scope"
+        style="@style/Text.Label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/page_horizontal_padding"
+        android:paddingEnd="@dimen/page_horizontal_padding"
+        android:text="@string/frame_scope_default" />
+
+    <!-- Pinned preview: 3:2 like the panel, small enough to leave room for the parameters -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="@dimen/item_gap"
+        android:paddingBottom="@dimen/item_gap">
+
+        <com.ShowSeen.lightshadowart.mobile.FramePreviewView
+            android:id="@+id/preview_frame"
+            android:layout_width="204dp"
+            android:layout_height="136dp"
+            android:layout_gravity="center_horizontal" />
+    </FrameLayout>
+
+    <!-- Only this part scrolls -->
     <ScrollView
         android:id="@+id/scroll_frame_design"
         android:layout_width="match_parent"
@@ -34,30 +61,12 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="@dimen/page_horizontal_padding"
-            android:paddingTop="@dimen/item_gap"
-            android:paddingEnd="@dimen/page_horizontal_padding"
-            android:paddingBottom="@dimen/page_vertical_padding">
-
-            <!-- Which scope this page edits: the default layer or the picture on screen -->
-            <TextView
-                android:id="@+id/tv_frame_scope"
-                style="@style/Text.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/frame_scope_default" />
-
-            <!-- Live preview: the same layers the panel draws, at the panel's real aspect ratio -->
-            <com.ShowSeen.lightshadowart.mobile.FramePreviewView
-                android:id="@+id/preview_frame"
-                android:layout_width="match_parent"
-                android:layout_height="140dp"
-                android:layout_marginTop="@dimen/item_gap" />
+            android:paddingEnd="@dimen/page_horizontal_padding">
 
             <com.google.android.material.card.MaterialCardView
                 style="@style/SurfaceCard"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/item_gap">
+                android:layout_height="wrap_content">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -133,7 +142,8 @@
                 style="@style/SurfaceCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/item_gap">
+                android:layout_marginTop="@dimen/item_gap"
+                android:layout_marginBottom="@dimen/item_gap">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -229,42 +239,52 @@
                         android:text="@string/frame_style_import" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
-
-            <TextView
-                android:id="@+id/tv_frame_status"
-                style="@style/Text.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
-                android:visibility="gone" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/section_gap"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_frame_design_reset"
-                    style="@style/PillButton.Outlined"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/item_gap"
-                    android:layout_weight="1"
-                    android:maxLines="1"
-                    android:minHeight="@dimen/touch_min_height"
-                    android:text="@string/frame_reset" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_frame_design_apply"
-                    style="@style/PillButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:maxLines="1"
-                    android:minHeight="@dimen/touch_min_height"
-                    android:text="@string/frame_apply" />
-            </LinearLayout>
         </LinearLayout>
     </ScrollView>
+
+    <!-- Pinned action bar: apply is always reachable -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/page_horizontal_padding"
+        android:paddingTop="@dimen/item_gap"
+        android:paddingEnd="@dimen/page_horizontal_padding"
+        android:paddingBottom="@dimen/page_vertical_padding">
+
+        <TextView
+            android:id="@+id/tv_frame_status"
+            style="@style/Text.Label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="@dimen/item_gap"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_frame_design_reset"
+                style="@style/PillButton.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/item_gap"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:minHeight="@dimen/touch_min_height"
+                android:text="@string/frame_reset" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_frame_design_apply"
+                style="@style/PillButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:minHeight="@dimen/touch_min_height"
+                android:text="@string/frame_apply" />
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

@@ -330,4 +330,8 @@
     <string name="frame_param_bottom_extra">Extra bottom band</string>
     <string name="frame_preview_title">Preview (tap to enlarge)</string>
     <string name="frame_preview_close">Close</string>
+    <string name="frame_precise_title">%1$s (%2$s – %3$s dp)</string>
+    <string name="frame_precise_ok">OK</string>
+    <string name="frame_precise_invalid">Please enter a number</string>
+    <string name="frame_precise_clamped">Out of range, clamped to %1$s – %2$s</string>
 </resources>

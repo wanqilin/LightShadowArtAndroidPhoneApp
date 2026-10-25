@@ -58,6 +58,9 @@ class FrameDesignActivity : AppCompatActivity() {
 
         private const val ROW_HEIGHT_DP = 44
         private const val HALF_STEP = 2f
+
+        /** Step of the -/+ buttons, in dp */
+        private const val STEP_DP = 0.5f
         private const val DISABLED_ALPHA = 0.45f
     }
 
@@ -247,6 +250,7 @@ class FrameDesignActivity : AppCompatActivity() {
                     renderScope()
                     renderSpinner()
                     renderAll()
+                    loadPreviewPhoto(endpoint, sessionId)
                 }
                 .onFailure { failure ->
                     handleFailure(failure, getString(R.string.frame_load_failed, ""))
@@ -254,6 +258,40 @@ class FrameDesignActivity : AppCompatActivity() {
                 }
         }
     }
+
+    /**
+     * Fetches the picture on screen so the preview shows the real thing instead of a placeholder.
+     *
+     * Only the image scope has a picture; the default layer has none and keeps the placeholder.
+     * Decoded at most 1024px on the long edge (the same rule the space page uses) so a 20MP photo
+     * does not blow up the editor.
+     */
+    private fun loadPreviewPhoto(endpoint: com.ShowSeen.lightshadowart.mobile.net.DeviceEndpoint,
+                                 sessionId: String) {
+        val mediaPath = path
+        if (scope != SCOPE_IMAGE || mediaPath.isNullOrEmpty()) return
+        lifecycleScope.launch {
+            val bytes = client.mediaRaw(endpoint, sessionId, mediaPath) ?: return@launch
+            val bitmap = decodeSampledBytes(bytes, 1024) ?: return@launch
+            preview.setPhotoBitmap(bitmap)
+        }
+    }
+
+    private fun decodeSampledBytes(bytes: ByteArray, maxPx: Int): Bitmap? = runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= maxPx && bounds.outHeight / (sample * 2) >= maxPx) {
+            sample *= 2
+        }
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    }.getOrNull()
+
+    /** Column separator-free label lookup used by both the row builder and the precise-entry dialog */
+    private fun specOf(id: String): FrameParamInfo? =
+        currentStyle()?.params?.firstOrNull { it.id == id }
 
     private fun currentStyle(): FrameStyleInfo? {
         val cfg = config ?: return null
@@ -416,16 +454,43 @@ class FrameDesignActivity : AppCompatActivity() {
 
         if (spec.isLength) {
             val current = (values[spec.id] as? Number)?.toFloat() ?: spec.defaultDp
+
+            fun applyValue(value: Float) {
+                val clamped = value.coerceIn(spec.minDp, spec.maxDp)
+                values[spec.id] = clamped
+                updateDependentRows()
+                renderPreview()
+            }
+
+            // Steppers: dragging a slider to an exact number is impractical, so -/+ give 0.5dp steps
+            val minus = stepButton("-") {
+                applyValue(((values[spec.id] as? Number)?.toFloat() ?: spec.defaultDp) - STEP_DP)
+                renderRows()
+            }
+            val plus = stepButton("+") {
+                applyValue(((values[spec.id] as? Number)?.toFloat() ?: spec.defaultDp) + STEP_DP)
+                renderRows()
+            }
+            // The number itself opens a precise-entry dialog (typed value, clamped to the range)
             val valueText = TextView(this).apply {
                 text = formatDp(current)
-                textSize = 13f
-                gravity = android.view.Gravity.END
-                layoutParams = LinearLayout.LayoutParams(dp(56), LinearLayout.LayoutParams.WRAP_CONTENT)
+                textSize = 14f
+                gravity = android.view.Gravity.CENTER
+                setTextColor(getColor(R.color.primary_blue))
+                setBackgroundResource(R.drawable.bg_pill_tint)
+                minWidth = dp(62)
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginStart = dp(4); marginEnd = dp(4) }
+                isClickable = true
+                setOnClickListener { showPreciseEntry(spec) }
             }
             val seek = SeekBar(this).apply {
                 max = (((spec.maxDp - spec.minDp) * HALF_STEP).toInt()).coerceAtLeast(1)
                 progress = (((current - spec.minDp) * HALF_STEP).toInt()).coerceIn(0, max)
-                layoutParams = LinearLayout.LayoutParams(0, dp(32), 1.4f)
+                layoutParams = LinearLayout.LayoutParams(0, dp(32), 1f)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(
                         bar: SeekBar?,
@@ -444,8 +509,9 @@ class FrameDesignActivity : AppCompatActivity() {
                     override fun onStopTrackingTouch(bar: SeekBar?) = Unit
                 })
             }
-            // Value first, then the slider: the number is what the user reads back
+            row.addView(minus)
             row.addView(valueText)
+            row.addView(plus)
             row.addView(seek)
         } else {
             val swatch = View(this).apply {
@@ -474,6 +540,66 @@ class FrameDesignActivity : AppCompatActivity() {
             }
         }
         return row
+    }
+
+    private fun stepButton(label: String, onClick: () -> Unit): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = 18f
+            gravity = android.view.Gravity.CENTER
+            setTextColor(getColor(R.color.primary_blue))
+            layoutParams = LinearLayout.LayoutParams(dp(28), dp(36))
+            setOnClickListener { onClick() }
+        }
+
+    /**
+     * Precise entry for one length parameter.
+     *
+     * A slider is fine for exploring but cannot be dragged onto an exact value, which is why the
+     * number is a button: it opens this dialog with the current value in an editable field, and the
+     * typed value is clamped to the range the device declared.
+     */
+    private fun showPreciseEntry(spec: FrameParamInfo) {
+        val current = (values[spec.id] as? Number)?.toFloat() ?: spec.defaultDp
+        val input = android.widget.EditText(this).apply {
+            setText(formatDp(current))
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setSelection(text.length)
+            setPadding(dp(20), dp(16), dp(20), dp(16))
+        }
+        val title = getString(
+            R.string.frame_precise_title,
+            paramLabel(spec.id),
+            formatDp(spec.minDp),
+            formatDp(spec.maxDp)
+        )
+        android.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.frame_precise_ok) { _, _ ->
+                val typed = input.text.toString().trim().toFloatOrNull()
+                if (typed == null) {
+                    toast(getString(R.string.frame_precise_invalid))
+                    return@setPositiveButton
+                }
+                val clamped = typed.coerceIn(spec.minDp, spec.maxDp)
+                if (clamped != typed) {
+                    toast(
+                        getString(
+                            R.string.frame_precise_clamped,
+                            formatDp(spec.minDp),
+                            formatDp(spec.maxDp)
+                        )
+                    )
+                }
+                values[spec.id] = clamped
+                renderRows()
+                updateDependentRows()
+                renderPreview()
+            }
+            .show()
     }
 
     /**

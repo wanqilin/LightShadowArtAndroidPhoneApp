@@ -41,8 +41,11 @@ class FramePreviewView @JvmOverloads constructor(
     private var background = FrameBackground()
     private var backgroundBitmap: Bitmap? = null
 
-    /** Placeholder photo aspect (4:3 landscape, the most common case on this panel) */
-    private val photoAspect = 4f / 3f
+    /** Aspect used when the real picture is not available yet (4:3 landscape, the common case) */
+    private val placeholderAspect = 4f / 3f
+
+    /** The picture being edited, so the preview really shows what the panel will show */
+    private var photoBitmap: Bitmap? = null
 
     fun setFrame(
         params: List<FrameParamInfo>,
@@ -62,6 +65,22 @@ class FramePreviewView @JvmOverloads constructor(
     fun setBackgroundBitmap(bitmap: Bitmap?) {
         backgroundBitmap = bitmap
         invalidate()
+    }
+
+    /** The picture being edited (fetched from the device); null shows a neutral placeholder */
+    fun setPhotoBitmap(bitmap: Bitmap?) {
+        if (photoBitmap === bitmap) return
+        photoBitmap = bitmap
+        invalidate()
+    }
+
+    private fun photoAspect(): Float {
+        val bitmap = photoBitmap
+        return if (bitmap != null && bitmap.height > 0) {
+            bitmap.width.toFloat() / bitmap.height
+        } else {
+            placeholderAspect
+        }
     }
 
     private fun lengthDp(id: String): Float =
@@ -104,15 +123,16 @@ class FramePreviewView @JvmOverloads constructor(
         )
         if (box.width() <= 0f || box.height() <= 0f) return
 
-        // 2) photo placeholder, contain-fitted like the device does
+        // 2) the picture itself, contain-fitted exactly like the device does
+        val aspect = photoAspect()
         val photoWidth: Float
         val photoHeight: Float
-        if (box.width() / box.height() > photoAspect) {
+        if (box.width() / box.height() > aspect) {
             photoHeight = box.height()
-            photoWidth = photoHeight * photoAspect
+            photoWidth = photoHeight * aspect
         } else {
             photoWidth = box.width()
-            photoHeight = photoWidth / photoAspect
+            photoHeight = photoWidth / aspect
         }
         val photo = RectF(
             box.centerX() - photoWidth / 2f,
@@ -120,8 +140,15 @@ class FramePreviewView @JvmOverloads constructor(
             box.centerX() + photoWidth / 2f,
             box.centerY() + photoHeight / 2f
         )
-        fillPaint.color = PHOTO_COLOR
-        canvas.drawRect(photo, fillPaint)
+        val bitmap = photoBitmap
+        if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {
+            srcRect.set(0, 0, bitmap.width, bitmap.height)
+            dstRect.set(photo)
+            canvas.drawBitmap(bitmap, srcRect, dstRect, imagePaint)
+        } else {
+            fillPaint.color = PHOTO_COLOR
+            canvas.drawRect(photo, fillPaint)
+        }
 
         // 3) frame bands, pushed outward from the photo rect (same rule as the device)
         drawFrame(canvas, photo, panel.density * scale)

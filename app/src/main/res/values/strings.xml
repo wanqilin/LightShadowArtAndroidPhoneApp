@@ -325,4 +325,8 @@
     <string name="frame_param_bottom_extra">下边额外加宽</string>
     <string name="frame_preview_title">预览（点开放大看细节）</string>
     <string name="frame_preview_close">关闭</string>
+    <string name="frame_precise_title">%1$s（%2$s – %3$s dp）</string>
+    <string name="frame_precise_ok">确定</string>
+    <string name="frame_precise_invalid">请输入数字</string>
+    <string name="frame_precise_clamped">超出范围，已取值 %1$s – %2$s 之间的最近值</string>
 </resources>
