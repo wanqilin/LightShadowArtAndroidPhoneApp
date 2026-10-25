@@ -247,7 +247,6 @@
     <string name="scan_invalid_qr">This is not a LightShadowArt frame QR code.</string>
     <string name="space_title">Space Art Gallery</string>
     <string name="space_toolbar_frame">Frame</string>
-    <string name="space_toolbar_wall">Wall</string>
     <string name="playback_state_browse">Browse</string>
     <string name="playback_state_static">Static</string>
     <string name="playback_state_auto">Auto</string>

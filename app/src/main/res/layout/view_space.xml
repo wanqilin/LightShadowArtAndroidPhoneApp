@@ -305,28 +305,6 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/btn_toolbar_wall"
-                style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_backgrounds"
-                    app:tint="@color/primary_blue" />
-
-                <TextView
-                    style="@style/Text.Hint"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:text="@string/space_toolbar_wall"
-                    android:textSize="@dimen/text_label" />
-            </LinearLayout>
-
-            <LinearLayout
                 android:id="@+id/btn_toolbar_rotate"
                 style="@style/Widget.LightShadowArtPhone.GalleryToolbar.Item">
 

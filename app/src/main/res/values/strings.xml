@@ -242,7 +242,6 @@
     <string name="scan_invalid_qr">这不是光影艺术相框的二维码。</string>
     <string name="space_title">艺术空间</string>
     <string name="space_toolbar_frame">边框</string>
-    <string name="space_toolbar_wall">墙纸</string>
     <string name="playback_state_browse">浏览模式</string>
     <string name="playback_state_static">静止播放</string>
     <string name="playback_state_auto">自动播放</string>

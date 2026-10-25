@@ -81,7 +81,6 @@ class MainActivity : DeviceActivity() {
     private lateinit var pagerSpace: ViewPager2
     private lateinit var swipeSpace: SwipeRefreshLayout
     private lateinit var btnToolbarFrame: View
-    private lateinit var btnToolbarWall: View
     private lateinit var btnToolbarRotate: View
     private lateinit var btnToolbarPlaybackFav: View
     private lateinit var btnToolbarFav: View
@@ -293,7 +292,6 @@ class MainActivity : DeviceActivity() {
         pagerSpace = findViewById(R.id.pager_space)
         swipeSpace = findViewById(R.id.swipe_space)
         btnToolbarFrame = findViewById(R.id.btn_toolbar_frame)
-        btnToolbarWall = findViewById(R.id.btn_toolbar_wall)
         btnToolbarRotate = findViewById(R.id.btn_toolbar_rotate)
         btnToolbarPlaybackFav = findViewById(R.id.btn_toolbar_playback_fav)
         btnToolbarFav = findViewById(R.id.btn_toolbar_fav)
@@ -486,7 +484,6 @@ class MainActivity : DeviceActivity() {
             adapterForCurrentView().toggleSelectAll()
         }
         btnToolbarFrame.setOnClickListener { openFrameDesign() }
-        btnToolbarWall.setOnClickListener { openBackgrounds() }
         btnToolbarRotate.setOnClickListener { rotate() }
         btnToolbarPlaybackFav.setOnClickListener { onFavouriteClick() }
         btnToolbarFav.setOnClickListener { onFavouriteClick() }
@@ -779,7 +776,6 @@ class MainActivity : DeviceActivity() {
 
         setToolAvailable(btnToolbarDelete, !SessionStore.inStudioMode)
         setToolAvailable(btnToolbarFrame, SessionStore.isAdmin)
-        setToolAvailable(btnToolbarWall, SessionStore.isAdmin)
         setToolAvailable(btnToolbarRotate, true)
         renderFavouriteIcons()
     }
@@ -1341,12 +1337,6 @@ class MainActivity : DeviceActivity() {
      * page opened from Settings → Parameters edits the default layer instead.
      */
     private fun openFrameDesign(): Boolean {
-        if (!requireEditable()) return false
-        startActivity(frameEditorIntent())
-        return true
-    }
-
-    private fun openBackgrounds(): Boolean {
         if (!requireEditable()) return false
         startActivity(frameEditorIntent())
         return true
