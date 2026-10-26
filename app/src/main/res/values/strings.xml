@@ -319,10 +319,10 @@
     <string name="frame_param_bottom_extra">下边额外加宽</string>
     <string name="frame_preview_title">预览（点开放大看细节）</string>
     <string name="frame_preview_close">关闭</string>
-    <string name="frame_precise_title">%1$s（%2$s – %3$s dp）</string>
+    <string name="frame_precise_title">%1$s（%2$s）</string>
     <string name="frame_precise_ok">确定</string>
     <string name="frame_precise_invalid">请输入数字</string>
-    <string name="frame_precise_clamped">超出范围，已取值 %1$s – %2$s 之间的最近值</string>
+    <string name="frame_precise_clamped">超出范围，已套用 %1$s</string>
     <string name="color_recent">最近使用</string>
     <string name="color_swatch_selected">%1$s，已选</string>
     <string name="color_red">红</string>
@@ -331,4 +331,9 @@
     <string name="color_rgb_value">%1$d</string>
     <string name="color_wheel">色盘</string>
     <string name="color_brightness">明度</string>
+    <string name="frame_param_blur">模糊半径</string>
+    <string name="frame_param_shadow_offset">阴影偏移</string>
+    <string name="frame_param_shadow_angle">阴影方向</string>
+    <string name="frame_param_shadow_opacity">阴影浓度</string>
+    <string name="frame_param_shadow_color">阴影颜色</string>
 </resources>

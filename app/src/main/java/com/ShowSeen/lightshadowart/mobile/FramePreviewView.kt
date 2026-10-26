@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Region
+import android.os.Build
 import android.util.AttributeSet
 import android.view.View
 import com.ShowSeen.lightshadowart.mobile.net.FrameBackground
@@ -196,7 +198,7 @@ class FramePreviewView @JvmOverloads constructor(
     private fun insetsDp(): FloatArray {
         var inset = 0f
         if (has("band_dp")) inset += lengthDp("band_dp")
-        if (has("spread_dp")) inset += lengthDp("spread_dp")
+        if (has("spread_dp")) inset += lengthDp("spread_dp") + lengthDp("shadow_offset_dp")
         if (has("offset_dp")) inset += lengthDp("offset_dp") + lengthDp("gap_dp")
         inset += lengthDp("margin_dp")
         val side = maxOf(0f, inset)
@@ -245,23 +247,59 @@ class FramePreviewView @JvmOverloads constructor(
             }
         }
 
-        // shadow: white line hugging the photo + a gradient of rings
+        // shadow: offset in the light direction, fading out over blur_dp (same profile as the device)
         if (has("spread_dp")) {
-            val spread = lengthDp("spread_dp") * density
-            val inner = maxOf(1f, lengthDp("inner_line_dp") * density)
-            val steps = 8
-            val step = maxOf(0f, spread - inner) / steps
-            for (i in 0 until steps) {
-                val offset = inner + step * (i + 0.5f)
-                val alpha = (150 * (1f - i.toFloat() / steps)).toInt()
-                if (step <= 0f || alpha <= 0) break
-                val rect = RectF(photo)
-                rect.inset(-offset, -offset)
-                linePaint.color = Color.argb(alpha, 0, 0, 0)
-                linePaint.strokeWidth = step
-                canvas.drawRect(rect, linePaint)
+            val reach = lengthDp("spread_dp") * density
+            val blur = minOf(lengthDp("blur_dp") * density, reach)
+            val solid = reach - blur
+            val offsetPx = lengthDp("shadow_offset_dp") * density
+            val angle = Math.toRadians(lengthDp("shadow_angle_deg").toDouble())
+            val dx = (offsetPx * Math.cos(angle)).toFloat()
+            val dy = (offsetPx * Math.sin(angle)).toFloat()
+            val alphaMax = (lengthDp("shadow_opacity").coerceIn(0f, 100f) * 2.55f).toInt()
+            val shadowColor = color("shadow_color")
+            val inner = lengthDp("inner_line_dp") * density
+
+            if (alphaMax > 0 && reach > 0f) {
+                canvas.save()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    canvas.clipOutRect(photo)
+                } else {
+                    @Suppress("DEPRECATION")
+                    canvas.clipRect(photo, Region.Op.DIFFERENCE)
+                }
+                val r = Color.red(shadowColor)
+                val g = Color.green(shadowColor)
+                val b = Color.blue(shadowColor)
+
+                if (solid > 0f) {
+                    val core = RectF(photo)
+                    core.offset(dx, dy)
+                    core.inset(-solid, -solid)
+                    fillPaint.color = Color.argb(alphaMax, r, g, b)
+                    canvas.drawRect(core, fillPaint)
+                }
+                if (blur > 0f) {
+                    val steps = 48
+                    val step = blur / steps
+                    for (i in 0 until steps) {
+                        val t = (i + 0.5f) / steps
+                        val a = (alphaMax * (1f - t)).toInt()
+                        if (a <= 0) break
+                        val center = solid + step * (i + 0.5f)
+                        val ring = RectF(photo)
+                        ring.offset(dx, dy)
+                        ring.inset(-center, -center)
+                        linePaint.color = Color.argb(a, r, g, b)
+                        linePaint.strokeWidth = step + 0.5f
+                        canvas.drawRect(ring, linePaint)
+                    }
+                }
+                canvas.restore()
             }
-            lined(inner, Color.TRANSPARENT, color("inner_line_color"), canvas, photo)
+            if (inner > 0f) {
+                fillBand(photo, inner, inner, color("inner_line_color"), canvas)
+            }
         }
 
         // simple_line: inner line on photo+offset, outer on inner+gap

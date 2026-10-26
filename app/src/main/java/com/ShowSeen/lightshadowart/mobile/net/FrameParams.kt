@@ -16,7 +16,9 @@ data class FrameParamInfo(
     val defaultDp: Float = 0f,
     val defaultColor: Int = 0,
     /** Advanced parameters sit behind the collapsed group */
-    val advanced: Boolean = false
+    val advanced: Boolean = false,
+    /** Display unit of a length parameter: `dp`, `%` or `°` (empty for colours) */
+    val unit: String = "dp"
 ) {
     val isLength: Boolean get() = kind == KIND_LENGTH
 

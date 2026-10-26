@@ -925,7 +925,8 @@ internal fun JSONObject?.toFrameConfig(): FrameConfig {
                             maxDp = param.optDouble("max", 0.0).toFloat(),
                             defaultDp = param.optDouble("default", 0.0).toFloat(),
                             defaultColor = param.optInt("default", 0),
-                            advanced = param.optBoolean("advanced", false)
+                            advanced = param.optBoolean("advanced", false),
+                            unit = param.optString("unit", "dp")
                         )
                     )
                 }

@@ -324,10 +324,10 @@
     <string name="frame_param_bottom_extra">Extra bottom band</string>
     <string name="frame_preview_title">Preview (tap to enlarge)</string>
     <string name="frame_preview_close">Close</string>
-    <string name="frame_precise_title">%1$s (%2$s – %3$s dp)</string>
+    <string name="frame_precise_title">%1$s (%2$s)</string>
     <string name="frame_precise_ok">OK</string>
     <string name="frame_precise_invalid">Please enter a number</string>
-    <string name="frame_precise_clamped">Out of range, clamped to %1$s – %2$s</string>
+    <string name="frame_precise_clamped">Out of range, clamped to %1$s</string>
     <string name="color_recent">Recently used</string>
     <string name="color_swatch_selected">%1$s, selected</string>
     <string name="color_red">Red</string>
@@ -336,4 +336,9 @@
     <string name="color_rgb_value">%1$d</string>
     <string name="color_wheel">Colour wheel</string>
     <string name="color_brightness">Brightness</string>
+    <string name="frame_param_blur">Blur</string>
+    <string name="frame_param_shadow_offset">Shadow offset</string>
+    <string name="frame_param_shadow_angle">Shadow direction</string>
+    <string name="frame_param_shadow_opacity">Shadow strength</string>
+    <string name="frame_param_shadow_color">Shadow colour</string>
 </resources>

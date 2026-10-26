@@ -473,7 +473,7 @@ class FrameDesignActivity : AppCompatActivity() {
             }
             // The number itself opens a precise-entry dialog (typed value, clamped to the range)
             val valueText = TextView(this).apply {
-                text = formatDp(current)
+                text = formatValue(spec, current)
                 textSize = 14f
                 gravity = android.view.Gravity.CENTER
                 setTextColor(getColor(R.color.primary_blue))
@@ -554,8 +554,7 @@ class FrameDesignActivity : AppCompatActivity() {
         val title = getString(
             R.string.frame_precise_title,
             paramLabel(spec.id),
-            formatDp(spec.minDp),
-            formatDp(spec.maxDp)
+            formatRange(spec)
         )
         android.app.AlertDialog.Builder(this)
             .setTitle(title)
@@ -570,11 +569,7 @@ class FrameDesignActivity : AppCompatActivity() {
                 val clamped = typed.coerceIn(spec.minDp, spec.maxDp)
                 if (clamped != typed) {
                     toast(
-                        getString(
-                            R.string.frame_precise_clamped,
-                            formatDp(spec.minDp),
-                            formatDp(spec.maxDp)
-                        )
+                        getString(R.string.frame_precise_clamped, formatRange(spec))
                     )
                 }
                 values[spec.id] = clamped
@@ -605,6 +600,10 @@ class FrameDesignActivity : AppCompatActivity() {
             "deco_offset_dp", "deco_line_color" -> length("deco_line_dp") > 0f
             "outer_line_color" -> length("outer_line_dp") > 0f
             "inner_line_color" -> length("inner_line_dp") > 0f
+            // shadow: blur/offset/direction/colour are meaningless while the shadow has no size or
+            // no strength, so they only appear when they can change something
+            "blur_dp", "shadow_offset_dp", "shadow_angle_deg" -> length("spread_dp") > 0f
+            "shadow_color" -> length("spread_dp") > 0f && length("shadow_opacity") > 0f
             else -> true
         }
     }
@@ -622,6 +621,11 @@ class FrameDesignActivity : AppCompatActivity() {
             "deco_line_color" -> R.string.frame_param_deco_color
             "bottom_extra_dp" -> R.string.frame_param_bottom_extra
             "spread_dp" -> R.string.frame_param_spread
+            "blur_dp" -> R.string.frame_param_blur
+            "shadow_offset_dp" -> R.string.frame_param_shadow_offset
+            "shadow_angle_deg" -> R.string.frame_param_shadow_angle
+            "shadow_opacity" -> R.string.frame_param_shadow_opacity
+            "shadow_color" -> R.string.frame_param_shadow_color
             "inner_line_dp" -> R.string.frame_param_inner_line
             "inner_line_color" -> R.string.frame_param_inner_color
             "offset_dp" -> R.string.frame_param_offset
@@ -810,6 +814,21 @@ class FrameDesignActivity : AppCompatActivity() {
 
     private fun formatDp(value: Float): String =
         if (value == value.toInt().toFloat()) "${value.toInt()}" else String.format("%.1f", value)
+
+    /**
+     * A parameter value as the user sees it: plain number for dp (the label already implies the
+     * length), but "%" and "°" are spelled out — "45" alone means nothing for shadow strength.
+     */
+    private fun formatValue(spec: FrameParamInfo, value: Float): String {
+        val unit = spec.unit
+        return if (unit.isEmpty() || unit == "dp") formatDp(value) else "${formatDp(value)}$unit"
+    }
+
+    /** Declared range of a parameter, with its unit, e.g. "0 – 120 dp" / "0 – 100 %" */
+    private fun formatRange(spec: FrameParamInfo): String {
+        val range = "${formatDp(spec.minDp)} – ${formatDp(spec.maxDp)}"
+        return if (spec.unit.isBlank()) range else "$range ${spec.unit}"
+    }
 
     private fun opaque(color: Int): Int =
         Color.rgb(Color.red(color), Color.green(color), Color.blue(color))
