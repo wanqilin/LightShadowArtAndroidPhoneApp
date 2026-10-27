@@ -198,12 +198,47 @@ class FramePreviewView @JvmOverloads constructor(
     private fun insetsDp(): FloatArray {
         var inset = 0f
         if (has("band_dp")) inset += lengthDp("band_dp")
-        if (has("spread_dp")) inset += lengthDp("spread_dp") + lengthDp("shadow_offset_dp")
         if (has("offset_dp")) inset += lengthDp("offset_dp") + lengthDp("gap_dp")
         inset += lengthDp("margin_dp")
-        val side = maxOf(0f, inset)
-        val bottom = side + maxOf(0f, lengthDp("bottom_extra_dp"))
-        return floatArrayOf(side, side, side, bottom)
+
+        // The shadow only needs room where it is drawn (the cast side), so its inset is per side — the
+        // same rule the device uses, otherwise the preview would shrink the photo differently.
+        var left = inset
+        var top = inset
+        var right = inset
+        var bottom = inset
+        if (has("spread_dp")) {
+            // The shadow is swept out to `offset` and flares by `spread` on the cast sides only
+            val reach = maxOf(0f, lengthDp("shadow_offset_dp")) + maxOf(0f, lengthDp("spread_dp"))
+            val radians = Math.toRadians(lengthDp("shadow_angle_deg").toDouble())
+            val ux = Math.cos(radians).toFloat()
+            val uy = Math.sin(radians).toFloat()
+            left += reach * maxOf(0f, -ux)
+            right += reach * maxOf(0f, ux)
+            top += reach * maxOf(0f, -uy)
+            bottom += reach * maxOf(0f, uy)
+        }
+        bottom += maxOf(0f, lengthDp("bottom_extra_dp"))
+        return floatArrayOf(maxOf(0f, left), maxOf(0f, top), maxOf(0f, right), maxOf(0f, bottom))
+    }
+
+    private fun expand(rect: RectF, left: Float, top: Float, right: Float, bottom: Float): RectF =
+        RectF(rect.left - left, rect.top - top, rect.right + right, rect.bottom + bottom)
+
+    /** Fills the difference between two nested rects as four side rects (no overlap, no seams) */
+    private fun drawBand(canvas: Canvas, inner: RectF, outer: RectF) {
+        if (outer.top < inner.top) {
+            canvas.drawRect(outer.left, outer.top, outer.right, inner.top, fillPaint)
+        }
+        if (outer.bottom > inner.bottom) {
+            canvas.drawRect(outer.left, inner.bottom, outer.right, outer.bottom, fillPaint)
+        }
+        if (outer.left < inner.left) {
+            canvas.drawRect(outer.left, inner.top, inner.left, inner.bottom, fillPaint)
+        }
+        if (outer.right > inner.right) {
+            canvas.drawRect(inner.right, inner.top, outer.right, inner.bottom, fillPaint)
+        }
     }
 
     private fun drawFrame(canvas: Canvas, photo: RectF, density: Float) {
@@ -247,18 +282,23 @@ class FramePreviewView @JvmOverloads constructor(
             }
         }
 
-        // shadow: offset in the light direction, fading out over blur_dp (same profile as the device)
+        // shadow: the silhouette is swept along the shadow direction and fades out at the far end;
+        // every copy moves away from the light, so the lit side gets exactly zero shadow
         if (has("spread_dp")) {
-            val reach = lengthDp("spread_dp") * density
+            val reach = lengthDp("shadow_offset_dp") * density
+            val flare = lengthDp("spread_dp") * density
             val blur = minOf(lengthDp("blur_dp") * density, reach)
-            val solid = reach - blur
-            val offsetPx = lengthDp("shadow_offset_dp") * density
-            val angle = Math.toRadians(lengthDp("shadow_angle_deg").toDouble())
-            val dx = (offsetPx * Math.cos(angle)).toFloat()
-            val dy = (offsetPx * Math.sin(angle)).toFloat()
+            val radians = Math.toRadians(lengthDp("shadow_angle_deg").toDouble())
+            val ux = Math.cos(radians).toFloat()
+            val uy = Math.sin(radians).toFloat()
             val alphaMax = (lengthDp("shadow_opacity").coerceIn(0f, 100f) * 2.55f).toInt()
             val shadowColor = color("shadow_color")
             val inner = lengthDp("inner_line_dp") * density
+
+            val gLeft = flare * maxOf(0f, -ux)
+            val gTop = flare * maxOf(0f, -uy)
+            val gRight = flare * maxOf(0f, ux)
+            val gBottom = flare * maxOf(0f, uy)
 
             if (alphaMax > 0 && reach > 0f) {
                 canvas.save()
@@ -272,28 +312,30 @@ class FramePreviewView @JvmOverloads constructor(
                 val g = Color.green(shadowColor)
                 val b = Color.blue(shadowColor)
 
-                if (solid > 0f) {
-                    val core = RectF(photo)
-                    core.offset(dx, dy)
-                    core.inset(-solid, -solid)
-                    fillPaint.color = Color.argb(alphaMax, r, g, b)
-                    canvas.drawRect(core, fillPaint)
-                }
-                if (blur > 0f) {
-                    val steps = 48
-                    val step = blur / steps
-                    for (i in 0 until steps) {
-                        val t = (i + 0.5f) / steps
-                        val a = (alphaMax * (1f - t)).toInt()
-                        if (a <= 0) break
-                        val center = solid + step * (i + 0.5f)
-                        val ring = RectF(photo)
-                        ring.offset(dx, dy)
-                        ring.inset(-center, -center)
-                        linePaint.color = Color.argb(a, r, g, b)
-                        linePaint.strokeWidth = step + 0.5f
-                        canvas.drawRect(ring, linePaint)
+                val solidUntil = reach - blur
+                var previous = 1f
+                val steps = 64
+                for (i in 1..steps) {
+                    val t = i.toFloat() / steps
+                    val distance = t * reach
+                    val profile = if (solidUntil <= 0f) {
+                        1f - t
+                    } else if (distance <= solidUntil) {
+                        1f
+                    } else {
+                        1f - (distance - solidUntil) / blur
                     }
+                    val a = (alphaMax * (previous - profile)).toInt()
+                    previous = profile
+                    if (a <= 0) continue
+                    fillPaint.color = Color.argb(a, r, g, b)
+                    val copy = RectF(photo)
+                    copy.offset(ux * distance, uy * distance)
+                    copy.left -= gLeft
+                    copy.top -= gTop
+                    copy.right += gRight
+                    copy.bottom += gBottom
+                    canvas.drawRect(copy, fillPaint)
                 }
                 canvas.restore()
             }
